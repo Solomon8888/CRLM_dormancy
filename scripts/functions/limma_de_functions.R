@@ -148,7 +148,7 @@ prepare_ngs_data <- function(counts, gene_annotation, group_list, design) {
 
   keep <- edgeR::filterByExpr(y, design = design)
   y <- y[keep, , keep.lib.sizes = FALSE]
-  y <- edgeR::calcNormFactors(y)
+  y <- edgeR::normLibSizes(y)
 
   v <- limma::voom(y, design = design, plot = FALSE)
 

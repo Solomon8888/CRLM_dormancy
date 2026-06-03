@@ -1,0 +1,2 @@
+"Dataset","Data_Type","Analysis_Base_Name","Analysis_Name","Analysis_Column","Analysis_Column_Index","Contrast","Control_Group","Experiment_Group","Samples_Used","Total_Genes_Input","Total_Genes_Analyzed","Up","Down","Not_Significant","P_Value_Column","P_Value_Cutoff","LogFC_Cutoff","Microarray_Log2_Transformed","Microarray_Normalized_Between_Arrays","Microarray_Final_Median_Spread","Microarray_Final_IQR_Spread","NGS_Filtered_Genes"
+"GSE114012","ngs","LRC","LRC_5","analysis_LRC",11,"LRC_vs_BULK","BULK","LRC",8,39376,14261,3315,3261,7685,"P.Value",0.05,0.2,NA,NA,NA,NA,25115

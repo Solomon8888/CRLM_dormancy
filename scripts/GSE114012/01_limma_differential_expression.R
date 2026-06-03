@@ -9,7 +9,7 @@
 # 0. 可修改配置 ---------------------------------------------------------------
 
 DATASET_ID <- "GSE114012"
-DATA_TYPE <- "ngs"  # 可选："ngs" 或 "ngs"
+DATA_TYPE <- "ngs"  # 可选："microarray" 或 "ngs"
 
 SE_RDS_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_se_raw.rds"
 CLINICAL_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_clinical_edit.csv"
@@ -17,9 +17,9 @@ FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 
 # 显著差异筛选阈值
 # P_VALUE_COLUMN可选："P.Value" 或 "adj.P.Val"
-P_VALUE_COLUMN <- "adj.P.Val"
+P_VALUE_COLUMN <- "P.Value"
 P_VALUE_CUTOFF <- 0.05
-LOGFC_CUTOFF <- 1
+LOGFC_CUTOFF <- 0.2
 
 OUTPUT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID, "tables")
 
@@ -58,7 +58,7 @@ head(clinical_data)
 # 3. 检查样本和分析配置 --------------------------------------------------------
 
 stopifnot(inherits(se, "SummarizedExperiment"))
-stopifnot(DATA_TYPE %in% c("ngs", "ngs"))
+stopifnot(DATA_TYPE %in% c("microarray", "ngs"))
 stopifnot("Sample_ID" %in% colnames(clinical_data))
 stopifnot(!any(duplicated(clinical_data$Sample_ID)))
 
@@ -161,12 +161,6 @@ for (i in seq_len(nrow(analysis_designs))) {
   print(contrast.matrix)
 
   if (DATA_TYPE == "ngs") {
-    analysis_data <- prepare_ngs_data(exprSet)
-    limma_input <- analysis_data$data
-    genes_for_output <- gene_annotation
-  }
-
-  if (DATA_TYPE == "ngs") {
     analysis_data <- prepare_ngs_data(
       counts = exprSet,
       gene_annotation = gene_annotation,
@@ -177,7 +171,7 @@ for (i in seq_len(nrow(analysis_designs))) {
     genes_for_output <- limma_input$genes
   }
 
-  if (DATA_TYPE == "ngs") {
+  if (DATA_TYPE == "microarray") {
     print(get_distribution_diagnostics(limma_input))
     print(analysis_data$log2_transformed)
     print(analysis_data$normalized_between_arrays)
@@ -272,10 +266,10 @@ for (i in seq_len(nrow(analysis_designs))) {
     P_Value_Column = P_VALUE_COLUMN,
     P_Value_Cutoff = P_VALUE_CUTOFF,
     LogFC_Cutoff = LOGFC_CUTOFF,
-    ngs_Log2_Transformed = analysis_data$log2_transformed,
-    ngs_Normalized_Between_Arrays = analysis_data$normalized_between_arrays,
-    ngs_Final_Median_Spread = analysis_data$median_spread,
-    ngs_Final_IQR_Spread = analysis_data$iqr_spread,
+    Microarray_Log2_Transformed = analysis_data$log2_transformed,
+    Microarray_Normalized_Between_Arrays = analysis_data$normalized_between_arrays,
+    Microarray_Final_Median_Spread = analysis_data$median_spread,
+    Microarray_Final_IQR_Spread = analysis_data$iqr_spread,
     NGS_Filtered_Genes = analysis_data$filtered_genes,
     stringsAsFactors = FALSE
   )
