@@ -1,8 +1,48 @@
-# 绘图脚本公共函数
+# 绘图脚本公共配置和函数
 #
-# 本文件只保存多个绘图脚本都会用到的基础函数。
-# 具体图片的颜色、字体大小、边框粗细、PDF尺寸等样式参数仍放在各绘图脚本头部，
-# 这样既方便统一维护公共逻辑，也避免不同图形之间互相影响。
+# 本文件保存00、03、04号绘图脚本共用的视觉风格配置和基础函数。
+# 具体图片的样本选择、分析组合、PDF尺寸、专属排版参数仍放在各绘图脚本头部。
+
+
+# 0. 共用绘图风格配置 ----------------------------------------------------------
+
+# 全部绘图文字统一使用Helvetica黑色粗体，便于不同图之间保持一致。
+TEXT_FONT_FAMILY <- "Helvetica"
+TEXT_FONT_FACE <- "bold"
+TEXT_COLOR <- "black"
+BASE_FONT_SIZE <- 12
+
+# ggplot类图形的坐标轴/边框线宽；ComplexHeatmap热图会在脚本内单独放大。
+AXIS_LINE_WIDTH <- 0.8
+
+# 传统火山图和多组火山图共用的显著基因点样式。
+UP_COLOR <- "#D73027"
+DOWN_COLOR <- "#2166AC"
+POINT_SIZE <- 3.2
+POINT_ALPHA <- 0.60
+
+# 图中展示基因名时优先使用的列；若该列不存在则不会标注基因名。
+TOP_GENE_SYMBOL_COLUMN <- "Symbol"
+
+# 自定义标注基因可按这些列匹配；图中展示文字仍优先使用TOP_GENE_SYMBOL_COLUMN。
+CUSTOM_LABEL_MATCH_COLUMNS <- c("Symbol", "Feature_ID", "GeneID", "Ensembl", "Entrez")
+
+# 未配置CUSTOM_LABEL_GENES时，默认每个分析标注Up 5个和Down 5个Top基因。
+TOP_UP_LABEL_N <- 5
+TOP_DOWN_LABEL_N <- 5
+
+# Top基因文字和引线样式；03号和04号火山图共用。
+TOP_GENE_LABEL_FONT_SIZE <- 3.4
+TOP_GENE_LABEL_FONT_FACE <- TEXT_FONT_FACE
+TOP_GENE_LABEL_BOX_PADDING <- 0.30
+TOP_GENE_LABEL_POINT_PADDING <- 0.20
+TOP_GENE_LABEL_SEGMENT_WIDTH <- 0.28
+TOP_GENE_LABEL_MAX_OVERLAPS <- Inf
+TOP_GENE_LABEL_FORCE <- 2.0
+TOP_GENE_LABEL_FORCE_PULL <- 0.25
+
+# 标注文字沿用Up/Down颜色，但略微加深，避免在PDF里显得发灰。
+TOP_GENE_LABEL_COLOR_DARKEN <- 0.78
 
 
 sanitize_file_name <- function(x, default = "analysis") {
@@ -15,6 +55,20 @@ sanitize_file_name <- function(x, default = "analysis") {
   x <- gsub("^_|_$", "", x)
   x[x == ""] <- default
   x
+}
+
+darken_color <- function(color, fraction = 0.80) {
+  # 按原色等比例加深颜色，主要用于彩色文字和边框。
+  # fraction越小颜色越深；fraction为1时保持原色。
+  rgb_matrix <- grDevices::col2rgb(color) / 255
+  rgb_matrix <- pmax(pmin(rgb_matrix * fraction, 1), 0)
+
+  grDevices::rgb(
+    red = rgb_matrix[1, ],
+    green = rgb_matrix[2, ],
+    blue = rgb_matrix[3, ],
+    names = names(color)
+  )
 }
 
 read_scalar_config <- function(script_file, variable_name, default_value) {
@@ -49,6 +103,46 @@ read_scalar_config <- function(script_file, variable_name, default_value) {
   }
 
   as.numeric(value_text)
+}
+
+sync_de_thresholds_from_script <- function(
+    script_file,
+    p_value_column,
+    p_value_cutoff,
+    logfc_cutoff,
+    sync = TRUE) {
+  # 从01号差异分析脚本同步火山图使用的P值列名、P值阈值和logFC阈值。
+  # sync为FALSE时直接返回当前脚本头部手动配置的阈值。
+  if (sync) {
+    p_value_column <- read_scalar_config(
+      script_file,
+      "P_VALUE_COLUMN",
+      p_value_column
+    )
+    p_value_cutoff <- read_scalar_config(
+      script_file,
+      "P_VALUE_CUTOFF",
+      p_value_cutoff
+    )
+    logfc_cutoff <- read_scalar_config(
+      script_file,
+      "LOGFC_CUTOFF",
+      logfc_cutoff
+    )
+  }
+
+  stopifnot(is.character(p_value_column))
+  stopifnot(length(p_value_column) == 1)
+  stopifnot(is.numeric(p_value_cutoff))
+  stopifnot(is.numeric(logfc_cutoff))
+  stopifnot(p_value_cutoff > 0)
+  stopifnot(logfc_cutoff > 0)
+
+  list(
+    p_value_column = p_value_column,
+    p_value_cutoff = p_value_cutoff,
+    logfc_cutoff = logfc_cutoff
+  )
 }
 
 wrap_label <- function(x, width = 45) {
@@ -97,9 +191,67 @@ wrap_label_by_underscore <- function(x, width = 10) {
   }, character(1))
 }
 
+get_display_labels <- function(sample_info, label_column, fallback_column = "Sample_ID") {
+  # 提取图中展示用的样本名；若指定列为空，则回退到Sample_ID。
+  stopifnot(label_column %in% colnames(sample_info))
+  stopifnot(fallback_column %in% colnames(sample_info))
+
+  display_labels <- trimws(as.character(sample_info[[label_column]]))
+  empty_label_index <- display_labels == "" | is.na(display_labels)
+  display_labels[empty_label_index] <- sample_info[[fallback_column]][empty_label_index]
+
+  stopifnot(!any(duplicated(display_labels)))
+  display_labels
+}
+
 get_label_line_count <- function(label_text) {
   # 统计换行标签的实际行数，用于动态调整标签框或PDF尺寸。
   length(strsplit(label_text, "\n", fixed = TRUE)[[1]])
+}
+
+get_named_brewer_palette <- function(levels, palette = "Set2") {
+  # 为离散分组生成命名颜色；少于3个水平时仍按RColorBrewer要求取3色后截取。
+  levels <- sort(unique(as.character(levels)))
+  colors <- RColorBrewer::brewer.pal(
+    max(3, length(levels)),
+    palette
+  )[seq_along(levels)]
+  names(colors) <- levels
+
+  colors
+}
+
+prepare_sample_correlation <- function(
+    expr_matrix,
+    correlation_method = "pearson",
+    clustering_method = "complete") {
+  # 对样本表达矩阵计算样本相关性和层次聚类。
+  # 输入矩阵要求行为基因、列为样本；内部使用log2(x + 1)并去除零方差基因。
+  expr_for_correlation <- log2(expr_matrix + 1)
+
+  gene_sd <- apply(expr_for_correlation, 1, sd, na.rm = TRUE)
+  expr_for_correlation <- expr_for_correlation[
+    is.finite(gene_sd) & gene_sd > 0,
+    ,
+    drop = FALSE
+  ]
+  stopifnot(nrow(expr_for_correlation) > 1)
+
+  cor_matrix <- cor(
+    expr_for_correlation,
+    method = correlation_method,
+    use = "pairwise.complete.obs"
+  )
+  stopifnot(!any(is.na(cor_matrix)))
+
+  row_distance <- as.dist(1 - cor_matrix)
+  sample_hclust <- hclust(row_distance, method = clustering_method)
+
+  list(
+    expr_for_correlation = expr_for_correlation,
+    cor_matrix = cor_matrix,
+    sample_hclust = sample_hclust
+  )
 }
 
 get_deg_file_info <- function(table_root, deg_dir_name = "DEG") {
@@ -137,6 +289,40 @@ get_deg_file_info <- function(table_root, deg_dir_name = "DEG") {
   }
 
   file_info
+}
+
+get_selected_analysis_names <- function(file_info, analyses_to_plot) {
+  # 根据脚本头部配置选择需要绘图的分析设计。
+  # analyses_to_plot为"all"时，自动使用全部可用的DEG结果。
+  if (identical(analyses_to_plot, "all")) {
+    return(file_info$Analysis_Name)
+  }
+
+  selected_analyses <- analyses_to_plot
+  missing_analyses <- setdiff(selected_analyses, file_info$Analysis_Name)
+  if (length(missing_analyses) > 0) {
+    stop(
+      "No all_genes.csv file was found for: ",
+      paste(missing_analyses, collapse = ", ")
+    )
+  }
+
+  selected_analyses
+}
+
+read_deg_result <- function(file_info, analysis_name) {
+  # 读取指定分析设计对应的all_genes.csv。
+  # file_info来自get_deg_file_info()，可避免在主脚本里反复拼路径。
+  file_index <- match(analysis_name, file_info$Analysis_Name)
+  if (is.na(file_index)) {
+    stop("No all_genes.csv file was found for: ", analysis_name)
+  }
+
+  read.csv(
+    file_info$All_Genes_File[file_index],
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
 }
 
 prepare_volcano_data <- function(
@@ -345,6 +531,117 @@ get_top_gene_label_data <- function(
   label_data
 }
 
+get_volcano_label_data <- function(
+    plot_data,
+    custom_label_genes,
+    symbol_column,
+    match_columns,
+    p_value_column,
+    top_up_n = 5,
+    top_down_n = 5) {
+  # 火山图基因标注的统一入口：
+  # 1. 如果用户配置了CUSTOM_LABEL_GENES，只标注用户指定基因；
+  # 2. 如果未配置，则自动标注每个分析的Top Up/Down基因。
+  if (has_custom_label_genes(custom_label_genes)) {
+    return(get_custom_gene_label_data(
+      plot_data = plot_data,
+      symbol_column = symbol_column,
+      custom_label_genes = custom_label_genes,
+      match_columns = match_columns
+    ))
+  }
+
+  get_top_gene_label_data(
+    plot_data = plot_data,
+    symbol_column = symbol_column,
+    p_value_column = p_value_column,
+    top_up_n = top_up_n,
+    top_down_n = top_down_n
+  )
+}
+
+get_regulation_label_colors <- function(
+    label_data,
+    up_color,
+    down_color,
+    darken_fraction = 0.78) {
+  # 根据Up/Down状态生成基因标注文字和引线颜色。
+  # 颜色沿用点的红蓝配色，但略微加深，便于PDF中阅读。
+  if (nrow(label_data) == 0) {
+    return(character(0))
+  }
+
+  ifelse(
+    as.character(label_data$Regulation) == "Up",
+    darken_color(up_color, darken_fraction),
+    darken_color(down_color, darken_fraction)
+  )
+}
+
+add_volcano_gene_label_layer <- function(
+    plot,
+    label_data,
+    label_colors,
+    use_gg_repel,
+    text_family,
+    fontface,
+    font_size,
+    box_padding,
+    point_padding,
+    segment_width,
+    force,
+    force_pull,
+    max_overlaps,
+    seed = 1,
+    nudge_y = NULL,
+    fallback_vjust = -0.8) {
+  # 为传统火山图和多组火山图添加基因名标注。
+  # 优先使用ggrepel自动避让；如果未安装ggrepel，则退回普通geom_text。
+  if (nrow(label_data) == 0) {
+    return(plot)
+  }
+
+  if (use_gg_repel) {
+    repel_args <- list(
+      data = label_data,
+      mapping = ggplot2::aes(label = Gene_Label),
+      family = text_family,
+      fontface = fontface,
+      size = font_size,
+      box.padding = box_padding,
+      point.padding = point_padding,
+      segment.size = segment_width,
+      segment.alpha = 0.65,
+      segment.color = label_colors,
+      min.segment.length = 0,
+      force = force,
+      force_pull = force_pull,
+      max.overlaps = max_overlaps,
+      seed = seed,
+      color = label_colors,
+      show.legend = FALSE
+    )
+
+    if (!is.null(nudge_y)) {
+      repel_args$nudge_y <- nudge_y
+    }
+
+    return(plot + do.call(ggrepel::geom_text_repel, repel_args))
+  }
+
+  plot + ggplot2::geom_text(
+    data = label_data,
+    ggplot2::aes(label = Gene_Label),
+    family = text_family,
+    fontface = fontface,
+    size = font_size,
+    vjust = fallback_vjust,
+    color = label_colors,
+    check_overlap = TRUE,
+    show.legend = FALSE
+  )
+}
+
 count_status <- function(status_counts, status_name) {
   # 安全读取table中的计数；缺失类别返回0，避免summary里出现NA。
   value <- status_counts[status_name]
@@ -353,4 +650,21 @@ count_status <- function(status_counts, status_name) {
   }
 
   as.integer(value)
+}
+
+save_ggplot_pdf <- function(plot, pdf_file, width, height) {
+  # 使用Cairo输出高清矢量PDF，并在保存后检查文件是否存在。
+  dir.create(dirname(pdf_file), recursive = TRUE, showWarnings = FALSE)
+
+  Cairo::CairoPDF(
+    file = pdf_file,
+    width = width,
+    height = height,
+    bg = "white"
+  )
+  print(plot)
+  invisible(dev.off())
+
+  stopifnot(file.exists(pdf_file))
+  invisible(pdf_file)
 }

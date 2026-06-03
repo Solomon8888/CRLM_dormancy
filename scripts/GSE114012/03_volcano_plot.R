@@ -11,7 +11,8 @@
 DATASET_ID <- "GSE114012"
 DATA_TYPE <- "ngs"
 
-# 01号脚本用于同步P值列名和显著性阈值；公共绘图函数脚本用于读取配置和查找DEG结果。
+# 01号脚本用于同步P值列名和显著性阈值；
+# PLOTTING_FUNCTION_FILE保存跨绘图脚本共用的风格配置和基础函数。
 DE_SCRIPT_FILE <- "scripts/GSE114012/01_limma_differential_expression.R"
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 
@@ -37,18 +38,20 @@ ANALYSES_TO_PLOT <- "all"
 # 重跑时清理当前分析火山图目录内旧PDF，避免旧文件残留。
 CLEAN_VOLCANO_OUTPUT_DIR <- TRUE
 
-# 火山图颜色和点样式。Up/Down颜色与04号多组火山图保持一致。
-UP_COLOR <- "#D73027"
-DOWN_COLOR <- "#2166AC"
+# 传统火山图特有的NS颜色。Up/Down颜色和点样式来自公共配置文件。
 NOT_SIGNIFICANT_COLOR <- "#B8B8B8"
-POINT_SIZE <- 3.2
-POINT_ALPHA <- 0.60
+
+# 基因标注设置。逻辑与04号多组火山图一致：
+# 若CUSTOM_LABEL_GENES为空，则自动标注每组Up 5个和Down 5个Top基因；
+# 若CUSTOM_LABEL_GENES不为空，则只标注这里配置的基因，不再自动标注Top基因。
+# CUSTOM_LABEL_GENES <- c("MYH15", "CSF1R", "SRSF1")
+# CUSTOM_LABEL_GENES <- list(all = c("MYH15"), DLD1 = c("ABCG1", "SRSF1"))
+CUSTOM_LABEL_GENES <- character(0)
 
 # 阈值线和坐标轴样式。阈值线只用于03号传统火山图；04号多组火山图不展示阈值虚线。
 THRESHOLD_LINE_COLOR <- "#333333"
 THRESHOLD_LINE_WIDTH <- 0.45
 THRESHOLD_LINE_TYPE <- "dashed"
-AXIS_LINE_WIDTH <- 0.8
 
 # PDF和字体设置。文件名固定为volcano_plot.pdf；分析名由目录体现。
 # 火山图本体保持正方形；整体宽度只因右侧图例略大于高度。
@@ -58,11 +61,6 @@ LEGEND_WIDTH_INCH <- 0.95
 RIGHT_LEGEND_GAP_INCH <- 0.18
 MAX_PDF_WIDTH_HEIGHT_RATIO <- 1.28
 PANEL_HEIGHT_WIDTH_RATIO <- 1.0
-
-# 全部文字统一为Helvetica黑色粗体，便于和00/04号绘图脚本保持一致。
-TEXT_FONT_FAMILY <- "Helvetica"
-BASE_FONT_SIZE <- 12
-TEXT_FONT_FACE <- "bold"
 
 options(width = 200)
 
@@ -75,6 +73,8 @@ suppressPackageStartupMessages({
 })
 
 source(PLOTTING_FUNCTION_FILE)
+
+USE_GG_REPEL <- requireNamespace("ggrepel", quietly = TRUE)
 
 # 2. 绘图函数 -----------------------------------------------------------------
 
@@ -111,7 +111,23 @@ get_pdf_size <- function(axis_limits) {
 }
 
 make_volcano_plot <- function(plot_data, axis_limits) {
-  ggplot(
+  label_data <- get_volcano_label_data(
+    plot_data = plot_data,
+    custom_label_genes = CUSTOM_LABEL_GENES,
+    symbol_column = TOP_GENE_SYMBOL_COLUMN,
+    match_columns = CUSTOM_LABEL_MATCH_COLUMNS,
+    p_value_column = P_VALUE_COLUMN,
+    top_up_n = TOP_UP_LABEL_N,
+    top_down_n = TOP_DOWN_LABEL_N
+  )
+  label_colors <- get_regulation_label_colors(
+    label_data = label_data,
+    up_color = UP_COLOR,
+    down_color = DOWN_COLOR,
+    darken_fraction = TOP_GENE_LABEL_COLOR_DARKEN
+  )
+
+  volcano_plot <- ggplot(
     plot_data,
     aes(x = logFC, y = Neg_Log10_P, color = Regulation)
   ) +
@@ -140,7 +156,7 @@ make_volcano_plot <- function(plot_data, axis_limits) {
         "Up" = UP_COLOR
       ),
       breaks = c("Up", "Down", "Not significant"),
-      labels = c("Up", "Down", "NS")
+      labels = c("Sig_Up", "Sig_Down", "Not_Sig")
     ) +
     scale_x_continuous(
       limits = axis_limits$x,
@@ -161,20 +177,20 @@ make_volcano_plot <- function(plot_data, axis_limits) {
     theme(
       panel.grid.major = element_line(color = "#E6E6E6", linewidth = 0.25),
       panel.grid.minor = element_blank(),
-      panel.border = element_rect(color = "black", fill = NA, linewidth = AXIS_LINE_WIDTH),
-      axis.line = element_line(color = "black", linewidth = AXIS_LINE_WIDTH),
-      axis.text = element_text(color = "black", face = TEXT_FONT_FACE),
-      axis.title = element_text(color = "black", face = TEXT_FONT_FACE),
+      panel.border = element_rect(color = TEXT_COLOR, fill = NA, linewidth = AXIS_LINE_WIDTH),
+      axis.line = element_line(color = TEXT_COLOR, linewidth = AXIS_LINE_WIDTH),
+      axis.text = element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
+      axis.title = element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
       aspect.ratio = PANEL_HEIGHT_WIDTH_RATIO,
       legend.position = "right",
-      legend.text = element_text(color = "black", face = TEXT_FONT_FACE),
+      legend.text = element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
       legend.key = element_blank(),
       legend.key.height = grid::unit(5.5, "mm"),
       legend.key.width = grid::unit(5.5, "mm"),
       legend.box.spacing = grid::unit(8, "pt"),
       legend.margin = margin(0, 0, 0, 4, unit = "pt"),
-      strip.text = element_text(color = "black", face = TEXT_FONT_FACE),
-      text = element_text(color = "black", face = TEXT_FONT_FACE),
+      strip.text = element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
+      text = element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
       plot.margin = margin(10, 12, 10, 10, unit = "pt")
     ) +
     guides(
@@ -182,56 +198,41 @@ make_volcano_plot <- function(plot_data, axis_limits) {
         override.aes = list(size = POINT_SIZE * 1.15, alpha = 0.85)
       )
     )
+
+  add_volcano_gene_label_layer(
+    plot = volcano_plot,
+    label_data = label_data,
+    label_colors = label_colors,
+    use_gg_repel = USE_GG_REPEL,
+    text_family = TEXT_FONT_FAMILY,
+    fontface = TOP_GENE_LABEL_FONT_FACE,
+    font_size = TOP_GENE_LABEL_FONT_SIZE,
+    box_padding = TOP_GENE_LABEL_BOX_PADDING,
+    point_padding = TOP_GENE_LABEL_POINT_PADDING,
+    segment_width = TOP_GENE_LABEL_SEGMENT_WIDTH,
+    force = TOP_GENE_LABEL_FORCE,
+    force_pull = TOP_GENE_LABEL_FORCE_PULL,
+    max_overlaps = TOP_GENE_LABEL_MAX_OVERLAPS,
+    fallback_vjust = -0.8
+  )
 }
 
 
 # 3. 同步阈值并查找输入文件 ----------------------------------------------------
 
-if (SYNC_THRESHOLDS_FROM_01_SCRIPT) {
-  P_VALUE_COLUMN <- read_scalar_config(
-    DE_SCRIPT_FILE,
-    "P_VALUE_COLUMN",
-    P_VALUE_COLUMN
-  )
-  P_VALUE_CUTOFF <- read_scalar_config(
-    DE_SCRIPT_FILE,
-    "P_VALUE_CUTOFF",
-    P_VALUE_CUTOFF
-  )
-  LOGFC_CUTOFF <- read_scalar_config(
-    DE_SCRIPT_FILE,
-    "LOGFC_CUTOFF",
-    LOGFC_CUTOFF
-  )
-}
-
-stopifnot(is.character(P_VALUE_COLUMN))
-stopifnot(is.numeric(P_VALUE_CUTOFF))
-stopifnot(is.numeric(LOGFC_CUTOFF))
-stopifnot(P_VALUE_CUTOFF > 0)
-stopifnot(LOGFC_CUTOFF > 0)
+threshold_config <- sync_de_thresholds_from_script(
+  script_file = DE_SCRIPT_FILE,
+  p_value_column = P_VALUE_COLUMN,
+  p_value_cutoff = P_VALUE_CUTOFF,
+  logfc_cutoff = LOGFC_CUTOFF,
+  sync = SYNC_THRESHOLDS_FROM_01_SCRIPT
+)
+P_VALUE_COLUMN <- threshold_config$p_value_column
+P_VALUE_CUTOFF <- threshold_config$p_value_cutoff
+LOGFC_CUTOFF <- threshold_config$logfc_cutoff
 
 file_info <- get_deg_file_info(TABLE_ROOT)
-
-if (identical(ANALYSES_TO_PLOT, "all")) {
-  selected_analyses <- file_info$Analysis_Name
-} else {
-  selected_analyses <- ANALYSES_TO_PLOT
-}
-
-missing_analyses <- setdiff(selected_analyses, file_info$Analysis_Name)
-if (length(missing_analyses) > 0) {
-  stop(
-    "No all_genes.csv file was found for: ",
-    paste(missing_analyses, collapse = ", ")
-  )
-}
-
-selected_file_info <- file_info[
-  match(selected_analyses, file_info$Analysis_Name),
-  ,
-  drop = FALSE
-]
+selected_analyses <- get_selected_analysis_names(file_info, ANALYSES_TO_PLOT)
 
 
 # 4. 绘制并保存火山图 ----------------------------------------------------------
@@ -251,18 +252,11 @@ progress_bar <- utils::txtProgressBar(
 
 for (i in seq_along(selected_analyses)) {
   analysis_name <- selected_analyses[i]
-  all_genes_file <- selected_file_info$All_Genes_File[
-    selected_file_info$Analysis_Name == analysis_name
-  ]
-
-  dat <- read.csv(
-    all_genes_file,
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
+  dat <- read_deg_result(file_info, analysis_name)
 
   plot_data <- prepare_volcano_data(
     dat = dat,
+    analysis_name = analysis_name,
     p_value_column = P_VALUE_COLUMN,
     p_value_cutoff = P_VALUE_CUTOFF,
     logfc_cutoff = LOGFC_CUTOFF,
@@ -282,16 +276,12 @@ for (i in seq_along(selected_analyses)) {
 
   pdf_file <- file.path(output_dir, "volcano_plot.pdf")
 
-  Cairo::CairoPDF(
-    file = pdf_file,
+  save_ggplot_pdf(
+    plot = volcano_plot,
+    pdf_file = pdf_file,
     width = pdf_size$width,
-    height = pdf_size$height,
-    bg = "white"
+    height = pdf_size$height
   )
-  print(volcano_plot)
-  invisible(dev.off())
-
-  stopifnot(file.exists(pdf_file))
 
   status_counts <- table(plot_data$Regulation)
   summary_list[[i]] <- data.frame(

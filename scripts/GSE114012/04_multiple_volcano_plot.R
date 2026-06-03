@@ -16,7 +16,8 @@
 DATASET_ID <- "GSE114012"
 DATA_TYPE <- "ngs"
 
-# 01号脚本用于同步P值列名和显著性阈值；公共绘图函数脚本用于读取配置、查找DEG结果和选择标注基因。
+# 01号脚本用于同步P值列名和显著性阈值；
+# PLOTTING_FUNCTION_FILE保存跨绘图脚本共用的风格配置和基础函数。
 DE_SCRIPT_FILE <- "scripts/GSE114012/01_limma_differential_expression.R"
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 
@@ -58,12 +59,6 @@ CLEAN_MULTIPLE_VOLCANO_ROOT <- TRUE
 # 重跑时清理当前方案目录内旧PDF，避免旧文件残留。
 OVERWRITE_SCHEME_OUTPUT <- TRUE
 
-# 颜色和点样式与03号火山图保持一致。
-UP_COLOR <- "#D73027"
-DOWN_COLOR <- "#2166AC"
-POINT_SIZE <- 3.2
-POINT_ALPHA <- 0.60
-
 # 每组标注Top显著基因。Top排序优先按P值，其次按logFC幅度。
 # 若CUSTOM_LABEL_GENES为空，则自动标注每组Up 5个和Down 5个Top基因。
 # 若CUSTOM_LABEL_GENES不为空，则只标注这里配置的基因，不再自动标注Top基因。
@@ -73,22 +68,8 @@ POINT_ALPHA <- 0.60
 # CUSTOM_LABEL_GENES <- list(all = c("MYH15"), DLD1 = c("ABCG1", "SRSF1"))
 CUSTOM_LABEL_GENES <- character(0)
 
-TOP_GENE_SYMBOL_COLUMN <- "Symbol"
-# 自定义标注基因可按下面这些列匹配；图中展示文字仍优先使用TOP_GENE_SYMBOL_COLUMN。
-CUSTOM_LABEL_MATCH_COLUMNS <- c("Symbol", "Feature_ID", "GeneID", "Ensembl", "Entrez")
-TOP_UP_LABEL_N <- 5
-TOP_DOWN_LABEL_N <- 5
-
-# Top基因文字标注样式。若未安装ggrepel，脚本会自动退回普通geom_text绘制。
-TOP_GENE_LABEL_FONT_SIZE <- 3.4
-TOP_GENE_LABEL_FONT_FACE <- "bold"
-TOP_GENE_LABEL_BOX_PADDING <- 0.30
-TOP_GENE_LABEL_POINT_PADDING <- 0.20
-TOP_GENE_LABEL_SEGMENT_WIDTH <- 0.28
-TOP_GENE_LABEL_MAX_OVERLAPS <- Inf
+# 多组火山图中Top基因上下避让距离。其他Top基因标注风格来自公共配置文件。
 TOP_GENE_LABEL_NUDGE_Y <- 0.80
-TOP_GENE_LABEL_FORCE <- 2.0
-TOP_GENE_LABEL_FORCE_PULL <- 0.25
 
 # 每组中间的彩色标签；参考CNScolor/sciRcolor中HEX_color[[30]]的顶刊离散配色。
 # 未列出的分析会自动分配颜色；若出现重复颜色，脚本会自动替换。
@@ -107,6 +88,8 @@ GROUP_LABEL_ALPHA <- 0.24
 GROUP_LABEL_WRAP_WIDTH <- 10
 GROUP_LABEL_FONT_SIZE <- 5.3
 GROUP_LABEL_LINE_HEIGHT <- 1.18
+GROUP_LABEL_TEXT_DARKEN <- 0.78
+GROUP_LABEL_BORDER_DARKEN <- 0.88
 
 # 组名框位于logFC阈值内侧：当前阈值0.5时为±0.4；阈值1时为±0.9。
 GROUP_LABEL_BOX_LOGFC_GAP <- 0.10
@@ -123,7 +106,6 @@ GROUP_LABEL_BOX_X_MARGIN_FRACTION <- 0.05
 GROUP_LABEL_BORDER_WIDTH <- 0.9
 
 # 分面边框、分面间距、图例位置和坐标留白。
-AXIS_LINE_WIDTH <- 0.8
 PANEL_SPACING_X_MM <- 4.6
 LEGEND_TOP_MARGIN_PT <- 68
 X_AXIS_PADDING_FRACTION <- 0.12
@@ -141,12 +123,6 @@ LEGEND_WIDTH_INCH <- 1.18
 MIN_PDF_WIDTH <- 7.2
 MAX_PDF_WIDTH <- 20.0
 MAX_PDF_HEIGHT <- 8.2
-
-# 全部文字统一为Helvetica黑色粗体，便于和00/03号绘图脚本保持一致。
-TEXT_FONT_FAMILY <- "Helvetica"
-BASE_FONT_SIZE <- 12
-TEXT_FONT_FACE <- "bold"
-TEXT_COLOR <- "black"
 
 # 右侧图例的文字和圆点大小。
 LEGEND_TEXT_SIZE <- 13.5
@@ -387,22 +363,15 @@ make_multiple_volcano_plot <- function(plot_data, group_layout, selected_analyse
   ]
   stopifnot(nrow(point_data) > 0)
 
-  top_label_data <- if (has_custom_label_genes(CUSTOM_LABEL_GENES)) {
-    get_custom_gene_label_data(
-      plot_data = plot_data,
-      symbol_column = TOP_GENE_SYMBOL_COLUMN,
-      custom_label_genes = CUSTOM_LABEL_GENES,
-      match_columns = CUSTOM_LABEL_MATCH_COLUMNS
-    )
-  } else {
-    get_top_gene_label_data(
-      plot_data = plot_data,
-      symbol_column = TOP_GENE_SYMBOL_COLUMN,
-      p_value_column = P_VALUE_COLUMN,
-      top_up_n = TOP_UP_LABEL_N,
-      top_down_n = TOP_DOWN_LABEL_N
-    )
-  }
+  top_label_data <- get_volcano_label_data(
+    plot_data = plot_data,
+    custom_label_genes = CUSTOM_LABEL_GENES,
+    symbol_column = TOP_GENE_SYMBOL_COLUMN,
+    match_columns = CUSTOM_LABEL_MATCH_COLUMNS,
+    p_value_column = P_VALUE_COLUMN,
+    top_up_n = TOP_UP_LABEL_N,
+    top_down_n = TOP_DOWN_LABEL_N
+  )
   if (nrow(top_label_data) > 0) {
     top_label_data$Analysis_Name <- factor(
       top_label_data$Analysis_Name,
@@ -414,6 +383,12 @@ make_multiple_volcano_plot <- function(plot_data, group_layout, selected_analyse
       -TOP_GENE_LABEL_NUDGE_Y
     )
   }
+  top_label_colors <- get_regulation_label_colors(
+    label_data = top_label_data,
+    up_color = UP_COLOR,
+    down_color = DOWN_COLOR,
+    darken_fraction = TOP_GENE_LABEL_COLOR_DARKEN
+  )
 
   x_axis_anchor_data <- data.frame(
     Analysis_Name = factor(
@@ -428,6 +403,14 @@ make_multiple_volcano_plot <- function(plot_data, group_layout, selected_analyse
   )
 
   group_label_colors <- get_group_label_colors(selected_analyses)
+  group_label_text_colors <- darken_color(
+    group_label_colors,
+    fraction = GROUP_LABEL_TEXT_DARKEN
+  )
+  group_label_border_colors <- darken_color(
+    group_label_colors,
+    fraction = GROUP_LABEL_BORDER_DARKEN
+  )
 
   point_colors <- c(
     "Down" = DOWN_COLOR,
@@ -548,7 +531,7 @@ make_multiple_volcano_plot <- function(plot_data, group_layout, selected_analyse
           ymax = Box_Y_Max
         ),
         inherit.aes = FALSE,
-        color = group_label_colors[analysis_name],
+        color = group_label_border_colors[analysis_name],
         fill = adjustcolor(
           group_label_colors[analysis_name],
           alpha.f = GROUP_LABEL_ALPHA
@@ -563,47 +546,27 @@ make_multiple_volcano_plot <- function(plot_data, group_layout, selected_analyse
         fontface = TEXT_FONT_FACE,
         size = current_label$Label_Font_Size[1],
         lineheight = current_label$Label_Line_Height[1],
-        color = group_label_colors[analysis_name]
+        color = group_label_text_colors[analysis_name]
       )
   }
 
-  if (nrow(top_label_data) > 0 && USE_GG_REPEL) {
-    volcano_plot <- volcano_plot +
-      ggrepel::geom_text_repel(
-        data = top_label_data,
-        aes(label = Gene_Label),
-        family = TEXT_FONT_FAMILY,
-        fontface = TOP_GENE_LABEL_FONT_FACE,
-        size = TOP_GENE_LABEL_FONT_SIZE,
-        box.padding = TOP_GENE_LABEL_BOX_PADDING,
-        point.padding = TOP_GENE_LABEL_POINT_PADDING,
-        segment.size = TOP_GENE_LABEL_SEGMENT_WIDTH,
-        segment.alpha = 0.65,
-        min.segment.length = 0,
-        nudge_y = top_label_data$Label_Nudge_Y,
-        force = TOP_GENE_LABEL_FORCE,
-        force_pull = TOP_GENE_LABEL_FORCE_PULL,
-        max.overlaps = TOP_GENE_LABEL_MAX_OVERLAPS,
-        seed = 1,
-        show.legend = FALSE
-      )
-  }
-
-  if (nrow(top_label_data) > 0 && !USE_GG_REPEL) {
-    volcano_plot <- volcano_plot +
-      geom_text(
-        data = top_label_data,
-        aes(label = Gene_Label),
-        family = TEXT_FONT_FAMILY,
-        fontface = TOP_GENE_LABEL_FONT_FACE,
-        size = TOP_GENE_LABEL_FONT_SIZE,
-        vjust = ifelse(top_label_data$Regulation == "Up", -0.7, 1.2),
-        check_overlap = TRUE,
-        show.legend = FALSE
-      )
-  }
-
-  volcano_plot
+  add_volcano_gene_label_layer(
+    plot = volcano_plot,
+    label_data = top_label_data,
+    label_colors = top_label_colors,
+    use_gg_repel = USE_GG_REPEL,
+    text_family = TEXT_FONT_FAMILY,
+    fontface = TOP_GENE_LABEL_FONT_FACE,
+    font_size = TOP_GENE_LABEL_FONT_SIZE,
+    box_padding = TOP_GENE_LABEL_BOX_PADDING,
+    point_padding = TOP_GENE_LABEL_POINT_PADDING,
+    segment_width = TOP_GENE_LABEL_SEGMENT_WIDTH,
+    force = TOP_GENE_LABEL_FORCE,
+    force_pull = TOP_GENE_LABEL_FORCE_PULL,
+    max_overlaps = TOP_GENE_LABEL_MAX_OVERLAPS,
+    nudge_y = top_label_data$Label_Nudge_Y,
+    fallback_vjust = ifelse(top_label_data$Regulation == "Up", -0.7, 1.2)
+  )
 }
 
 run_multiple_volcano_scheme <- function(scheme_name, selected_analyses, file_info) {
@@ -625,26 +588,12 @@ run_multiple_volcano_scheme <- function(scheme_name, selected_analyses, file_inf
     )
   }
 
-  selected_file_info <- file_info[
-    match(selected_analyses, file_info$Analysis_Name),
-    ,
-    drop = FALSE
-  ]
-
   plot_data_list <- vector("list", length(selected_analyses))
   names(plot_data_list) <- selected_analyses
 
   for (analysis_index in seq_along(selected_analyses)) {
     analysis_name <- selected_analyses[analysis_index]
-    all_genes_file <- selected_file_info$All_Genes_File[
-      selected_file_info$Analysis_Name == analysis_name
-    ]
-
-    dat <- read.csv(
-      all_genes_file,
-      stringsAsFactors = FALSE,
-      check.names = FALSE
-    )
+    dat <- read_deg_result(file_info, analysis_name)
 
     plot_data_list[[analysis_index]] <- prepare_volcano_data(
       dat = dat,
@@ -703,16 +652,12 @@ run_multiple_volcano_scheme <- function(scheme_name, selected_analyses, file_inf
 
   pdf_file <- file.path(output_dir, "multiple_volcano_plot.pdf")
 
-  Cairo::CairoPDF(
-    file = pdf_file,
+  save_ggplot_pdf(
+    plot = multiple_volcano_plot,
+    pdf_file = pdf_file,
     width = pdf_size$width,
-    height = pdf_size$height,
-    bg = "white"
+    height = pdf_size$height
   )
-  print(multiple_volcano_plot)
-  invisible(dev.off())
-
-  stopifnot(file.exists(pdf_file))
 
   summary_table <- do.call(rbind, lapply(selected_analyses, function(analysis_name) {
     dat <- plot_data[plot_data$Analysis_Name == analysis_name, , drop = FALSE]
@@ -750,29 +695,16 @@ run_multiple_volcano_scheme <- function(scheme_name, selected_analyses, file_inf
 
 # 3. 同步阈值并查找输入文件 ----------------------------------------------------
 
-if (SYNC_THRESHOLDS_FROM_01_SCRIPT) {
-  P_VALUE_COLUMN <- read_scalar_config(
-    DE_SCRIPT_FILE,
-    "P_VALUE_COLUMN",
-    P_VALUE_COLUMN
-  )
-  P_VALUE_CUTOFF <- read_scalar_config(
-    DE_SCRIPT_FILE,
-    "P_VALUE_CUTOFF",
-    P_VALUE_CUTOFF
-  )
-  LOGFC_CUTOFF <- read_scalar_config(
-    DE_SCRIPT_FILE,
-    "LOGFC_CUTOFF",
-    LOGFC_CUTOFF
-  )
-}
-
-stopifnot(is.character(P_VALUE_COLUMN))
-stopifnot(is.numeric(P_VALUE_CUTOFF))
-stopifnot(is.numeric(LOGFC_CUTOFF))
-stopifnot(P_VALUE_CUTOFF > 0)
-stopifnot(LOGFC_CUTOFF > 0)
+threshold_config <- sync_de_thresholds_from_script(
+  script_file = DE_SCRIPT_FILE,
+  p_value_column = P_VALUE_COLUMN,
+  p_value_cutoff = P_VALUE_CUTOFF,
+  logfc_cutoff = LOGFC_CUTOFF,
+  sync = SYNC_THRESHOLDS_FROM_01_SCRIPT
+)
+P_VALUE_COLUMN <- threshold_config$p_value_column
+P_VALUE_CUTOFF <- threshold_config$p_value_cutoff
+LOGFC_CUTOFF <- threshold_config$logfc_cutoff
 
 file_info <- get_deg_file_info(TABLE_ROOT)
 
