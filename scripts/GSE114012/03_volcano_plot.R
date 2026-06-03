@@ -7,11 +7,16 @@
 
 # 0. 可修改配置 ---------------------------------------------------------------
 
+# 当前脚本只服务于GSE114012这个NGS数据集；目录结构也依赖这两个字段。
 DATASET_ID <- "GSE114012"
 DATA_TYPE <- "ngs"
 
+# 01号脚本用于同步P值列名和显著性阈值；公共绘图函数脚本用于读取配置和查找DEG结果。
 DE_SCRIPT_FILE <- "scripts/GSE114012/01_limma_differential_expression.R"
+PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 
+# 输入目录为01号脚本输出的tables/<analysis_name>/DEG/all_genes.csv。
+# 输出目录为plots/volcano/<analysis_name>/volcano_plot.pdf。
 RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
 TABLE_ROOT <- file.path(RESULT_ROOT, "tables")
 PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "volcano")
@@ -32,14 +37,14 @@ ANALYSES_TO_PLOT <- "all"
 # 重跑时清理当前分析火山图目录内旧PDF，避免旧文件残留。
 CLEAN_VOLCANO_OUTPUT_DIR <- TRUE
 
-# 火山图颜色和点样式。
+# 火山图颜色和点样式。Up/Down颜色与04号多组火山图保持一致。
 UP_COLOR <- "#D73027"
 DOWN_COLOR <- "#2166AC"
 NOT_SIGNIFICANT_COLOR <- "#B8B8B8"
 POINT_SIZE <- 3.2
 POINT_ALPHA <- 0.60
 
-# 阈值线和坐标轴样式。
+# 阈值线和坐标轴样式。阈值线只用于03号传统火山图；04号多组火山图不展示阈值虚线。
 THRESHOLD_LINE_COLOR <- "#333333"
 THRESHOLD_LINE_WIDTH <- 0.45
 THRESHOLD_LINE_TYPE <- "dashed"
@@ -53,6 +58,8 @@ LEGEND_WIDTH_INCH <- 0.95
 RIGHT_LEGEND_GAP_INCH <- 0.18
 MAX_PDF_WIDTH_HEIGHT_RATIO <- 1.28
 PANEL_HEIGHT_WIDTH_RATIO <- 1.0
+
+# 全部文字统一为Helvetica黑色粗体，便于和00/04号绘图脚本保持一致。
 TEXT_FONT_FAMILY <- "Helvetica"
 BASE_FONT_SIZE <- 12
 TEXT_FONT_FACE <- "bold"
@@ -67,127 +74,9 @@ suppressPackageStartupMessages({
   library(Cairo)
 })
 
+source(PLOTTING_FUNCTION_FILE)
 
-# 2. 常用函数 -----------------------------------------------------------------
-
-sanitize_file_name <- function(x) {
-  # 文件夹名保留字母、数字、下划线、点和短横线，避免不同系统下路径出错。
-  x <- gsub("[^A-Za-z0-9_.-]+", "_", x)
-  x <- gsub("_+", "_", x)
-  x <- gsub("^_|_$", "", x)
-  x
-}
-
-read_scalar_config <- function(script_file, variable_name, default_value) {
-  # 静态读取01号脚本顶部配置，不source脚本，避免重复运行差异分析。
-  if (!file.exists(script_file)) {
-    return(default_value)
-  }
-
-  script_lines <- readLines(script_file, warn = FALSE)
-  matched_line <- grep(
-    paste0("^\\s*", variable_name, "\\s*<-"),
-    script_lines,
-    value = TRUE
-  )
-
-  if (length(matched_line) == 0) {
-    return(default_value)
-  }
-
-  value_text <- sub("#.*$", "", matched_line[1])
-  value_text <- sub(
-    paste0("^\\s*", variable_name, "\\s*<-\\s*"),
-    "",
-    value_text
-  )
-  value_text <- trimws(value_text)
-
-  if (is.character(default_value)) {
-    value_text <- gsub('^"|"$', "", value_text)
-    return(value_text)
-  }
-
-  as.numeric(value_text)
-}
-
-get_deg_file_info <- function(table_root) {
-  # 01号脚本将结果保存为tables/<analysis_name>/DEG/all_genes.csv。
-  all_gene_files <- list.files(
-    table_root,
-    pattern = "^all_genes[.]csv$",
-    recursive = TRUE,
-    full.names = TRUE
-  )
-
-  all_gene_files <- all_gene_files[
-    basename(dirname(all_gene_files)) == "DEG"
-  ]
-
-  stopifnot(length(all_gene_files) > 0)
-
-  file_info <- data.frame(
-    Analysis_Name = basename(dirname(dirname(all_gene_files))),
-    All_Genes_File = all_gene_files,
-    stringsAsFactors = FALSE
-  )
-
-  file_info <- file_info[order(file_info$Analysis_Name), , drop = FALSE]
-  rownames(file_info) <- NULL
-
-  if (any(duplicated(file_info$Analysis_Name))) {
-    duplicated_names <- unique(file_info$Analysis_Name[
-      duplicated(file_info$Analysis_Name)
-    ])
-    stop(
-      "More than one all_genes.csv file was found for: ",
-      paste(duplicated_names, collapse = ", ")
-    )
-  }
-
-  file_info
-}
-
-prepare_volcano_data <- function(dat) {
-  # 显著性判定与01号脚本保持一致：P值小于阈值且abs(logFC)大于阈值。
-  stopifnot("logFC" %in% colnames(dat))
-  stopifnot(P_VALUE_COLUMN %in% colnames(dat))
-
-  dat$logFC <- as.numeric(dat$logFC)
-  dat[[P_VALUE_COLUMN]] <- as.numeric(dat[[P_VALUE_COLUMN]])
-
-  valid_index <- is.finite(dat$logFC) &
-    is.finite(dat[[P_VALUE_COLUMN]]) &
-    !is.na(dat[[P_VALUE_COLUMN]])
-
-  dat <- dat[valid_index, , drop = FALSE]
-  stopifnot(nrow(dat) > 0)
-
-  positive_p <- dat[[P_VALUE_COLUMN]][dat[[P_VALUE_COLUMN]] > 0]
-  stopifnot(length(positive_p) > 0)
-
-  min_positive_p <- min(positive_p, na.rm = TRUE)
-  safe_p <- dat[[P_VALUE_COLUMN]]
-  safe_p[safe_p <= 0] <- min_positive_p * 0.1
-
-  dat$Neg_Log10_P <- -log10(safe_p)
-  dat$Regulation <- "Not significant"
-  dat$Regulation[
-    dat$logFC > LOGFC_CUTOFF &
-      dat[[P_VALUE_COLUMN]] < P_VALUE_CUTOFF
-  ] <- "Up"
-  dat$Regulation[
-    dat$logFC < -LOGFC_CUTOFF &
-      dat[[P_VALUE_COLUMN]] < P_VALUE_CUTOFF
-  ] <- "Down"
-
-  dat$Regulation <- factor(
-    dat$Regulation,
-    levels = c("Not significant", "Down", "Up")
-  )
-
-  dat[order(dat$Regulation), , drop = FALSE]
-}
+# 2. 绘图函数 -----------------------------------------------------------------
 
 get_axis_limits <- function(plot_data) {
   # 横坐标左右对称，保证0点居中；纵坐标按当前分析的P值范围自动放大。
@@ -372,7 +261,14 @@ for (i in seq_along(selected_analyses)) {
     check.names = FALSE
   )
 
-  plot_data <- prepare_volcano_data(dat)
+  plot_data <- prepare_volcano_data(
+    dat = dat,
+    p_value_column = P_VALUE_COLUMN,
+    p_value_cutoff = P_VALUE_CUTOFF,
+    logfc_cutoff = LOGFC_CUTOFF,
+    ns_label = "Not significant",
+    regulation_levels = c("Not significant", "Down", "Up")
+  )
   axis_limits <- get_axis_limits(plot_data)
   pdf_size <- get_pdf_size(axis_limits)
   volcano_plot <- make_volcano_plot(plot_data, axis_limits)
@@ -401,9 +297,9 @@ for (i in seq_along(selected_analyses)) {
   summary_list[[i]] <- data.frame(
     Analysis_Name = analysis_name,
     Genes_Plotted = nrow(plot_data),
-    Up = as.integer(status_counts["Up"]),
-    Down = as.integer(status_counts["Down"]),
-    Not_Significant = as.integer(status_counts["Not significant"]),
+    Up = count_status(status_counts, "Up"),
+    Down = count_status(status_counts, "Down"),
+    Not_Significant = count_status(status_counts, "Not significant"),
     X_Min = axis_limits$x[1],
     X_Max = axis_limits$x[2],
     Y_Max = axis_limits$y[2],

@@ -7,28 +7,40 @@
 
 # 0. 可修改配置 ---------------------------------------------------------------
 
+# 当前脚本只服务于GSE114012这个NGS数据集；目录结构也依赖这两个字段。
 DATASET_ID <- "GSE114012"
 DATA_TYPE <- "ngs"
 
+# 输入文件：SE对象提供TPM矩阵和基因注释，临床表提供样本Title和LRC/BULK分组。
 SE_RDS_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_se_raw.rds"
 CLINICAL_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_clinical_edit.csv"
-FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 
+# FUNCTION_FILE用于基因类型筛选；PLOTTING_FUNCTION_FILE用于样本名换行等绘图通用函数。
+FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
+PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
+
+# 输出根目录。最终PDF保存到plots/sample_clustering_heatmap/<gene_biotype>/heatmap.pdf。
 RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
 PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "sample_clustering_heatmap")
 
 # 重跑时清理当前热图输出目录里的旧PDF，避免新旧命名混在一起。
 CLEAN_PLOT_OUTPUT_DIR <- TRUE
 
-# 可选："coding", "protein", "protein_coding", "non_coding", "all"
+# 基因类型筛选。可选："coding", "protein", "protein_coding", "non_coding", "all"。
+# 这里沿用01号差异分析脚本的基因类型筛选逻辑。
 GENE_BIOTYPE_FILTER <- "coding"
 
+# SE对象中TPM矩阵的assay名称。聚类热图使用TPM，不使用原始count。
 TPM_ASSAY_NAME <- "tpm"
 
+# LRC样本筛选列和值。只保留临床表中该列等于LRC_VALUE的样本。
 LRC_COLUMN <- "dormant_lrc_or_cycling_bulk_"
 LRC_VALUE <- "LRC"
+
+# 图中展示的样本名来源。若Title为空，会自动回退到Sample_ID。
 SAMPLE_LABEL_COLUMN <- "Title"
 
+# 样本相关性和层次聚类方法。聚类只基于TPM表达模式，不按细胞系分组强行排序。
 CORRELATION_METHOD <- "pearson"
 CLUSTERING_METHOD <- "complete"
 
@@ -68,7 +80,7 @@ HEATMAP_COLOR_HIGH <- "#cd0e0e"    # 鲜红
 CORRELATION_COLOR_MIN <- 0.80
 CORRELATION_COLOR_MAX <- 1.00
 
-# PDF大小会根据样本数量和样本名长度自动调整。
+# PDF大小会根据样本数量和样本名长度自动调整；上下限用于避免图片过小或过大。
 MIN_PDF_WIDTH <- 8.0
 MIN_PDF_HEIGHT <- 8.0
 MAX_PDF_WIDTH <- 24.0
@@ -80,7 +92,8 @@ COLUMN_SAMPLE_FONT_SIZE <- SAMPLE_FONT_SIZE * COLUMN_FONT_SCALE
 ANNOTATION_FONT_SIZE <- BASE_ANNOTATION_FONT_SIZE * BOLDNESS_MULTIPLIER
 LEGEND_FONT_SIZE <- BASE_LEGEND_FONT_SIZE * BOLDNESS_MULTIPLIER
 
-# 图例放在整体图片左侧，并与热图主体保持较大间距。
+# 图例放在整体图片左侧，并与热图主体保持适度间距。
+# 这些参数只控制整体排版，不改变热图本体的聚类结果。
 OUTER_MARGIN_INCH <- 0.35
 LEGEND_LEFT_WIDTH_INCH <- 1.65
 LEGEND_HEATMAP_GAP_INCH <- 0.45
@@ -108,6 +121,7 @@ suppressPackageStartupMessages({
 })
 
 source(FUNCTION_FILE)
+source(PLOTTING_FUNCTION_FILE)
 
 
 # 2. 读取数据 ------------------------------------------------------------------
@@ -235,51 +249,6 @@ sample_hclust <- hclust(row_distance, method = CLUSTERING_METHOD)
 
 
 # 6. 样本标签、注释和PDF尺寸 ---------------------------------------------------
-
-wrap_label <- function(x, width = 45) {
-  x <- as.character(x)
-
-  vapply(x, function(label) {
-    n <- nchar(label)
-    if (n <= width) return(label)
-
-    starts <- seq(1, n, by = width)
-    parts <- substring(label, starts, pmin(starts + width - 1, n))
-    paste(parts, collapse = "\n")
-  }, character(1))
-}
-
-wrap_label_by_underscore <- function(x, width = 8) {
-  x <- as.character(x)
-
-  vapply(x, function(label) {
-    parts <- strsplit(label, "_", fixed = TRUE)[[1]]
-
-    if (length(parts) == 1) {
-      return(wrap_label(label, width))
-    }
-
-    tokens <- paste0(parts, "_")
-    tokens[length(tokens)] <- parts[length(parts)]
-
-    lines <- character(0)
-    current_line <- ""
-
-    for (token in tokens) {
-      candidate <- paste0(current_line, token)
-
-      if (nchar(candidate) <= width || current_line == "") {
-        current_line <- candidate
-      } else {
-        lines <- c(lines, current_line)
-        current_line <- token
-      }
-    }
-
-    lines <- c(lines, current_line)
-    paste(lines, collapse = "\n")
-  }, character(1))
-}
 
 plot_row_labels <- wrap_label(sample_labels, ROW_LABEL_WIDTH)
 plot_column_labels <- wrap_label_by_underscore(sample_labels, COLUMN_LABEL_WIDTH)

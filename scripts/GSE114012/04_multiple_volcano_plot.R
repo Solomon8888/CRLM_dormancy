@@ -12,11 +12,16 @@
 
 # 0. 可修改配置 ---------------------------------------------------------------
 
+# 当前脚本只服务于GSE114012这个NGS数据集；目录结构也依赖这两个字段。
 DATASET_ID <- "GSE114012"
 DATA_TYPE <- "ngs"
 
+# 01号脚本用于同步P值列名和显著性阈值；公共绘图函数脚本用于读取配置、查找DEG结果和选择标注基因。
 DE_SCRIPT_FILE <- "scripts/GSE114012/01_limma_differential_expression.R"
+PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 
+# 输入目录为01号脚本输出的tables/<analysis_name>/DEG/all_genes.csv。
+# 输出目录为plots/multiple_volcano/<scheme_name>/multiple_volcano_plot.pdf。
 RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
 TABLE_ROOT <- file.path(RESULT_ROOT, "tables")
 PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "multiple_volcano")
@@ -73,6 +78,8 @@ TOP_GENE_SYMBOL_COLUMN <- "Symbol"
 CUSTOM_LABEL_MATCH_COLUMNS <- c("Symbol", "Feature_ID", "GeneID", "Ensembl", "Entrez")
 TOP_UP_LABEL_N <- 5
 TOP_DOWN_LABEL_N <- 5
+
+# Top基因文字标注样式。若未安装ggrepel，脚本会自动退回普通geom_text绘制。
 TOP_GENE_LABEL_FONT_SIZE <- 3.4
 TOP_GENE_LABEL_FONT_FACE <- "bold"
 TOP_GENE_LABEL_BOX_PADDING <- 0.30
@@ -100,17 +107,22 @@ GROUP_LABEL_ALPHA <- 0.24
 GROUP_LABEL_WRAP_WIDTH <- 10
 GROUP_LABEL_FONT_SIZE <- 5.3
 GROUP_LABEL_LINE_HEIGHT <- 1.18
+
 # 组名框位于logFC阈值内侧：当前阈值0.5时为±0.4；阈值1时为±0.9。
 GROUP_LABEL_BOX_LOGFC_GAP <- 0.10
 GROUP_LABEL_BOX_MIN_FRACTION <- 0.80
+
+# 多行组名时，字体和行距会轻微收紧，保证文字被彩色外框完整覆盖。
 GROUP_LABEL_FONT_MIN_SIZE <- 3.9
 GROUP_LABEL_FONT_LINE_SHRINK <- 0.55
 GROUP_LABEL_LINE_HEIGHT_MIN <- 0.95
 GROUP_LABEL_LINE_HEIGHT_SHRINK <- 0.08
+
+# 彩色组名框横向宽度略小于单个分面宽度，并保持各分面一致。
 GROUP_LABEL_BOX_X_MARGIN_FRACTION <- 0.05
 GROUP_LABEL_BORDER_WIDTH <- 0.9
 
-# 边框样式。
+# 分面边框、分面间距、图例位置和坐标留白。
 AXIS_LINE_WIDTH <- 0.8
 PANEL_SPACING_X_MM <- 4.6
 LEGEND_TOP_MARGIN_PT <- 68
@@ -118,6 +130,8 @@ X_AXIS_PADDING_FRACTION <- 0.12
 X_AXIS_PADDING_MIN <- 0.22
 X_AXIS_LEFT_MIN_FRACTION <- 0.78
 Y_AXIS_PADDING_FRACTION <- 0.07
+
+# 组名框越高，PDF纵向空间会等比例略微增加，避免压缩真实logFC坐标区域。
 LABEL_BOX_HEIGHT_PDF_SCALE <- 1.8
 
 # PDF和字体设置。文件名固定为multiple_volcano_plot.pdf；方案名由目录体现。
@@ -127,10 +141,14 @@ LEGEND_WIDTH_INCH <- 1.18
 MIN_PDF_WIDTH <- 7.2
 MAX_PDF_WIDTH <- 20.0
 MAX_PDF_HEIGHT <- 8.2
+
+# 全部文字统一为Helvetica黑色粗体，便于和00/03号绘图脚本保持一致。
 TEXT_FONT_FAMILY <- "Helvetica"
 BASE_FONT_SIZE <- 12
 TEXT_FONT_FACE <- "bold"
 TEXT_COLOR <- "black"
+
+# 右侧图例的文字和圆点大小。
 LEGEND_TEXT_SIZE <- 13.5
 LEGEND_POINT_SIZE_SCALE <- 1.45
 LEGEND_KEY_SIZE_MM <- 6.6
@@ -145,81 +163,12 @@ suppressPackageStartupMessages({
   library(Cairo)
 })
 
+source(PLOTTING_FUNCTION_FILE)
+
 USE_GG_REPEL <- requireNamespace("ggrepel", quietly = TRUE)
 
 
 # 2. 常用函数 -----------------------------------------------------------------
-
-sanitize_file_name <- function(x) {
-  # 文件夹名保留字母、数字、下划线、点和短横线，避免不同系统下路径出错。
-  x <- gsub("[^A-Za-z0-9_.-]+", "_", x)
-  x <- gsub("_+", "_", x)
-  x <- gsub("^_|_$", "", x)
-  x
-}
-
-read_scalar_config <- function(script_file, variable_name, default_value) {
-  # 静态读取01号脚本顶部配置，不source脚本，避免重复运行差异分析。
-  if (!file.exists(script_file)) {
-    return(default_value)
-  }
-
-  script_lines <- readLines(script_file, warn = FALSE)
-  matched_line <- grep(
-    paste0("^\\s*", variable_name, "\\s*<-"),
-    script_lines,
-    value = TRUE
-  )
-
-  if (length(matched_line) == 0) {
-    return(default_value)
-  }
-
-  value_text <- sub("#.*$", "", matched_line[1])
-  value_text <- sub(
-    paste0("^\\s*", variable_name, "\\s*<-\\s*"),
-    "",
-    value_text
-  )
-  value_text <- trimws(value_text)
-
-  if (is.character(default_value)) {
-    value_text <- gsub('^"|"$', "", value_text)
-    return(value_text)
-  }
-
-  as.numeric(value_text)
-}
-
-wrap_label_by_underscore <- function(x, width = 10) {
-  # 分组名较长时按下划线拆行，避免底部标签重叠。
-  x <- as.character(x)
-
-  vapply(x, function(label) {
-    parts <- strsplit(label, "_", fixed = TRUE)[[1]]
-
-    if (length(parts) == 1) {
-      return(label)
-    }
-
-    lines <- character(0)
-    current_line <- ""
-
-    for (part in parts) {
-      token <- if (current_line == "") part else paste0("_", part)
-      candidate <- paste0(current_line, token)
-
-      if (nchar(candidate) <= width || current_line == "") {
-        current_line <- candidate
-      } else {
-        lines <- c(lines, current_line)
-        current_line <- part
-      }
-    }
-
-    paste(c(lines, current_line), collapse = "\n")
-  }, character(1))
-}
 
 get_group_label_colors <- function(selected_analyses) {
   # 优先使用脚本头部指定的颜色；新增分析名时自动补充一组可区分颜色。
@@ -244,10 +193,6 @@ get_group_label_colors <- function(selected_analyses) {
 
   names(group_colors) <- selected_analyses
   group_colors
-}
-
-get_label_line_count <- function(label_text) {
-  length(strsplit(label_text, "\n", fixed = TRUE)[[1]])
 }
 
 get_group_label_box_y_limits <- function() {
@@ -275,232 +220,6 @@ get_group_label_text_style <- function(max_line_count) {
       GROUP_LABEL_LINE_HEIGHT_MIN
     )
   )
-}
-
-has_custom_label_genes <- function() {
-  # character向量或list均可；为空时自动使用top基因。
-  if (is.list(CUSTOM_LABEL_GENES)) {
-    return(length(unlist(CUSTOM_LABEL_GENES, use.names = FALSE)) > 0)
-  }
-
-  length(CUSTOM_LABEL_GENES) > 0
-}
-
-get_custom_genes_for_analysis <- function(analysis_name) {
-  if (!has_custom_label_genes()) {
-    return(character(0))
-  }
-
-  if (is.list(CUSTOM_LABEL_GENES)) {
-    global_genes <- if ("all" %in% names(CUSTOM_LABEL_GENES)) {
-      CUSTOM_LABEL_GENES[["all"]]
-    } else {
-      character(0)
-    }
-    analysis_genes <- if (analysis_name %in% names(CUSTOM_LABEL_GENES)) {
-      CUSTOM_LABEL_GENES[[analysis_name]]
-    } else {
-      character(0)
-    }
-
-    return(unique(trimws(as.character(c(global_genes, analysis_genes)))))
-  }
-
-  unique(trimws(as.character(CUSTOM_LABEL_GENES)))
-}
-
-match_custom_genes <- function(dat, custom_genes) {
-  # 自定义基因可按Symbol、Feature_ID等配置列匹配；展示文本仍使用TOP_GENE_SYMBOL_COLUMN。
-  match_columns <- intersect(CUSTOM_LABEL_MATCH_COLUMNS, colnames(dat))
-  if (length(match_columns) == 0) {
-    return(dat[0, , drop = FALSE])
-  }
-
-  custom_genes <- unique(trimws(as.character(custom_genes)))
-  custom_genes <- custom_genes[!is.na(custom_genes) & custom_genes != ""]
-  if (length(custom_genes) == 0) {
-    return(dat[0, , drop = FALSE])
-  }
-
-  matched_rows <- integer(0)
-  for (custom_gene in custom_genes) {
-    matched_index <- integer(0)
-    for (match_column in match_columns) {
-      column_values <- trimws(as.character(dat[[match_column]]))
-      matched_index <- which(column_values == custom_gene)
-      if (length(matched_index) > 0) {
-        break
-      }
-    }
-
-    if (length(matched_index) > 0) {
-      matched_rows <- c(matched_rows, matched_index[1])
-    }
-  }
-
-  matched_rows <- unique(matched_rows)
-  if (length(matched_rows) == 0) {
-    return(dat[0, , drop = FALSE])
-  }
-
-  dat[matched_rows, , drop = FALSE]
-}
-
-get_custom_gene_label_data <- function(plot_data) {
-  # 只标注用户指定的基因；不在当前分析中的基因会被自然跳过。
-  if (!TOP_GENE_SYMBOL_COLUMN %in% colnames(plot_data)) {
-    return(plot_data[0, , drop = FALSE])
-  }
-
-  label_data_list <- lapply(unique(plot_data$Analysis_Name), function(analysis_name) {
-    custom_genes <- get_custom_genes_for_analysis(analysis_name)
-    custom_genes <- custom_genes[!is.na(custom_genes) & custom_genes != ""]
-
-    if (length(custom_genes) == 0) {
-      return(plot_data[0, , drop = FALSE])
-    }
-
-    dat <- plot_data[
-      plot_data$Analysis_Name == analysis_name &
-        plot_data$Regulation %in% c("Up", "Down"),
-      ,
-      drop = FALSE
-    ]
-
-    dat$Gene_Label <- trimws(as.character(dat[[TOP_GENE_SYMBOL_COLUMN]]))
-    dat <- match_custom_genes(dat, custom_genes)
-    dat$Gene_Label <- trimws(as.character(dat[[TOP_GENE_SYMBOL_COLUMN]]))
-    dat[!is.na(dat$Gene_Label) & dat$Gene_Label != "", , drop = FALSE]
-  })
-
-  label_data <- do.call(rbind, label_data_list)
-  rownames(label_data) <- NULL
-  label_data
-}
-
-get_top_gene_label_data <- function(plot_data) {
-  # 每个分析设计分别取Up 5个和Down 5个最显著基因用于图中标注。
-  if (!TOP_GENE_SYMBOL_COLUMN %in% colnames(plot_data)) {
-    return(plot_data[0, , drop = FALSE])
-  }
-
-  label_data_list <- lapply(unique(plot_data$Analysis_Name), function(analysis_name) {
-    dat <- plot_data[
-      plot_data$Analysis_Name == analysis_name &
-        plot_data$Regulation %in% c("Up", "Down"),
-      ,
-      drop = FALSE
-    ]
-
-    dat$Gene_Label <- trimws(as.character(dat[[TOP_GENE_SYMBOL_COLUMN]]))
-    dat <- dat[!is.na(dat$Gene_Label) & dat$Gene_Label != "", , drop = FALSE]
-
-    up_dat <- dat[dat$Regulation == "Up", , drop = FALSE]
-    down_dat <- dat[dat$Regulation == "Down", , drop = FALSE]
-
-    if (nrow(up_dat) > 0) {
-      up_dat <- up_dat[
-        order(up_dat[[P_VALUE_COLUMN]], -abs(up_dat$logFC)),
-        ,
-        drop = FALSE
-      ]
-      up_dat <- up_dat[seq_len(min(TOP_UP_LABEL_N, nrow(up_dat))), , drop = FALSE]
-    }
-
-    if (nrow(down_dat) > 0) {
-      down_dat <- down_dat[
-        order(down_dat[[P_VALUE_COLUMN]], -abs(down_dat$logFC)),
-        ,
-        drop = FALSE
-      ]
-      down_dat <- down_dat[seq_len(min(TOP_DOWN_LABEL_N, nrow(down_dat))), , drop = FALSE]
-    }
-
-    rbind(up_dat, down_dat)
-  })
-
-  label_data <- do.call(rbind, label_data_list)
-  rownames(label_data) <- NULL
-  label_data
-}
-
-get_deg_file_info <- function(table_root) {
-  # 01号脚本将结果保存为tables/<analysis_name>/DEG/all_genes.csv。
-  all_gene_files <- list.files(
-    table_root,
-    pattern = "^all_genes[.]csv$",
-    recursive = TRUE,
-    full.names = TRUE
-  )
-
-  all_gene_files <- all_gene_files[
-    basename(dirname(all_gene_files)) == "DEG"
-  ]
-
-  stopifnot(length(all_gene_files) > 0)
-
-  file_info <- data.frame(
-    Analysis_Name = basename(dirname(dirname(all_gene_files))),
-    All_Genes_File = all_gene_files,
-    stringsAsFactors = FALSE
-  )
-
-  file_info <- file_info[order(file_info$Analysis_Name), , drop = FALSE]
-  rownames(file_info) <- NULL
-
-  if (any(duplicated(file_info$Analysis_Name))) {
-    duplicated_names <- unique(file_info$Analysis_Name[
-      duplicated(file_info$Analysis_Name)
-    ])
-    stop(
-      "More than one all_genes.csv file was found for: ",
-      paste(duplicated_names, collapse = ", ")
-    )
-  }
-
-  file_info
-}
-
-prepare_group_data <- function(dat, analysis_name) {
-  # 显著性判定与01号脚本保持一致：P值小于阈值且abs(logFC)大于阈值。
-  stopifnot("logFC" %in% colnames(dat))
-  stopifnot(P_VALUE_COLUMN %in% colnames(dat))
-
-  dat$logFC <- as.numeric(dat$logFC)
-  dat[[P_VALUE_COLUMN]] <- as.numeric(dat[[P_VALUE_COLUMN]])
-
-  valid_index <- is.finite(dat$logFC) &
-    is.finite(dat[[P_VALUE_COLUMN]]) &
-    !is.na(dat[[P_VALUE_COLUMN]])
-
-  dat <- dat[valid_index, , drop = FALSE]
-  stopifnot(nrow(dat) > 0)
-
-  positive_p <- dat[[P_VALUE_COLUMN]][dat[[P_VALUE_COLUMN]] > 0]
-  stopifnot(length(positive_p) > 0)
-
-  min_positive_p <- min(positive_p, na.rm = TRUE)
-  safe_p <- dat[[P_VALUE_COLUMN]]
-  safe_p[safe_p <= 0] <- min_positive_p * 0.1
-
-  dat$Neg_Log10_P <- -log10(safe_p)
-  dat$Analysis_Name <- analysis_name
-  dat$Regulation <- "NS"
-  dat$Regulation[
-    dat$logFC > LOGFC_CUTOFF &
-      dat[[P_VALUE_COLUMN]] < P_VALUE_CUTOFF
-  ] <- "Up"
-  dat$Regulation[
-    dat$logFC < -LOGFC_CUTOFF &
-      dat[[P_VALUE_COLUMN]] < P_VALUE_CUTOFF
-  ] <- "Down"
-
-  dat$Regulation <- factor(
-    dat$Regulation,
-    levels = c("NS", "Down", "Up")
-  )
-
-  dat
 }
 
 get_group_layout_data <- function(plot_data, selected_analyses) {
@@ -668,10 +387,21 @@ make_multiple_volcano_plot <- function(plot_data, group_layout, selected_analyse
   ]
   stopifnot(nrow(point_data) > 0)
 
-  top_label_data <- if (has_custom_label_genes()) {
-    get_custom_gene_label_data(plot_data)
+  top_label_data <- if (has_custom_label_genes(CUSTOM_LABEL_GENES)) {
+    get_custom_gene_label_data(
+      plot_data = plot_data,
+      symbol_column = TOP_GENE_SYMBOL_COLUMN,
+      custom_label_genes = CUSTOM_LABEL_GENES,
+      match_columns = CUSTOM_LABEL_MATCH_COLUMNS
+    )
   } else {
-    get_top_gene_label_data(plot_data)
+    get_top_gene_label_data(
+      plot_data = plot_data,
+      symbol_column = TOP_GENE_SYMBOL_COLUMN,
+      p_value_column = P_VALUE_COLUMN,
+      top_up_n = TOP_UP_LABEL_N,
+      top_down_n = TOP_DOWN_LABEL_N
+    )
   }
   if (nrow(top_label_data) > 0) {
     top_label_data$Analysis_Name <- factor(
@@ -916,9 +646,14 @@ run_multiple_volcano_scheme <- function(scheme_name, selected_analyses, file_inf
       check.names = FALSE
     )
 
-    plot_data_list[[analysis_index]] <- prepare_group_data(
+    plot_data_list[[analysis_index]] <- prepare_volcano_data(
       dat = dat,
-      analysis_name = analysis_name
+      analysis_name = analysis_name,
+      p_value_column = P_VALUE_COLUMN,
+      p_value_cutoff = P_VALUE_CUTOFF,
+      logfc_cutoff = LOGFC_CUTOFF,
+      ns_label = "NS",
+      regulation_levels = c("NS", "Down", "Up")
     )
   }
 
@@ -983,14 +718,6 @@ run_multiple_volcano_scheme <- function(scheme_name, selected_analyses, file_inf
     dat <- plot_data[plot_data$Analysis_Name == analysis_name, , drop = FALSE]
     plotted_dat <- dat[dat$Regulation %in% c("Up", "Down"), , drop = FALSE]
     status_counts <- table(dat$Regulation)
-    count_status <- function(status_name) {
-      value <- status_counts[status_name]
-      if (is.na(value)) {
-        return(0L)
-      }
-
-      as.integer(value)
-    }
 
     layout_row <- group_layout[
       group_layout$Analysis_Name == analysis_name,
@@ -1003,9 +730,9 @@ run_multiple_volcano_scheme <- function(scheme_name, selected_analyses, file_inf
       Analysis_Name = analysis_name,
       Total_Genes = nrow(dat),
       Genes_Plotted = nrow(plotted_dat),
-      Up = count_status("Up"),
-      Down = count_status("Down"),
-      NS = count_status("NS"),
+      Up = count_status(status_counts, "Up"),
+      Down = count_status(status_counts, "Down"),
+      NS = count_status(status_counts, "NS"),
       X_Min = round(layout_row$X_Min, 2),
       X_Max = round(layout_row$X_Max, 2),
       Y_Min = round(axis_info$true_limits[1], 2),
