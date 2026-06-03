@@ -30,8 +30,8 @@ LOGFC_COLUMN <- "logFC"
 
 # 手动控制哪些分析参与交集。需要排除某一项时，将Use改为FALSE即可。
 ANALYSIS_SET <- data.frame(
-  Analysis_Name = c("LRC_1", "LRC_2", "LRC_3", "LRC_4", "LRC_5", "LRC_6", "LRC_7"),
-  Use = c(FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE),
+  Analysis_Name = c("LRC_1", "LRC_2", "LRC_3", "LRC_4", "LRC_5", "LRC_6", "LRC_7", "LRC_8", "LRC_9", "LRC_10"),
+  Use = c(FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE),
   stringsAsFactors = FALSE
 )
 
