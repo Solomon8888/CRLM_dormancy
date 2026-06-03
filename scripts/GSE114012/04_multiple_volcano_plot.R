@@ -41,11 +41,12 @@ LOGFC_CUTOFF <- 0.5
 # 每个方案会单独输出一个PDF：
 # results/ngs/GSE114012/plots/multiple_volcano/<scheme_name>/multiple_volcano_plot.pdf
 MULTIPLE_VOLCANO_SCHEMES <- list(
-  CRC_LRC_core = c("DLD1", "HCT15", "HT55", "RKO", "SW48", "SW948", "ALL", "DLD1_HCT15", "DLD1_HCT15_SW48"),
+  ALL = c("DLD1", "HCT15", "HT55", "RKO", "SW48", "SW948"),
   DLD1_HCT15_SW48 = c("DLD1", "HCT15", "SW48"),
   DLD1_HCT15 = c("DLD1", "HCT15"),
+  SW48_RKO = c("SW48", "RKO"),
   HT55_SW948 = c("HT55", "SW948"),
-  SW948_RKO = c("SW948", "RKO")
+  COMBINATION_1 = c("DLD1_HCT15_SW48", "DLD1_HCT15")
 )
 
 # 运行哪些多组火山图方案。
