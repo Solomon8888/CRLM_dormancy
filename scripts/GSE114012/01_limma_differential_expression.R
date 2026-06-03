@@ -119,6 +119,14 @@ gene_annotation <- gene_filter$gene_annotation
 # 5. 逐个分析设计运行limma -----------------------------------------------------
 
 summary_list <- vector("list", nrow(analysis_designs))
+output_check_list <- vector("list", nrow(analysis_designs))
+
+cat("\nRunning limma differential expression analyses...\n")
+progress_bar <- utils::txtProgressBar(
+  min = 0,
+  max = nrow(analysis_designs),
+  style = 3
+)
 
 for (i in seq_len(nrow(analysis_designs))) {
   analysis_order <- analysis_designs$Analysis_Order[i]
@@ -195,22 +203,28 @@ for (i in seq_len(nrow(analysis_designs))) {
   stopifnot(P_VALUE_COLUMN %in% colnames(diff_results))
 
   # 5.5 按配置阈值筛选显著差异基因
-  up_index <- diff_results$logFC > LOGFC_CUTOFF &
+  significant_index <- abs(diff_results$logFC) > LOGFC_CUTOFF &
     diff_results[[P_VALUE_COLUMN]] < P_VALUE_CUTOFF
 
-  down_index <- diff_results$logFC < -LOGFC_CUTOFF &
-    diff_results[[P_VALUE_COLUMN]] < P_VALUE_CUTOFF
+  up_index <- significant_index &
+    diff_results$logFC > LOGFC_CUTOFF
 
-  significant_results <- diff_results[up_index | down_index, , drop = FALSE]
+  down_index <- significant_index &
+    diff_results$logFC < -LOGFC_CUTOFF
+
+  significant_results <- diff_results[significant_index, , drop = FALSE]
 
   de_summary <- data.frame(
     Up = sum(up_index),
     Down = sum(down_index),
-    Total_Significant_Genes = sum(up_index) + sum(down_index)
+    Total_Significant_Genes = sum(significant_index)
   )
 
+  stopifnot(nrow(significant_results) == de_summary$Total_Significant_Genes)
+  stopifnot(de_summary$Total_Significant_Genes == de_summary$Up + de_summary$Down)
+
   # 5.6 保存当前设计的结果文件
-  analysis_output_dir <- file.path(OUTPUT_ROOT, analysis_name)
+  analysis_output_dir <- file.path(OUTPUT_ROOT, analysis_name, "DEG")
   dir.create(analysis_output_dir, recursive = TRUE, showWarnings = FALSE)
 
   safe_contrast_name <- paste0(
@@ -268,12 +282,58 @@ for (i in seq_len(nrow(analysis_designs))) {
   write.csv(significant_results, significant_results_file, row.names = FALSE)
   write.csv(summary_table, summary_file, row.names = FALSE)
 
-  summary_list[[i]] <- summary_table
+  stopifnot(file.exists(all_results_file))
+  stopifnot(file.exists(significant_results_file))
+  stopifnot(file.exists(summary_file))
 
-  print(summary_table[, SUMMARY_DISPLAY_COLUMNS], row.names = FALSE)
+  saved_significant_results <- read.csv(
+    significant_results_file,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  saved_summary <- read.csv(
+    summary_file,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+
+  stopifnot(nrow(saved_summary) == 1)
+  stopifnot(nrow(saved_significant_results) == summary_table$Total_Significant_Genes)
+  stopifnot(saved_summary$Up == summary_table$Up)
+  stopifnot(saved_summary$Down == summary_table$Down)
+  stopifnot(saved_summary$Total_Significant_Genes == summary_table$Total_Significant_Genes)
+  stopifnot(saved_summary$Total_Significant_Genes == saved_summary$Up + saved_summary$Down)
+
+  summary_list[[i]] <- summary_table
+  output_check_list[[i]] <- data.frame(
+    Analysis_Name = analysis_name,
+    All_Genes_File_Exists = file.exists(all_results_file),
+    Significant_Genes_File_Exists = file.exists(significant_results_file),
+    Summary_File_Exists = file.exists(summary_file),
+    Significant_Genes_Rows = nrow(saved_significant_results),
+    Summary_Total_Significant_Genes = saved_summary$Total_Significant_Genes,
+    Summary_Total_Equals_Up_Down = saved_summary$Total_Significant_Genes ==
+      saved_summary$Up + saved_summary$Down,
+    stringsAsFactors = FALSE
+  )
+
+  utils::setTxtProgressBar(progress_bar, i)
 }
 
+close(progress_bar)
+
 all_summary <- do.call(rbind, summary_list)
+output_check <- do.call(rbind, output_check_list)
+
+stopifnot(all(output_check$All_Genes_File_Exists))
+stopifnot(all(output_check$Significant_Genes_File_Exists))
+stopifnot(all(output_check$Summary_File_Exists))
+stopifnot(
+  all(output_check$Significant_Genes_Rows ==
+      output_check$Summary_Total_Significant_Genes)
+)
+stopifnot(all(output_check$Summary_Total_Equals_Up_Down))
 
 cat("\nAll analyses finished.\n")
+cat("Output file check passed.\n\n")
 print(all_summary[, SUMMARY_DISPLAY_COLUMNS], row.names = FALSE)

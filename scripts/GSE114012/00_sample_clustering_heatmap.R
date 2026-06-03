@@ -13,7 +13,7 @@ SE_RDS_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_se_raw.rds"
 CLINICAL_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_clinical_edit.csv"
 FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 
-PLOT_DIR <- "results/ngs/GSE114012/plots"
+PLOT_DIR <- "results/ngs/GSE114012/plots/sample_clustering_heatmap"
 
 # 可选："coding", "protein", "protein_coding", "non_coding", "all"
 GENE_BIOTYPE_FILTER <- "coding"
