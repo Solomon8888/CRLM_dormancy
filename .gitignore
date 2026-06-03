@@ -1,0 +1,24 @@
+# Bio-Project Standard Gitignore
+.DS_Store
+*.log
+*.tmp
+.Rproj.user
+.Rhistory
+.RData
+.ipynb_checkpoints/
+
+# --- 大数据文件保护 (防止误传) ---
+*.fastq
+*.fq
+*.bam
+*.sam
+
+# --- 规则：忽略内容但不忽略结构 ---
+# 1. 允许所有目录下的 .keep 文件 (全局白名单)
+!**/.keep
+
+# 2. 影子构建层：这是最重要的部分
+# 忽略 temporary 下的所有内容
+temporary/*
+
+data/*

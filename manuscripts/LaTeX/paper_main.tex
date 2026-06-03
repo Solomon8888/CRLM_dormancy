@@ -1,0 +1,21 @@
+% 模板路径将在编译时由 Shadow Build 机制处理
+\documentclass{templates/nature_style/nature}
+
+\begin{document}
+
+% 导入各个章节 (Structure)
+\input{structure/Abstract}
+\input{structure/Introduction}
+\input{structure/Methods}
+\input{structure/Results}
+\input{structure/Discussion}
+\input{structure/Conclusion}
+\input{structure/Acknowledgements}
+\input{structure/Appendices}
+\input{structure/Supplementary}
+
+% 参考文献
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
