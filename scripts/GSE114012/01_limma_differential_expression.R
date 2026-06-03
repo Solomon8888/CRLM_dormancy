@@ -1,9 +1,7 @@
-# GSE114012 differential expression analysis with limma
+# GSE114012差异表达分析
 #
-# The clinical configuration file can contain multiple analysis_XXX columns.
-# Each analysis_XXX column defines one differential expression design, where
-# XXX is the experiment group. Blank cells indicate samples excluded from that
-# specific design.
+# 临床配置文件中可以包含多个analysis_XXX列。
+# 每个analysis_XXX列定义一套差异分析设计；空白样本不参与该设计。
 
 
 # 0. 可修改配置 ---------------------------------------------------------------
@@ -27,6 +25,9 @@ P_VALUE_CUTOFF <- 0.05
 LOGFC_CUTOFF <- 0.5
 
 OUTPUT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID, "tables")
+
+# 重跑时清理当前<analysis_name>/DEG目录内旧CSV，避免旧长文件名残留。
+CLEAN_DEG_OUTPUT_DIR <- TRUE
 
 options(width = 200)
 
@@ -224,29 +225,23 @@ for (i in seq_len(nrow(analysis_designs))) {
   stopifnot(de_summary$Total_Significant_Genes == de_summary$Up + de_summary$Down)
 
   # 5.6 保存当前设计的结果文件
+  # 数据集编号、分析名和DEG类型已经由目录表达，文件名只保留结果类型。
   analysis_output_dir <- file.path(OUTPUT_ROOT, analysis_name, "DEG")
   dir.create(analysis_output_dir, recursive = TRUE, showWarnings = FALSE)
 
-  safe_contrast_name <- paste0(
-    sanitize_file_name(experiment_group),
-    "_vs_",
-    sanitize_file_name(control_group)
-  )
+  if (CLEAN_DEG_OUTPUT_DIR) {
+    unlink(list.files(
+      analysis_output_dir,
+      pattern = "[.]csv$",
+      full.names = TRUE
+    ))
+  }
 
-  all_results_file <- file.path(
-    analysis_output_dir,
-    paste0(DATASET_ID, "_", analysis_name, "_limma_", safe_contrast_name, "_all_genes.csv")
-  )
+  all_results_file <- file.path(analysis_output_dir, "all_genes.csv")
 
-  significant_results_file <- file.path(
-    analysis_output_dir,
-    paste0(DATASET_ID, "_", analysis_name, "_limma_", safe_contrast_name, "_significant_genes.csv")
-  )
+  significant_results_file <- file.path(analysis_output_dir, "significant_genes.csv")
 
-  summary_file <- file.path(
-    analysis_output_dir,
-    paste0(DATASET_ID, "_", analysis_name, "_limma_", safe_contrast_name, "_summary.csv")
-  )
+  summary_file <- file.path(analysis_output_dir, "summary.csv")
 
   summary_table <- data.frame(
     Dataset = DATASET_ID,

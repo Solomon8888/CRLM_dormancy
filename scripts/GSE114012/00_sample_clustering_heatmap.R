@@ -1,19 +1,24 @@
-# GSE114012 LRC sample clustering heatmap
+# GSE114012 LRC样本聚类热图
 #
-# Extract all LRC samples from the GSE114012 SummarizedExperiment object and
-# draw a sample-sample TPM correlation heatmap with hierarchical clustering.
-# Sample labels are taken from the clinical Title column.
+# 从当前数据集的SummarizedExperiment对象中提取全部LRC样本，
+# 使用TPM表达量计算样本间相关性，并绘制层次聚类热图。
+# 样本显示名称来自临床信息表中的Title列。
 
 
 # 0. 可修改配置 ---------------------------------------------------------------
 
 DATASET_ID <- "GSE114012"
+DATA_TYPE <- "ngs"
 
 SE_RDS_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_se_raw.rds"
 CLINICAL_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_clinical_edit.csv"
 FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 
-PLOT_DIR <- "results/ngs/GSE114012/plots/sample_clustering_heatmap"
+RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
+PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "sample_clustering_heatmap")
+
+# 重跑时清理当前热图输出目录里的旧PDF，避免新旧命名混在一起。
+CLEAN_PLOT_OUTPUT_DIR <- TRUE
 
 # 可选："coding", "protein", "protein_coding", "non_coding", "all"
 GENE_BIOTYPE_FILTER <- "coding"
@@ -57,9 +62,9 @@ TEXT_COLOR <- "black"
 LABEL_HEATMAP_GAP_SPACES <- 2
 
 # 红白蓝渐变配色。需要换色时只改这里即可。
-HEATMAP_COLOR_LOW <- "#0d0dbb7f"   # deep blue
-HEATMAP_COLOR_MID <- "#FFFFFF"   # white
-HEATMAP_COLOR_HIGH <- "#cd0e0e"  # bright red
+HEATMAP_COLOR_LOW <- "#0d0dbb7f"   # 深蓝
+HEATMAP_COLOR_MID <- "#FFFFFF"     # 白色
+HEATMAP_COLOR_HIGH <- "#cd0e0e"    # 鲜红
 CORRELATION_COLOR_MIN <- 0.80
 CORRELATION_COLOR_MAX <- 1.00
 
@@ -106,8 +111,6 @@ source(FUNCTION_FILE)
 
 
 # 2. 读取数据 ------------------------------------------------------------------
-
-dir.create(PLOT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 se <- readRDS(SE_RDS_FILE)
 clinical_data <- read.csv(
@@ -184,6 +187,24 @@ gene_filter <- filter_genes_by_biotype(
   gene_annotation = gene_annotation,
   biotype_filter = gene_biotype_filter
 )
+
+# 输出目录用基因类型区分；PDF文件名只保留结果类型。
+plot_filter_name <- sanitize_file_name(gene_filter$filter)
+PLOT_DIR <- file.path(PLOT_ROOT, plot_filter_name)
+dir.create(PLOT_DIR, recursive = TRUE, showWarnings = FALSE)
+
+if (CLEAN_PLOT_OUTPUT_DIR) {
+  unlink(list.files(PLOT_DIR, pattern = "[.]pdf$", full.names = TRUE))
+
+  legacy_pdf_files <- list.files(
+    PLOT_ROOT,
+    pattern = "[.]pdf$",
+    full.names = TRUE
+  )
+  if (length(legacy_pdf_files) > 0) {
+    unlink(legacy_pdf_files)
+  }
+}
 
 tpm <- gene_filter$exprSet
 expr_for_correlation <- log2(tpm + 1)
@@ -328,11 +349,7 @@ pdf_height <- OUTER_MARGIN_INCH * 2 + heatmap_panel_height
 pdf_width <- min(max(pdf_width, MIN_PDF_WIDTH), MAX_PDF_WIDTH)
 pdf_height <- min(max(pdf_height, MIN_PDF_HEIGHT), MAX_PDF_HEIGHT)
 
-plot_filter_name <- sanitize_file_name(gene_filter$filter)
-pdf_file <- file.path(
-  PLOT_DIR,
-  paste0(DATASET_ID, "_LRC_", plot_filter_name, "_TPM_sample_clustering_heatmap.pdf")
-)
+pdf_file <- file.path(PLOT_DIR, "heatmap.pdf")
 
 
 # 7. 绘制聚类热图 --------------------------------------------------------------
@@ -389,23 +406,7 @@ ht <- ComplexHeatmap::Heatmap(
   column_dend_gp = grid::gpar(col = "black", lwd = DENDROGRAM_LINE_WIDTH),
   width = heatmap_body_size,
   height = heatmap_body_size,
-  show_heatmap_legend = FALSE,
-  heatmap_legend_param = list(
-    title = "Correlation",
-    at = round(seq(color_min, color_max, length.out = 5), 2),
-    labels_gp = grid::gpar(
-      fontsize = LEGEND_FONT_SIZE,
-      fontface = TEXT_FONT_FACE,
-      fontfamily = TEXT_FONT_FAMILY,
-      col = TEXT_COLOR
-    ),
-    title_gp = grid::gpar(
-      fontsize = LEGEND_FONT_SIZE,
-      fontface = TEXT_FONT_FACE,
-      fontfamily = TEXT_FONT_FAMILY,
-      col = TEXT_COLOR
-    )
-  )
+  show_heatmap_legend = FALSE
 )
 
 cell_line_legend <- ComplexHeatmap::Legend(
