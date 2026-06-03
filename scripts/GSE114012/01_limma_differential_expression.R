@@ -15,13 +15,27 @@ SE_RDS_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_se_raw.rds"
 CLINICAL_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_clinical_edit.csv"
 FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 
+# 基因类型过滤
+# 可选："coding", "non_coding", "all"
+# coding口径与数据准备阶段一致：protein_coding/protein-coding + IG/TR gene。
+GENE_BIOTYPE_FILTER <- "coding"
+
 # 显著差异筛选阈值
 # P_VALUE_COLUMN可选："P.Value" 或 "adj.P.Val"
 P_VALUE_COLUMN <- "P.Value"
 P_VALUE_CUTOFF <- 0.05
-LOGFC_CUTOFF <- 0.2
+LOGFC_CUTOFF <- 0.5
 
 OUTPUT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID, "tables")
+
+options(width = 200)
+
+SUMMARY_DISPLAY_COLUMNS <- c(
+  "Analysis_Order", "Analysis_Name", "Analysis_Column_Index",
+  "Analysis_Duplicate_Order", "Contrast", "Samples_Used",
+  "Gene_Biotype_Filter", "Genes_Selected_By_Biotype",
+  "Up", "Down", "Total_Significant_Genes"
+)
 
 
 # 1. 加载包和函数 --------------------------------------------------------------
@@ -38,7 +52,7 @@ if (DATA_TYPE == "ngs") {
 source(FUNCTION_FILE)
 
 
-# 2. 读取数据 -----------------------------------------------------------------
+# 2. 读取和检查数据 ------------------------------------------------------------
 
 dir.create(OUTPUT_ROOT, recursive = TRUE, showWarnings = FALSE)
 
@@ -49,29 +63,16 @@ clinical_data <- read.csv(
   check.names = FALSE
 )
 
-class(se)
-dim(se)
-names(assays(se))
-head(clinical_data)
-
-
-# 3. 检查样本和分析配置 --------------------------------------------------------
-
 stopifnot(inherits(se, "SummarizedExperiment"))
 stopifnot(DATA_TYPE %in% c("microarray", "ngs"))
 stopifnot("Sample_ID" %in% colnames(clinical_data))
 stopifnot(!any(duplicated(clinical_data$Sample_ID)))
 
 analysis_designs <- get_analysis_designs(clinical_data)
-
-analysis_designs
+stopifnot(all(analysis_designs$Analysis_Order == seq_len(nrow(analysis_designs))))
+stopifnot(all(diff(analysis_designs$Column_Index) > 0))
 
 exprSet_all <- get_assay_matrix(se, DATA_TYPE)
-
-dim(exprSet_all)
-head(exprSet_all[, 1:min(4, ncol(exprSet_all))])
-summary(as.vector(exprSet_all))
-
 stopifnot(is.numeric(exprSet_all))
 
 missing_samples <- setdiff(colnames(exprSet_all), clinical_data$Sample_ID)
@@ -83,12 +84,10 @@ sample_info_all <- clinical_data[
   drop = FALSE
 ]
 rownames(sample_info_all) <- sample_info_all$Sample_ID
-
-head(sample_info_all)
 stopifnot(all(sample_info_all$Sample_ID == colnames(exprSet_all)))
 
 
-# 4. 准备基因注释 --------------------------------------------------------------
+# 3. 准备基因注释 --------------------------------------------------------------
 
 feature_id <- rownames(exprSet_all)
 
@@ -104,23 +103,33 @@ gene_annotation <- data.frame(
 )
 rownames(gene_annotation) <- rownames(exprSet_all)
 
-head(gene_annotation)
+
+# 4. 根据基因类型筛选分析基因 --------------------------------------------------
+
+gene_filter <- filter_genes_by_biotype(
+  exprSet = exprSet_all,
+  gene_annotation = gene_annotation,
+  biotype_filter = GENE_BIOTYPE_FILTER
+)
+
+exprSet_all <- gene_filter$exprSet
+gene_annotation <- gene_filter$gene_annotation
 
 
 # 5. 逐个分析设计运行limma -----------------------------------------------------
 
+summary_list <- vector("list", nrow(analysis_designs))
+
 for (i in seq_len(nrow(analysis_designs))) {
+  analysis_order <- analysis_designs$Analysis_Order[i]
   analysis_base_name <- analysis_designs$Analysis_Base_Name[i]
+  analysis_duplicate_order <- analysis_designs$Duplicate_Order[i]
   analysis_name <- analysis_designs$Analysis_Name[i]
   analysis_column <- analysis_designs$Column_Name[i]
   analysis_column_index <- analysis_designs$Column_Index[i]
   experiment_group <- analysis_designs$Experiment_Group[i]
 
-  cat("\n\n")
-  cat("Analysis:", analysis_name, "\n")
-  cat("Design column:", analysis_column, "\n")
-  cat("Experiment group:", experiment_group, "\n")
-
+  # 5.1 提取当前设计的样本，并剔除该设计列中的空白样本
   design_samples <- prepare_design_samples(
     sample_info = sample_info_all,
     group_column_index = analysis_column_index,
@@ -131,19 +140,12 @@ for (i in seq_len(nrow(analysis_designs))) {
   group_list <- design_samples$group_list
   control_group <- design_samples$control_group
 
-  print(table(group_list))
-  print(head(sample_info))
-
   exprSet <- exprSet_all[, sample_info$Sample_ID, drop = FALSE]
 
-  print(dim(exprSet))
-  print(head(exprSet[, 1:min(4, ncol(exprSet))]))
-
+  # 5.2 建立limma设计矩阵与比较矩阵
   design <- model.matrix(~ 0 + group_list)
   colnames(design) <- make.names(levels(group_list))
   rownames(design) <- colnames(exprSet)
-
-  print(design)
 
   contrast_name <- paste0(experiment_group, "_vs_", control_group)
   contrast_formula <- paste0(
@@ -158,7 +160,12 @@ for (i in seq_len(nrow(analysis_designs))) {
   )
   colnames(contrast.matrix) <- contrast_name
 
-  print(contrast.matrix)
+  # 5.3 根据数据类型准备limma输入
+  if (DATA_TYPE == "microarray") {
+    analysis_data <- prepare_microarray_data(exprSet)
+    limma_input <- analysis_data$data
+    genes_for_output <- gene_annotation
+  }
 
   if (DATA_TYPE == "ngs") {
     analysis_data <- prepare_ngs_data(
@@ -171,12 +178,7 @@ for (i in seq_len(nrow(analysis_designs))) {
     genes_for_output <- limma_input$genes
   }
 
-  if (DATA_TYPE == "microarray") {
-    print(get_distribution_diagnostics(limma_input))
-    print(analysis_data$log2_transformed)
-    print(analysis_data$normalized_between_arrays)
-  }
-
+  # 5.4 拟合线性模型并提取limma标准结果
   fit <- lmFit(limma_input, design)
   fit2 <- contrasts.fit(fit, contrast.matrix)
   fit2 <- eBayes(fit2)
@@ -190,12 +192,9 @@ for (i in seq_len(nrow(analysis_designs))) {
     genelist = genes_for_output
   )
 
-  print(dim(diff_results))
-  print(head(diff_results))
-  print(colnames(diff_results))
-
   stopifnot(P_VALUE_COLUMN %in% colnames(diff_results))
 
+  # 5.5 按配置阈值筛选显著差异基因
   up_index <- diff_results$logFC > LOGFC_CUTOFF &
     diff_results[[P_VALUE_COLUMN]] < P_VALUE_CUTOFF
 
@@ -207,13 +206,10 @@ for (i in seq_len(nrow(analysis_designs))) {
   de_summary <- data.frame(
     Up = sum(up_index),
     Down = sum(down_index),
-    Not_Significant = nrow(diff_results) - sum(up_index) - sum(down_index)
+    Total_Significant_Genes = sum(up_index) + sum(down_index)
   )
 
-  print(de_summary)
-  print(dim(significant_results))
-  print(head(significant_results))
-
+  # 5.6 保存当前设计的结果文件
   analysis_output_dir <- file.path(OUTPUT_ROOT, analysis_name)
   dir.create(analysis_output_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -225,32 +221,25 @@ for (i in seq_len(nrow(analysis_designs))) {
 
   all_results_file <- file.path(
     analysis_output_dir,
-    paste0(
-      DATASET_ID, "_", analysis_name, "_limma_",
-      safe_contrast_name, "_all_genes.csv"
-    )
+    paste0(DATASET_ID, "_", analysis_name, "_limma_", safe_contrast_name, "_all_genes.csv")
   )
 
   significant_results_file <- file.path(
     analysis_output_dir,
-    paste0(
-      DATASET_ID, "_", analysis_name, "_limma_",
-      safe_contrast_name, "_significant_genes.csv"
-    )
+    paste0(DATASET_ID, "_", analysis_name, "_limma_", safe_contrast_name, "_significant_genes.csv")
   )
 
   summary_file <- file.path(
     analysis_output_dir,
-    paste0(
-      DATASET_ID, "_", analysis_name, "_limma_",
-      safe_contrast_name, "_summary.csv"
-    )
+    paste0(DATASET_ID, "_", analysis_name, "_limma_", safe_contrast_name, "_summary.csv")
   )
 
   summary_table <- data.frame(
     Dataset = DATASET_ID,
     Data_Type = DATA_TYPE,
+    Analysis_Order = analysis_order,
     Analysis_Base_Name = analysis_base_name,
+    Analysis_Duplicate_Order = analysis_duplicate_order,
     Analysis_Name = analysis_name,
     Analysis_Column = analysis_column,
     Analysis_Column_Index = analysis_column_index,
@@ -258,11 +247,12 @@ for (i in seq_len(nrow(analysis_designs))) {
     Control_Group = control_group,
     Experiment_Group = experiment_group,
     Samples_Used = nrow(sample_info),
-    Total_Genes_Input = nrow(exprSet_all),
-    Total_Genes_Analyzed = nrow(diff_results),
+    Gene_Biotype_Filter = gene_filter$filter,
+    Gene_Biotype_Column = gene_filter$biotype_column,
+    Genes_Selected_By_Biotype = gene_filter$selected_gene_count,
     Up = de_summary$Up,
     Down = de_summary$Down,
-    Not_Significant = de_summary$Not_Significant,
+    Total_Significant_Genes = de_summary$Total_Significant_Genes,
     P_Value_Column = P_VALUE_COLUMN,
     P_Value_Cutoff = P_VALUE_CUTOFF,
     LogFC_Cutoff = LOGFC_CUTOFF,
@@ -274,9 +264,16 @@ for (i in seq_len(nrow(analysis_designs))) {
     stringsAsFactors = FALSE
   )
 
-  print(summary_table)
-
   write.csv(diff_results, all_results_file, row.names = FALSE)
   write.csv(significant_results, significant_results_file, row.names = FALSE)
   write.csv(summary_table, summary_file, row.names = FALSE)
+
+  summary_list[[i]] <- summary_table
+
+  print(summary_table[, SUMMARY_DISPLAY_COLUMNS], row.names = FALSE)
 }
+
+all_summary <- do.call(rbind, summary_list)
+
+cat("\nAll analyses finished.\n")
+print(all_summary[, SUMMARY_DISPLAY_COLUMNS], row.names = FALSE)

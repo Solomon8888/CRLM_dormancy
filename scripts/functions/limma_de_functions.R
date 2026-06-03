@@ -39,18 +39,22 @@ get_analysis_designs <- function(clinical_data, prefix = "analysis_") {
   )
   analysis_base_name <- sanitize_file_name(experiment_group)
   analysis_name <- analysis_base_name
+  duplicate_order <- rep(1L, length(analysis_base_name))
 
   duplicated_name <- names(table(analysis_base_name))[table(analysis_base_name) > 1]
 
   for (name in duplicated_name) {
     duplicated_index <- which(analysis_base_name == name)
-    analysis_name[duplicated_index] <- paste0(name, "_", seq_along(duplicated_index))
+    duplicate_order[duplicated_index] <- seq_along(duplicated_index)
+    analysis_name[duplicated_index] <- paste0(name, "_", duplicate_order[duplicated_index])
   }
 
   data.frame(
+    Analysis_Order = seq_along(analysis_index),
     Column_Index = analysis_index,
     Column_Name = clinical_columns[analysis_index],
     Analysis_Base_Name = analysis_base_name,
+    Duplicate_Order = duplicate_order,
     Analysis_Name = analysis_name,
     Experiment_Group = experiment_group,
     stringsAsFactors = FALSE
@@ -88,6 +92,93 @@ prepare_design_samples <- function(sample_info, group_column_index, experiment_g
     sample_info = sample_info_used,
     group_list = group_list,
     control_group = control_group
+  )
+}
+
+detect_biotype_column <- function(gene_annotation) {
+  candidate_columns <- c("Biotype", "biotype", "gene_biotype", "Gene_Biotype", "gene_type", "Gene_Type")
+  biotype_column <- candidate_columns[candidate_columns %in% colnames(gene_annotation)][1]
+
+  if (is.na(biotype_column)) {
+    stop("Cannot find a gene biotype column in gene_annotation.")
+  }
+
+  biotype_column
+}
+
+classify_biotypes_for_de <- function(raw_types) {
+  if (is.null(raw_types) || all(is.na(raw_types))) {
+    n <- length(raw_types)
+    return(list(
+      is_coding = rep(FALSE, n),
+      is_nc = rep(FALSE, n)
+    ))
+  }
+
+  clean_types <- tolower(as.character(raw_types))
+  clean_types <- gsub("[ -]", "_", clean_types)
+
+  coding_pattern <- "^(protein_coding|mrna|coding|cds|orf)$|^(ig_|tr_).+_gene$"
+  is_coding <- grepl(coding_pattern, clean_types)
+
+  nc_pattern <- "rna|antisense|ribozyme|pseudogene"
+  is_nc <- grepl(nc_pattern, clean_types) & !is_coding
+
+  list(
+    is_coding = is_coding,
+    is_nc = is_nc
+  )
+}
+
+filter_genes_by_biotype <- function(
+    exprSet,
+    gene_annotation,
+    biotype_filter = "all",
+    biotype_column = NULL) {
+  biotype_filter <- trimws(tolower(as.character(biotype_filter)))
+  biotype_filter <- gsub("-", "_", biotype_filter)
+  biotype_filter <- gsub("\\s+", "_", biotype_filter)
+  if (biotype_filter == "protein_coding") biotype_filter <- "coding"
+
+  if (!biotype_filter %in% c("all", "coding", "non_coding")) {
+    stop("GENE_BIOTYPE_FILTER must be one of: all, coding, non_coding.")
+  }
+
+  if (is.null(biotype_column)) {
+    biotype_column <- detect_biotype_column(gene_annotation)
+  }
+
+  if (!biotype_column %in% colnames(gene_annotation)) {
+    stop("Cannot find biotype column '", biotype_column, "' in gene_annotation.")
+  }
+
+  biotype_raw <- trimws(as.character(gene_annotation[[biotype_column]]))
+  biotype_raw[is.na(biotype_raw)] <- ""
+  biotype_class <- classify_biotypes_for_de(biotype_raw)
+
+  if (biotype_filter == "all") {
+    keep_gene <- rep(TRUE, nrow(gene_annotation))
+  }
+
+  if (biotype_filter == "coding") {
+    keep_gene <- biotype_class$is_coding
+  }
+
+  if (biotype_filter == "non_coding") {
+    keep_gene <- biotype_class$is_nc
+  }
+
+  if (!any(keep_gene)) {
+    stop("No genes left after applying GENE_BIOTYPE_FILTER = ", biotype_filter, ".")
+  }
+
+  list(
+    exprSet = exprSet[keep_gene, , drop = FALSE],
+    gene_annotation = gene_annotation[keep_gene, , drop = FALSE],
+    filter = biotype_filter,
+    biotype_column = biotype_column,
+    selected_gene_count = sum(keep_gene),
+    selected_biotype_count = length(unique(biotype_raw[keep_gene & biotype_raw != ""]))
   )
 }
 
