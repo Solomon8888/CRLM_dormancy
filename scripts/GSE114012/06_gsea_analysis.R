@@ -4,6 +4,8 @@
 # 使用clusterProfiler::GSEA和msigdbr基因集批量运行GSEA分析。
 # GSEA结果表保存为csv/md/tex三种完整格式，Top通路气泡图使用GseaVis绘制。
 
+SCRIPT_START_TIME <- Sys.time()
+
 
 # 0. 可修改配置 ---------------------------------------------------------------
 
@@ -320,7 +322,11 @@ source(REPORT_TABLE_FUNCTION_FILE)
 CLEAN_GSEA_OUTPUT_DIR <- TRUE
 READABLE_GENE_SYMBOLS <- TRUE
 USE_QS2_CACHE <- TRUE
-REFRESH_QS2_CACHE <- Sys.getenv("GSEA_REFRESH_QS2_CACHE", unset = "0") == "1"
+
+# 默认重新计算核心GSEA缓存，适合每次调整参数后重新运行。
+# 若确认参数完全不变且只想复用缓存，可在终端临时设置：
+# GSEA_REFRESH_QS2_CACHE=0 Rscript scripts/GSE114012/06_gsea_analysis.R
+REFRESH_QS2_CACHE <- Sys.getenv("GSEA_REFRESH_QS2_CACHE", unset = "1") == "1"
 QS2_CACHE_DIR <- file.path("temporary", DATA_TYPE, DATASET_ID, "GSEA_qs2_cache")
 MSIGDB_REFERENCE_DIR <- file.path("data", "reference", "msigdb")
 MSIGDB_REFERENCE_MAX_AGE_DAYS <- 7
@@ -1872,12 +1878,14 @@ GSEA_INNER_NPROC <- if (GSEA_TASK_WORKERS > 0) {
 } else {
   QS2_NTHREADS
 }
+QS2_NTHREADS_PER_TASK <- GSEA_INNER_NPROC
 SINGLE_PATHWAY_PLOT_WORKERS <- if (GSEA_TASK_WORKERS > 1) {
   1L
 } else {
   QS2_NTHREADS
 }
 
+qs2::qopt("nthreads", QS2_NTHREADS_PER_TASK)
 options(mc.cores = GSEA_TASK_WORKERS)
 if (requireNamespace("BiocParallel", quietly = TRUE)) {
   BiocParallel::register(
@@ -1890,6 +1898,7 @@ cat("\nParallel execution strategy:\n")
 cat("Total tasks:              ", total_tasks, "\n", sep = "")
 cat("Task-level workers:       ", GSEA_TASK_WORKERS, "\n", sep = "")
 cat("GSEA nproc per task:      ", GSEA_INNER_NPROC, "\n", sep = "")
+cat("qs2 nthreads per task:    ", QS2_NTHREADS_PER_TASK, "\n", sep = "")
 cat("Single-pathway workers:   ", SINGLE_PATHWAY_PLOT_WORKERS, "\n", sep = "")
 
 run_gsea_task <- function(task_id) {
@@ -1992,25 +2001,95 @@ run_gsea_task <- function(task_id) {
   )
 }
 
+run_gsea_tasks_with_progress <- function(task_ids, task_function, workers) {
+  # 主进程维护进度条，子进程负责实际GSEA与绘图任务。
+  # 与parallel::mclapply相比，这里可以实时回收已完成任务并刷新终端进度。
+  total_task_count <- length(task_ids)
+  progress_bar <- utils::txtProgressBar(
+    min = 0,
+    max = total_task_count,
+    style = 3
+  )
+  on.exit(close(progress_bar), add = TRUE)
+
+  results <- vector("list", total_task_count)
+  names(results) <- as.character(task_ids)
+
+  if (workers <= 1L || .Platform$OS.type == "windows") {
+    for (task_position in seq_along(task_ids)) {
+      task_id <- task_ids[task_position]
+      results[[as.character(task_id)]] <- try(task_function(task_id), silent = TRUE)
+      utils::setTxtProgressBar(progress_bar, task_position)
+    }
+
+    return(results)
+  }
+
+  workers <- max(1L, min(as.integer(workers), total_task_count))
+  next_task_position <- 1L
+  completed_tasks <- 0L
+  active_jobs <- list()
+  active_task_by_pid <- list()
+
+  launch_next_task <- function() {
+    task_id <- task_ids[next_task_position]
+    job <- parallel::mcparallel(
+      try(task_function(task_id), silent = TRUE),
+      silent = TRUE
+    )
+    pid <- as.character(job$pid)
+
+    active_jobs[[pid]] <<- job
+    active_task_by_pid[[pid]] <<- task_id
+    next_task_position <<- next_task_position + 1L
+  }
+
+  while (
+    next_task_position <= total_task_count &&
+      length(active_jobs) < workers
+  ) {
+    launch_next_task()
+  }
+
+  while (completed_tasks < total_task_count) {
+    ready_results <- parallel::mccollect(
+      active_jobs,
+      wait = FALSE,
+      timeout = 0.5
+    )
+
+    if (is.null(ready_results) || length(ready_results) == 0) {
+      Sys.sleep(0.2)
+      next
+    }
+
+    for (pid in names(ready_results)) {
+      task_id <- active_task_by_pid[[pid]]
+      results[[as.character(task_id)]] <- ready_results[[pid]]
+      active_jobs[[pid]] <- NULL
+      active_task_by_pid[[pid]] <- NULL
+      completed_tasks <- completed_tasks + 1L
+      utils::setTxtProgressBar(progress_bar, completed_tasks)
+
+      while (
+        next_task_position <= total_task_count &&
+          length(active_jobs) < workers
+      ) {
+        launch_next_task()
+      }
+    }
+  }
+
+  results
+}
+
 cat("\nRunning batch GSEA analyses...\n")
 task_ids <- seq_len(total_tasks)
-
-if (GSEA_TASK_WORKERS > 1) {
-  summary_records <- parallel::mclapply(
-    task_ids,
-    run_gsea_task,
-    mc.cores = GSEA_TASK_WORKERS,
-    mc.preschedule = FALSE
-  )
-} else {
-  progress_bar <- utils::txtProgressBar(min = 0, max = total_tasks, style = 3)
-  summary_records <- vector("list", total_tasks)
-  for (task_id in task_ids) {
-    summary_records[[task_id]] <- run_gsea_task(task_id)
-    utils::setTxtProgressBar(progress_bar, task_id)
-  }
-  close(progress_bar)
-}
+summary_records <- run_gsea_tasks_with_progress(
+  task_ids = task_ids,
+  task_function = run_gsea_task,
+  workers = GSEA_TASK_WORKERS
+)
 
 task_errors <- vapply(summary_records, inherits, logical(1), "try-error")
 if (any(task_errors)) {
@@ -2054,5 +2133,16 @@ cat("GSEA summary table:   ", file.path(summary_output_dir, "summary.csv"), "\n"
 cat("CSV/MD/TEX result sets: ", nrow(summary_table), " each\n", sep = "")
 cat("PDF/PNG dotplots: ", nrow(summary_table), " each\n", sep = "")
 cat("Single-pathway GSEA PDF/PNG plots: ", sum(summary_table$Single_Pathway_Plots), " each\n", sep = "")
+
+SCRIPT_END_TIME <- Sys.time()
+SCRIPT_RUNTIME_SECONDS <- as.numeric(
+  difftime(SCRIPT_END_TIME, SCRIPT_START_TIME, units = "secs")
+)
+cat(
+  "Total runtime: ",
+  sprintf("%.2f min (%.1f sec)", SCRIPT_RUNTIME_SECONDS / 60, SCRIPT_RUNTIME_SECONDS),
+  "\n",
+  sep = ""
+)
 
 cat("\nBatch GSEA analysis finished.\n")
