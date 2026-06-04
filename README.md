@@ -31,6 +31,7 @@ scripts/GSE114012/
   02_intersect_significant_genes.R       # 显著差异基因交集分析
   03_volcano_plot.R                      # 传统火山图
   04_multiple_volcano_plot.R             # 多组火山图
+  05_top_deg_gene_heatmap.R              # Top差异表达基因表达热图
 
 scripts/functions/
   limma_de_functions.R                   # 差异分析公共函数
@@ -198,9 +199,33 @@ Markdown 表格预览示例：
 - `results/ngs/GSE114012/plots/multiple_volcano/HT55_SW948/multiple_volcano_plot.png`
 - `results/ngs/GSE114012/plots/multiple_volcano/COMBINATION_1/multiple_volcano_plot.png`
 
+### 05. Top差异表达基因表达热图
+
+脚本：`scripts/GSE114012/05_top_deg_gene_heatmap.R`
+
+该步骤自动读取每一种差异分析设计中的 `significant_genes.csv`，按 P 值和 logFC 幅度提取最多 Top 50 个显著差异基因，并使用 SE 对象中的 TPM 表达量绘制表达热图。热图主体展示 `log2(TPM + 1)` 后的行 Z-score，顶部注释样本分组和细胞系；图中统一将实验组显示为 `LRC`、对照组显示为 `BULK`，并固定 LRC 在左、BULK 在右。
+
+该图用于直观判断显著差异基因在 LRC 与 BULK 样本之间是否形成稳定表达模式，也可以帮助检查候选基因是否受细胞系差异或休眠样状态共同驱动。热图红蓝配色与火山图显著基因配色保持一致，右侧图例与基因名之间保留适当留白，便于汇报展示。
+
+代表性结果：
+
+![DLD1 HCT15 SW48 top DEG gene heatmap](results/ngs/GSE114012/plots/gene_heatmap/DLD1_HCT15_SW48/gene_heatmap.png)
+
+全部 PNG 输出：
+
+- `results/ngs/GSE114012/plots/gene_heatmap/ALL/gene_heatmap.png`
+- `results/ngs/GSE114012/plots/gene_heatmap/DLD1/gene_heatmap.png`
+- `results/ngs/GSE114012/plots/gene_heatmap/DLD1_HCT15/gene_heatmap.png`
+- `results/ngs/GSE114012/plots/gene_heatmap/DLD1_HCT15_SW48/gene_heatmap.png`
+- `results/ngs/GSE114012/plots/gene_heatmap/HCT15/gene_heatmap.png`
+- `results/ngs/GSE114012/plots/gene_heatmap/HT55/gene_heatmap.png`
+- `results/ngs/GSE114012/plots/gene_heatmap/RKO/gene_heatmap.png`
+- `results/ngs/GSE114012/plots/gene_heatmap/SW48/gene_heatmap.png`
+- `results/ngs/GSE114012/plots/gene_heatmap/SW948/gene_heatmap.png`
+
 ## Beamer 汇报文件
 
-当前汇报文件已经整合 00 到 04 的主要结果。
+当前汇报文件已经整合 00 到 05 的主要结果。
 
 - TeX 源文件：`scripts/beamer/beamer_report.tex`
 - 最终 PDF：`results/reports/beamer_report.pdf`
@@ -216,6 +241,7 @@ Rscript scripts/GSE114012/01_limma_differential_expression.R
 Rscript scripts/GSE114012/02_intersect_significant_genes.R
 Rscript scripts/GSE114012/03_volcano_plot.R
 Rscript scripts/GSE114012/04_multiple_volcano_plot.R
+Rscript scripts/GSE114012/05_top_deg_gene_heatmap.R
 ```
 
 Beamer 编译命令：

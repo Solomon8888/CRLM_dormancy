@@ -137,6 +137,7 @@
     \item \textbf{02}：按可配置细胞系组合提取显著基因交集，筛选跨模型重复出现的候选休眠相关信号。
     \item \textbf{03}：用传统火山图观察单个比较中的表达漂移、显著性强度和候选基因位置。
     \item \textbf{04}：用多组火山图并列比较多套细胞系组合，突出方向一致的上调/下调信号。
+    \item \textbf{05}：提取每套差异分析设计的 Top 50 显著差异基因，并用 TPM 行 Z-Score 热图展示 LRC/BULK 表达模式。
   \end{enumerate}
 \end{frame}
 
@@ -643,6 +644,96 @@
     \item 多组火山图并列展示多个细胞系或组合方案中的显著基因分布，便于观察跨模型方向一致性；
     \item 稳定重复出现的上调/下调信号更适合作为休眠维持或复苏触发轴的候选基因；
     \item 该图为从单模型差异走向共同调控网络提供直观筛选依据。
+  }
+
+\FrameFig
+  {05. Top 50差异基因热图：ALL}
+  {results/ngs/GSE114012/plots/gene_heatmap/ALL/gene_heatmap.pdf}
+  {Top 50显著差异基因表达热图（ALL）}
+  {
+    \item 该图基于显著差异基因表按 P 值与 logFC 幅度筛选 Top 50 基因，并回到 TPM 矩阵中计算 \texttt{log2(TPM+1)} 行 Z-Score；
+    \item LRC 统一置于左侧、BULK 置于右侧，便于直接判断休眠样状态与相对增殖状态之间的表达分离；
+    \item 红蓝方向条带提示候选基因在 LRC 中的上调或下调方向，可作为后续休眠维持/复苏候选轴筛选依据。
+  }
+
+\FrameFig
+  {05. Top 50差异基因热图：DLD1}
+  {results/ngs/GSE114012/plots/gene_heatmap/DLD1/gene_heatmap.pdf}
+  {Top 50显著差异基因表达热图（DLD1）}
+  {
+    \item 该图基于显著差异基因表按 P 值与 logFC 幅度筛选 Top 50 基因，并回到 TPM 矩阵中计算 \texttt{log2(TPM+1)} 行 Z-Score；
+    \item LRC 统一置于左侧、BULK 置于右侧，便于直接判断休眠样状态与相对增殖状态之间的表达分离；
+    \item 红蓝方向条带提示候选基因在 LRC 中的上调或下调方向，可作为后续休眠维持/复苏候选轴筛选依据。
+  }
+
+\FrameFig
+  {05. Top 50差异基因热图：DLD1/HCT15}
+  {results/ngs/GSE114012/plots/gene_heatmap/DLD1_HCT15/gene_heatmap.pdf}
+  {Top 50显著差异基因表达热图（DLD1/HCT15）}
+  {
+    \item 该图基于显著差异基因表按 P 值与 logFC 幅度筛选 Top 50 基因，并回到 TPM 矩阵中计算 \texttt{log2(TPM+1)} 行 Z-Score；
+    \item LRC 统一置于左侧、BULK 置于右侧，便于直接判断休眠样状态与相对增殖状态之间的表达分离；
+    \item 跨细胞系组合更强调共同表达模式，有助于从单细胞系特异信号中提炼更稳健的休眠相关候选基因。
+  }
+
+\FrameFig
+  {05. Top 50差异基因热图：DLD1/HCT15/SW48}
+  {results/ngs/GSE114012/plots/gene_heatmap/DLD1_HCT15_SW48/gene_heatmap.pdf}
+  {Top 50显著差异基因表达热图（DLD1/HCT15/SW48）}
+  {
+    \item 该图基于显著差异基因表按 P 值与 logFC 幅度筛选 Top 50 基因，并回到 TPM 矩阵中计算 \texttt{log2(TPM+1)} 行 Z-Score；
+    \item LRC 统一置于左侧、BULK 置于右侧，便于直接判断休眠样状态与相对增殖状态之间的表达分离；
+    \item 该组合可用于观察多模型共同休眠样表达特征，为后续 TF 调控、通路富集和药物重定位提供更严格入口。
+  }
+
+\FrameFig
+  {05. Top 50差异基因热图：HCT15}
+  {results/ngs/GSE114012/plots/gene_heatmap/HCT15/gene_heatmap.pdf}
+  {Top 50显著差异基因表达热图（HCT15）}
+  {
+    \item 该图基于显著差异基因表按 P 值与 logFC 幅度筛选 Top 50 基因，并回到 TPM 矩阵中计算 \texttt{log2(TPM+1)} 行 Z-Score；
+    \item LRC 统一置于左侧、BULK 置于右侧，便于直接判断休眠样状态与相对增殖状态之间的表达分离；
+    \item 单细胞系热图可检查该模型自身的 LRC/BULK 表达分界，并辅助识别与组合分析一致的候选基因。
+  }
+
+\FrameFig
+  {05. Top 50差异基因热图：HT55}
+  {results/ngs/GSE114012/plots/gene_heatmap/HT55/gene_heatmap.pdf}
+  {Top 50显著差异基因表达热图（HT55）}
+  {
+    \item 该图基于显著差异基因表按 P 值与 logFC 幅度筛选 Top 50 基因，并回到 TPM 矩阵中计算 \texttt{log2(TPM+1)} 行 Z-Score；
+    \item LRC 统一置于左侧、BULK 置于右侧，便于直接判断休眠样状态与相对增殖状态之间的表达分离；
+    \item 单细胞系热图可检查该模型自身的 LRC/BULK 表达分界，并辅助识别与组合分析一致的候选基因。
+  }
+
+\FrameFig
+  {05. Top 50差异基因热图：RKO}
+  {results/ngs/GSE114012/plots/gene_heatmap/RKO/gene_heatmap.pdf}
+  {Top 50显著差异基因表达热图（RKO）}
+  {
+    \item 该图基于显著差异基因表按 P 值与 logFC 幅度筛选 Top 50 基因，并回到 TPM 矩阵中计算 \texttt{log2(TPM+1)} 行 Z-Score；
+    \item LRC 统一置于左侧、BULK 置于右侧，便于直接判断休眠样状态与相对增殖状态之间的表达分离；
+    \item 单细胞系热图可检查该模型自身的 LRC/BULK 表达分界，并辅助识别与组合分析一致的候选基因。
+  }
+
+\FrameFig
+  {05. Top 50差异基因热图：SW48}
+  {results/ngs/GSE114012/plots/gene_heatmap/SW48/gene_heatmap.pdf}
+  {Top 50显著差异基因表达热图（SW48）}
+  {
+    \item 该图基于显著差异基因表按 P 值与 logFC 幅度筛选 Top 50 基因，并回到 TPM 矩阵中计算 \texttt{log2(TPM+1)} 行 Z-Score；
+    \item LRC 统一置于左侧、BULK 置于右侧，便于直接判断休眠样状态与相对增殖状态之间的表达分离；
+    \item 单细胞系热图可检查该模型自身的 LRC/BULK 表达分界，并辅助识别与组合分析一致的候选基因。
+  }
+
+\FrameFig
+  {05. Top 50差异基因热图：SW948}
+  {results/ngs/GSE114012/plots/gene_heatmap/SW948/gene_heatmap.pdf}
+  {Top 50显著差异基因表达热图（SW948）}
+  {
+    \item 该图基于显著差异基因表按 P 值与 logFC 幅度筛选 Top 50 基因，并回到 TPM 矩阵中计算 \texttt{log2(TPM+1)} 行 Z-Score；
+    \item LRC 统一置于左侧、BULK 置于右侧，便于直接判断休眠样状态与相对增殖状态之间的表达分离；
+    \item 单细胞系热图可检查该模型自身的 LRC/BULK 表达分界，并辅助识别与组合分析一致的候选基因。
   }
 
 \end{document}
