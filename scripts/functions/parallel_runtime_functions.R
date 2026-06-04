@@ -411,7 +411,9 @@ run_indexed_tasks_with_progress <- function(
 
 stop_on_parallel_errors <- function(results, task_ids = names(results), label = "parallel tasks") {
   # 统一检查并行任务返回值中的try-error，便于各脚本保持相同的失败提示。
-  task_errors <- vapply(results, inherits, logical(1), "try-error")
+  task_errors <- vapply(results, function(x) {
+    is.null(x) || inherits(x, "try-error")
+  }, logical(1))
   if (!any(task_errors)) {
     return(invisible(FALSE))
   }
