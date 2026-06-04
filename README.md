@@ -32,6 +32,7 @@ scripts/GSE114012/
   03_volcano_plot.R                      # 传统火山图
   04_multiple_volcano_plot.R             # 多组火山图
   05_top_deg_gene_heatmap.R              # Top差异表达基因表达热图
+  06_gsea_analysis.R                     # 批量GSEA分析与GseaVis绘图
 
 scripts/functions/
   limma_de_functions.R                   # 差异分析公共函数
@@ -44,14 +45,16 @@ scripts/beamer/
 results/ngs/GSE114012/
   tables/                                # 01号脚本输出的DEG结果
   intersect/                             # 02号脚本输出的交集结果
-  plots/                                 # 00/03/04号脚本输出的PDF和PNG图片
+  plots/                                 # 各绘图脚本输出的PDF和PNG图片
+
+data/reference/msigdb/                   # msigdbr本地缓存，默认7天自动刷新
+temporary/ngs/GSE114012/GSEA_qs2_cache/  # GSEA对象和表达矩阵qs2缓存
 
 results/reports/
-  beamer_report.pdf                      # 最终汇报PDF
+  beamer/beamer_report.pdf               # 最终汇报PDF
 
 temporary/
   beamer/                                # Beamer临时编译目录
-  LatexBuild/                            # VSCode/LaTeX Workshop旧中间文件迁移目录
 ```
 
 ## 分析流程
@@ -223,13 +226,62 @@ Markdown 表格预览示例：
 - `results/ngs/GSE114012/plots/gene_heatmap/SW48/gene_heatmap.png`
 - `results/ngs/GSE114012/plots/gene_heatmap/SW948/gene_heatmap.png`
 
+### 06. 批量GSEA通路富集分析
+
+脚本：`scripts/GSE114012/06_gsea_analysis.R`
+
+该步骤自动读取每一种差异分析设计中的 `all_genes.csv`，以 limma 的 `t` 统计量构建排序基因列表，并使用 `clusterProfiler::GSEA` 对 msigdbr 当前数据库中的全部可用基因集类别进行批量 GSEA。当前脚本设置：
+
+- 物种：`human`
+- 基因ID：`Entrez`
+- 排序统计量：`t`
+- 基因集配置：`GSEA_GENESETS_TO_RUN <- "all"`
+- 结果 readable：开启，`core_enrichment` 中的基因会转换为 Symbol，便于直接阅读；
+- msigdbr 缓存：`data/reference/msigdb/`
+- qs2 加速缓存：`temporary/ngs/GSE114012/GSEA_qs2_cache/`
+
+每个分析设计、每类基因集均输出到独立目录：
+
+```text
+results/ngs/GSE114012/tables/<Analysis_Name>/GSEA/<GeneSet_Name>/
+results/ngs/GSE114012/plots/GSEA/<Analysis_Name>/<GeneSet_Name>/
+```
+
+全量运行结果：
+
+- GSEA结果表：234 套，每套保存 `csv/md/tex`；
+- GSEA dotplot：234 张，每张保存 `pdf/png`；
+- 单通路 GSEA + 核心基因表达热图：2057 张，每张保存 `pdf/png`；
+- 全局GSEA summary：`results/ngs/GSE114012/tables/GSEA_summary/summary.csv`
+
+代表性结果概览：
+
+| Analysis_Name | GeneSet_Name | Ranked_Genes | GSEA_Terms | Positive_NES | Negative_NES | Single_Pathway_Plots |
+| --- | --- | --- | --- | --- | --- | --- |
+| ALL | hallmark | 12964 | 34 | 21 | 13 | 10 |
+| ALL | GO_BP | 12964 | 1443 | 838 | 578 | 10 |
+| ALL | C6 | 12964 | 95 | 75 | 20 | 10 |
+| DLD1_HCT15_SW48 | hallmark | 12840 | 32 | 18 | 14 | 10 |
+| DLD1_HCT15_SW48 | GO_BP | 12840 | 1216 | 710 | 477 | 10 |
+| DLD1_HCT15_SW48 | C6 | 12840 | 81 | 59 | 22 | 10 |
+
+代表性 dotplot：
+
+![ALL hallmark GSEA dotplot](results/ngs/GSE114012/plots/GSEA/ALL/hallmark/dotplot.png)
+
+![DLD1 HCT15 SW48 GO BP GSEA dotplot](results/ngs/GSE114012/plots/GSEA/DLD1_HCT15_SW48/GO_BP/dotplot.png)
+
+代表性单通路图：
+
+![ALL hallmark hypoxia GSEA plot](results/ngs/GSE114012/plots/GSEA/ALL/hallmark/single_pathway/08_HALLMARK_HYPOXIA/gsea_plot.png)
+
 ## Beamer 汇报文件
 
-当前汇报文件已经整合 00 到 05 的主要结果。
+当前汇报文件已经整合 00 到 06 的主要结果。
 
 - TeX 源文件：`scripts/beamer/beamer_report.tex`
-- 最终 PDF：`results/reports/beamer_report.pdf`
-- 中间编译目录：`temporary/LatexBuild/`
+- 最终 PDF：`results/reports/beamer/beamer_report.pdf`
+- 中间编译目录：`temporary/beamer/`
 
 ## 复现命令
 
@@ -242,21 +294,22 @@ Rscript scripts/GSE114012/02_intersect_significant_genes.R
 Rscript scripts/GSE114012/03_volcano_plot.R
 Rscript scripts/GSE114012/04_multiple_volcano_plot.R
 Rscript scripts/GSE114012/05_top_deg_gene_heatmap.R
+Rscript scripts/GSE114012/06_gsea_analysis.R
 ```
 
 Beamer 编译命令：
 
 ```bash
-mkdir -p temporary/LatexBuild results/reports
+mkdir -p temporary/beamer results/reports/beamer
 latexmk -xelatex \
   -synctex=1 \
   -interaction=nonstopmode \
   -file-line-error \
-  -outdir=temporary/LatexBuild \
-  -auxdir=temporary/LatexBuild \
+  -outdir=temporary/beamer \
+  -auxdir=temporary/beamer \
   -shell-escape \
   scripts/beamer/beamer_report.tex
-cp temporary/LatexBuild/beamer_report.pdf results/reports/beamer_report.pdf
+cp temporary/beamer/beamer_report.pdf results/reports/beamer/beamer_report.pdf
 ```
 
 ## 后续分析方向

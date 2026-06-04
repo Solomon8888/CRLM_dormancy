@@ -138,6 +138,7 @@
     \item \textbf{03}：用传统火山图观察单个比较中的表达漂移、显著性强度和候选基因位置。
     \item \textbf{04}：用多组火山图并列比较多套细胞系组合，突出方向一致的上调/下调信号。
     \item \textbf{05}：提取每套差异分析设计的 Top 50 显著差异基因，并用 TPM 行 Z-Score 热图展示 LRC/BULK 表达模式。
+    \item \textbf{06}：基于完整差异分析排序结果批量运行 MSigDB GSEA，并用 dotplot 与单通路 GSEA+热图解释休眠样状态相关通路。
   \end{enumerate}
 \end{frame}
 
@@ -734,6 +735,81 @@
     \item 该图基于显著差异基因表按 P 值与 logFC 幅度筛选 Top 50 基因，并回到 TPM 矩阵中计算 \texttt{log2(TPM+1)} 行 Z-Score；
     \item LRC 统一置于左侧、BULK 置于右侧，便于直接判断休眠样状态与相对增殖状态之间的表达分离；
     \item 单细胞系热图可检查该模型自身的 LRC/BULK 表达分界，并辅助识别与组合分析一致的候选基因。
+  }
+
+\begin{frame}{06. GSEA分析说明}
+  \begin{itemize}
+    \item 06号脚本读取每套差异分析的 \texttt{all\_genes.csv}，以 limma 的 \texttt{t} 统计量构建排序基因列表，使用 \texttt{clusterProfiler::GSEA} 批量分析 msigdbr 当前数据库中的全部可用基因集类别。
+    \item 当前全量运行覆盖 9 个差异分析设计和 26 类 MSigDB 基因集，共输出 234 套 GSEA 结果表、234 张 dotplot，以及 2057 张单通路 GSEA+核心基因表达热图。
+    \item 结果中的 \texttt{core\_enrichment} 已转换为 Symbol，便于直接追踪富集到的基因；单通路热图使用 SE 对象 TPM，并以临床信息 \texttt{Title} 作为样本名。
+    \item 该步骤用于从基因层面的 LRC/BULK 差异，上升到细胞周期、应激反应、代谢重编程、炎症信号和转录因子靶基因集等通路层面的休眠/复苏线索。
+  \end{itemize}
+\end{frame}
+
+\FrameTable
+  {06. GSEA全局Summary}
+  {results/ngs/GSE114012/tables/GSEA_summary/summary.csv}
+  {该表索引全部 GSEA 运行结果，统计每个分析设计、每类基因集的通路数量、NES方向和单通路图数量，是检查全量GSEA结果是否完整的总控表。}
+  {results/ngs/GSE114012/tables/GSEA_summary/summary.tex}
+
+\FrameFig
+  {06. GSEA Dotplot：ALL / Hallmark}
+  {results/ngs/GSE114012/plots/GSEA/ALL/hallmark/dotplot.pdf}
+  {ALL设计的Hallmark GSEA气泡图}
+  {
+    \item Hallmark 基因集压缩了经典癌症与应激通路，适合快速判断 LRC 休眠样状态是否富集细胞周期、代谢、炎症或缺氧相关程序；
+    \item 气泡大小表示核心富集比例，颜色反映显著性，正负NES方向帮助区分 LRC 相对 BULK 的激活或抑制趋势；
+    \item ALL设计提供跨细胞系总体趋势，可作为后续聚焦通路的第一层筛选。
+  }
+
+\FrameFig
+  {06. GSEA Dotplot：ALL / GO BP}
+  {results/ngs/GSE114012/plots/GSEA/ALL/GO_BP/dotplot.pdf}
+  {ALL设计的GO Biological Process GSEA气泡图}
+  {
+    \item GO BP 用更细粒度的生物过程描述 LRC/BULK 差异，有助于发现细胞周期重启、RNA加工、线粒体功能和应激反应等功能模块；
+    \item 这些模块可与课题假说中的休眠维持和苏醒触发过程对应，作为后续 GSVA、TF 调控和药物重定位的候选通路输入；
+    \item 通路名称在绘图中已精简前缀并自动换行，以减少长标签重叠。
+  }
+
+\FrameFig
+  {06. GSEA Dotplot：DLD1/HCT15/SW48 / Hallmark}
+  {results/ngs/GSE114012/plots/GSEA/DLD1_HCT15_SW48/hallmark/dotplot.pdf}
+  {三细胞系组合设计的Hallmark GSEA气泡图}
+  {
+    \item DLD1/HCT15/SW48组合比单细胞系更严格，能突出跨模型重复出现的休眠样通路特征；
+    \item 若细胞周期、MYC/E2F、炎症或缺氧相关通路在组合设计中仍保持显著，说明这些信号可能不是单一细胞系特异现象；
+    \item 该图可与02号交集基因一起，用于筛选更稳健的候选调控轴。
+  }
+
+\FrameFig
+  {06. GSEA Dotplot：DLD1/HCT15/SW48 / GO BP}
+  {results/ngs/GSE114012/plots/GSEA/DLD1_HCT15_SW48/GO_BP/dotplot.pdf}
+  {三细胞系组合设计的GO BP GSEA气泡图}
+  {
+    \item GO BP 结果用于解析组合模型中的共同生物过程变化，尤其关注增殖、染色体组织、RNA处理、代谢和应激相关过程；
+    \item 与单基因火山图相比，GSEA可以保留未达到单基因阈值但整体方向一致的弱信号；
+    \item 这些通路为后续“休眠细胞苏醒轨迹”和关键TF靶基因富集提供候选方向。
+  }
+
+\FrameFig
+  {06. 单通路GSEA：ALL / Hypoxia}
+  {results/ngs/GSE114012/plots/GSEA/ALL/hallmark/single_pathway/08_HALLMARK_HYPOXIA/gsea_plot.pdf}
+  {ALL设计中Hypoxia通路的GSEA曲线与核心基因表达热图}
+  {
+    \item 单通路图上半部分展示基因集沿排序基因列表的富集曲线，下半部分展示核心富集基因在各样本中的 TPM 行 Z-score；
+    \item 样本名使用临床 \texttt{Title}，便于直接分辨 LRC/BULK 和细胞系来源；
+    \item 缺氧与代谢重编程常与休眠生态位和复苏触发有关，可作为后续机制验证的候选方向。
+  }
+
+\FrameFig
+  {06. 单通路GSEA：ALL / TNFA-NFKB}
+  {results/ngs/GSE114012/plots/GSEA/ALL/hallmark/single_pathway/06_HALLMARK_TNFA_SIGNALING_VIA_NFKB/gsea_plot.pdf}
+  {ALL设计中TNFA/NFKB通路的GSEA曲线与核心基因表达热图}
+  {
+    \item TNF/NF-kappaB 轴与炎症反应、免疫微环境刺激和癌细胞状态切换密切相关；
+    \item 若该通路在 LRC/BULK 排序中呈现稳定富集，可与课题假说中的 macrophage TNF/IL1beta 到 NF-kappaB 苏醒轴对应；
+    \item 核心富集基因热图可帮助判断该通路信号是否在 LRC 样本中形成一致表达模式。
   }
 
 \end{document}
