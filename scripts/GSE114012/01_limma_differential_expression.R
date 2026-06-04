@@ -12,6 +12,7 @@ DATA_TYPE <- "ngs"  # 可选："microarray" 或 "ngs"
 SE_RDS_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_se_raw.rds"
 CLINICAL_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_clinical_edit.csv"
 FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
+REPORT_TABLE_FUNCTION_FILE <- "scripts/functions/report_table_functions.R"
 
 # 基因类型过滤
 # 可选："coding", "non_coding", "all"
@@ -29,13 +30,15 @@ OUTPUT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID, "tables")
 # 重跑时清理当前<analysis_name>/DEG目录内旧CSV，避免旧长文件名残留。
 CLEAN_DEG_OUTPUT_DIR <- TRUE
 
+# 输出结果中不再保留的辅助注释列。
+OUTPUT_DROP_COLUMNS <- c("Feature_ID", "Biotype", "Length")
+
 options(width = 200)
 
 SUMMARY_DISPLAY_COLUMNS <- c(
-  "Analysis_Order", "Analysis_Name", "Analysis_Column_Index",
-  "Analysis_Duplicate_Order", "Contrast", "Samples_Used",
-  "Gene_Biotype_Filter", "Genes_Selected_By_Biotype",
-  "Up", "Down", "Total_Significant_Genes"
+  "Analysis_Name", "Contrast", "Samples_Used",
+  "Up", "Down", "Total_Significant_Genes",
+  "P_Value_Column", "P_Value_Cutoff", "LogFC_Cutoff"
 )
 
 
@@ -51,6 +54,31 @@ if (DATA_TYPE == "ngs") {
 }
 
 source(FUNCTION_FILE)
+source(REPORT_TABLE_FUNCTION_FILE)
+
+
+# 1.1 输出表格整理函数 --------------------------------------------------------
+
+prepare_deg_output_table <- function(dat) {
+  # Feature_ID/Biotype/Length主要用于内部注释与过滤，最终DEG表不再保存。
+  keep_columns <- setdiff(colnames(dat), OUTPUT_DROP_COLUMNS)
+  dat <- dat[, keep_columns, drop = FALSE]
+
+  # Entrez编号作为ID展示，统一按字符写出，避免CSV中出现科学计数法。
+  if ("Entrez" %in% colnames(dat)) {
+    if (is.numeric(dat$Entrez)) {
+      dat$Entrez <- ifelse(
+        is.na(dat$Entrez),
+        "",
+        format(dat$Entrez, scientific = FALSE, trim = TRUE)
+      )
+    } else {
+      dat$Entrez <- as.character(dat$Entrez)
+    }
+  }
+
+  dat
+}
 
 
 # 2. 读取和检查数据 ------------------------------------------------------------
@@ -215,6 +243,9 @@ for (i in seq_len(nrow(analysis_designs))) {
 
   significant_results <- diff_results[significant_index, , drop = FALSE]
 
+  diff_results_output <- prepare_deg_output_table(diff_results)
+  significant_results_output <- prepare_deg_output_table(significant_results)
+
   de_summary <- data.frame(
     Up = sum(up_index),
     Down = sum(down_index),
@@ -232,7 +263,7 @@ for (i in seq_len(nrow(analysis_designs))) {
   if (CLEAN_DEG_OUTPUT_DIR) {
     unlink(list.files(
       analysis_output_dir,
-      pattern = "[.]csv$",
+      pattern = "[.](csv|tex)$",
       full.names = TRUE
     ))
   }
@@ -246,19 +277,9 @@ for (i in seq_len(nrow(analysis_designs))) {
   summary_table <- data.frame(
     Dataset = DATASET_ID,
     Data_Type = DATA_TYPE,
-    Analysis_Order = analysis_order,
-    Analysis_Base_Name = analysis_base_name,
-    Analysis_Duplicate_Order = analysis_duplicate_order,
     Analysis_Name = analysis_name,
-    Analysis_Column = analysis_column,
-    Analysis_Column_Index = analysis_column_index,
     Contrast = contrast_name,
-    Control_Group = control_group,
-    Experiment_Group = experiment_group,
     Samples_Used = nrow(sample_info),
-    Gene_Biotype_Filter = gene_filter$filter,
-    Gene_Biotype_Column = gene_filter$biotype_column,
-    Genes_Selected_By_Biotype = gene_filter$selected_gene_count,
     Up = de_summary$Up,
     Down = de_summary$Down,
     Total_Significant_Genes = de_summary$Total_Significant_Genes,
@@ -266,16 +287,12 @@ for (i in seq_len(nrow(analysis_designs))) {
     P_Value_Cutoff = P_VALUE_CUTOFF,
     LogFC_Cutoff = LOGFC_CUTOFF,
     Microarray_Log2_Transformed = analysis_data$log2_transformed,
-    Microarray_Normalized_Between_Arrays = analysis_data$normalized_between_arrays,
-    Microarray_Final_Median_Spread = analysis_data$median_spread,
-    Microarray_Final_IQR_Spread = analysis_data$iqr_spread,
-    NGS_Filtered_Genes = analysis_data$filtered_genes,
     stringsAsFactors = FALSE
   )
 
-  write.csv(diff_results, all_results_file, row.names = FALSE)
-  write.csv(significant_results, significant_results_file, row.names = FALSE)
-  write.csv(summary_table, summary_file, row.names = FALSE)
+  write_csv_with_latex_preview(diff_results_output, all_results_file)
+  write_csv_with_latex_preview(significant_results_output, significant_results_file)
+  write_csv_with_latex_preview(summary_table, summary_file)
 
   stopifnot(file.exists(all_results_file))
   stopifnot(file.exists(significant_results_file))
@@ -294,6 +311,7 @@ for (i in seq_len(nrow(analysis_designs))) {
 
   stopifnot(nrow(saved_summary) == 1)
   stopifnot(nrow(saved_significant_results) == summary_table$Total_Significant_Genes)
+  stopifnot(!any(OUTPUT_DROP_COLUMNS %in% colnames(saved_significant_results)))
   stopifnot(saved_summary$Up == summary_table$Up)
   stopifnot(saved_summary$Down == summary_table$Down)
   stopifnot(saved_summary$Total_Significant_Genes == summary_table$Total_Significant_Genes)

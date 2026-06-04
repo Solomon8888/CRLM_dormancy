@@ -1,3 +1,0 @@
-"Intersection_Name","Selected_Analyses","Number_Of_Analyses","Total_Intersected_Genes","Common_Up","Common_Down","Mixed_Direction","Gene_List_File","DEG_Analysis_Name","Used_In_Intersection","DEG_Output_Rows","DEG_Output_Up","DEG_Output_Down","DEG_Output_No_change","DEG_Source_File","DEG_Output_File"
-"SW948_RKO","SW948;RKO",2,83,68,1,14,"results/ngs/GSE114012/intersect/SW948_RKO/gene_list.csv","SW948",TRUE,83,78,5,0,"results/ngs/GSE114012/tables/SW948/DEG/all_genes.csv","results/ngs/GSE114012/intersect/SW948_RKO/SW948/deg_results.csv"
-"SW948_RKO","SW948;RKO",2,83,68,1,14,"results/ngs/GSE114012/intersect/SW948_RKO/gene_list.csv","RKO",TRUE,83,72,11,0,"results/ngs/GSE114012/tables/RKO/DEG/all_genes.csv","results/ngs/GSE114012/intersect/SW948_RKO/RKO/deg_results.csv"

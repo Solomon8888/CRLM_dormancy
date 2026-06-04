@@ -11,6 +11,7 @@
 
 DATASET_ID <- "GSE114012"
 DATA_TYPE <- "ngs"
+REPORT_TABLE_FUNCTION_FILE <- "scripts/functions/report_table_functions.R"
 
 TABLE_ROOT <- file.path("results", DATA_TYPE, DATASET_ID, "tables")
 DEG_DIR_NAME <- "DEG"
@@ -20,13 +21,17 @@ RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
 INTERSECT_ROOT <- file.path(RESULT_ROOT, INTERSECT_DIR_NAME)
 
 # 交集使用的基因ID列和上下调判断列。
-GENE_ID_COLUMN <- "Feature_ID"
+# 01号脚本的最终CSV不再保存Feature_ID，因此这里使用GeneID。
+GENE_ID_COLUMN <- "GeneID"
 LOGFC_COLUMN <- "logFC"
 
 # 交集基因列表保留的注释列；不包含logFC、P值等差异分析统计量。
 GENE_ANNOTATION_COLUMNS <- c(
-  "Feature_ID", "GeneID", "Symbol", "Ensembl", "Entrez", "Biotype", "Length"
+  "GeneID", "Symbol", "Ensembl", "Entrez"
 )
+
+# 最终输出表中不保存的辅助注释列。
+OUTPUT_DROP_COLUMNS <- c("Feature_ID", "Biotype", "Length")
 
 # 多套交集方案。
 # 新增方案时，只需要按下面格式增加一行；顺序会影响交集基因的输出排序。
@@ -59,6 +64,8 @@ options(width = 200)
 
 
 # 1. 常用函数 -----------------------------------------------------------------
+
+source(REPORT_TABLE_FUNCTION_FILE)
 
 sanitize_file_name <- function(x) {
   # 文件夹名保留字母、数字、下划线、点和短横线，避免不同系统下路径出错。
@@ -179,11 +186,27 @@ read_deg_table <- function(gene_file) {
     drop = FALSE
   ]
 
-  if (any(duplicated(dat[[GENE_ID_COLUMN]]))) {
-    dat <- dat[!duplicated(dat[[GENE_ID_COLUMN]]), , drop = FALSE]
+  dat$Direction <- get_direction(dat[[LOGFC_COLUMN]])
+  dat
+}
+
+prepare_output_table <- function(dat) {
+  keep_columns <- setdiff(colnames(dat), OUTPUT_DROP_COLUMNS)
+  dat <- dat[, keep_columns, drop = FALSE]
+
+  # Entrez是基因ID，不作为连续数值展示，避免写出为9.62e+03一类科学计数法。
+  if ("Entrez" %in% colnames(dat)) {
+    if (is.numeric(dat$Entrez)) {
+      dat$Entrez <- ifelse(
+        is.na(dat$Entrez),
+        "",
+        format(dat$Entrez, scientific = FALSE, trim = TRUE)
+      )
+    } else {
+      dat$Entrez <- as.character(dat$Entrez)
+    }
   }
 
-  dat$Direction <- get_direction(dat[[LOGFC_COLUMN]])
   dat
 }
 
@@ -320,8 +343,6 @@ print(input_summary, row.names = FALSE)
 scheme_summary_list <- vector("list", length(active_schemes))
 names(scheme_summary_list) <- names(active_schemes)
 
-output_summary_list <- list()
-
 cat("\nRunning intersection schemes...\n")
 progress_bar <- utils::txtProgressBar(
   min = 0,
@@ -371,13 +392,14 @@ for (scheme_index in seq_along(active_schemes)) {
     selected_analyses = selected_analyses,
     significant_tables = significant_tables
   )
+  gene_annotation_table <- prepare_output_table(gene_annotation_table)
 
   gene_list_file <- file.path(
     intersection_dir,
     "gene_list.csv"
   )
 
-  write.csv(gene_annotation_table, gene_list_file, row.names = FALSE)
+  write_csv_with_latex_preview(gene_annotation_table, gene_list_file)
 
   saved_gene_annotation_table <- read.csv(
     gene_list_file,
@@ -385,17 +407,15 @@ for (scheme_index in seq_along(active_schemes)) {
     check.names = FALSE
   )
   stopifnot(nrow(saved_gene_annotation_table) == length(intersect_gene_ids))
+  stopifnot(!any(OUTPUT_DROP_COLUMNS %in% colnames(saved_gene_annotation_table)))
 
   scheme_summary <- data.frame(
-    Intersection_Name = intersection_name,
     Selected_Analyses = paste(selected_analyses, collapse = ";"),
     DEG_Result_Analyses = paste(deg_output_analyses, collapse = ";"),
-    Number_Of_Analyses = length(selected_analyses),
     Total_Intersected_Genes = length(intersect_gene_ids),
     Common_Up = sum(common_up),
     Common_Down = sum(common_down),
     Mixed_Direction = length(intersect_gene_ids) - sum(common_up) - sum(common_down),
-    Gene_List_File = gene_list_file,
     stringsAsFactors = FALSE
   )
 
@@ -403,10 +423,6 @@ for (scheme_index in seq_along(active_schemes)) {
 
   for (analysis_name in deg_output_analyses) {
     dat <- all_gene_tables[[analysis_name]]
-    source_file <- selected_file_info$All_Genes_File[
-      selected_file_info$Analysis_Name == analysis_name
-    ]
-
     match_index <- match(intersect_gene_ids, dat[[GENE_ID_COLUMN]])
     stopifnot(!any(is.na(match_index)))
 
@@ -415,17 +431,7 @@ for (scheme_index in seq_along(active_schemes)) {
       all_gene_columns[[analysis_name]],
       drop = FALSE
     ]
-
-    output_metadata <- data.frame(
-      Intersection_Name = rep(intersection_name, length(intersect_gene_ids)),
-      Intersected_Analyses = rep(paste(selected_analyses, collapse = ";"), length(intersect_gene_ids)),
-      DEG_Analysis_Name = rep(analysis_name, length(intersect_gene_ids)),
-      Used_In_Intersection = rep(analysis_name %in% selected_analyses, length(intersect_gene_ids)),
-      DEG_Direction = dat$Direction[match_index],
-      stringsAsFactors = FALSE
-    )
-
-    intersect_deg <- cbind(output_metadata, intersect_deg)
+    intersect_deg <- prepare_output_table(intersect_deg)
 
     analysis_output_dir <- file.path(intersection_dir, sanitize_file_name(analysis_name))
     dir.create(analysis_output_dir, recursive = TRUE, showWarnings = FALSE)
@@ -435,7 +441,7 @@ for (scheme_index in seq_along(active_schemes)) {
       "deg_results.csv"
     )
 
-    write.csv(intersect_deg, deg_output_file, row.names = FALSE)
+    write_csv_with_latex_preview(intersect_deg, deg_output_file)
 
     saved_intersect_deg <- read.csv(
       deg_output_file,
@@ -443,51 +449,24 @@ for (scheme_index in seq_along(active_schemes)) {
       check.names = FALSE
     )
     stopifnot(nrow(saved_intersect_deg) == length(intersect_gene_ids))
+    stopifnot(!any(OUTPUT_DROP_COLUMNS %in% colnames(saved_intersect_deg)))
 
-    output_summary_list[[length(output_summary_list) + 1]] <- data.frame(
-      scheme_summary[
-        ,
-        c(
-          "Intersection_Name", "Selected_Analyses", "Number_Of_Analyses",
-          "Total_Intersected_Genes", "Common_Up", "Common_Down",
-          "Mixed_Direction", "Gene_List_File"
-        ),
-        drop = FALSE
-      ],
-      DEG_Analysis_Name = analysis_name,
-      Used_In_Intersection = analysis_name %in% selected_analyses,
-      DEG_Output_Rows = nrow(intersect_deg),
-      DEG_Output_Up = sum(dat$Direction[match_index] == "Up"),
-      DEG_Output_Down = sum(dat$Direction[match_index] == "Down"),
-      DEG_Output_No_change = sum(dat$Direction[match_index] == "No_change"),
-      DEG_Source_File = source_file,
-      DEG_Output_File = deg_output_file,
-      stringsAsFactors = FALSE
-    )
   }
-
-  scheme_output_summary <- do.call(rbind, output_summary_list)
-  scheme_output_summary <- scheme_output_summary[
-    scheme_output_summary$Intersection_Name == intersection_name,
-    ,
-    drop = FALSE
-  ]
 
   scheme_summary_file <- file.path(
     intersection_dir,
     "summary.csv"
   )
 
-  write.csv(scheme_output_summary, scheme_summary_file, row.names = FALSE)
+  write_csv_with_latex_preview(scheme_summary, scheme_summary_file)
 
   saved_scheme_summary <- read.csv(
     scheme_summary_file,
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
-  stopifnot(nrow(saved_scheme_summary) == length(deg_output_analyses))
-  stopifnot(all(saved_scheme_summary$Total_Intersected_Genes == length(intersect_gene_ids)))
-  stopifnot(all(saved_scheme_summary$DEG_Output_Rows == length(intersect_gene_ids)))
+  stopifnot(nrow(saved_scheme_summary) == 1)
+  stopifnot(saved_scheme_summary$Total_Intersected_Genes == length(intersect_gene_ids))
 
   utils::setTxtProgressBar(progress_bar, scheme_index)
 }
@@ -498,32 +477,18 @@ close(progress_bar)
 # 6. 终端快速汇总 --------------------------------------------------------------
 
 scheme_summary_table <- do.call(rbind, scheme_summary_list)
-output_summary_table <- do.call(rbind, output_summary_list)
+rownames(scheme_summary_table) <- names(scheme_summary_list)
 
 cat("\nIntersection scheme summary:\n")
 print(
   scheme_summary_table[
     ,
     c(
-      "Intersection_Name", "Number_Of_Analyses",
-      "Total_Intersected_Genes", "Common_Up", "Common_Down",
-      "Mixed_Direction", "Selected_Analyses"
+      "Total_Intersected_Genes", "Common_Up", "Common_Down", "Mixed_Direction",
+      "Selected_Analyses", "DEG_Result_Analyses"
     )
   ],
-  row.names = FALSE
-)
-
-cat("\nDEG output summary by analysis:\n")
-print(
-  output_summary_table[
-    ,
-    c(
-      "Intersection_Name", "DEG_Analysis_Name", "Used_In_Intersection",
-      "DEG_Output_Rows", "DEG_Output_Up", "DEG_Output_Down",
-      "DEG_Output_No_change"
-    )
-  ],
-  row.names = FALSE
+  row.names = TRUE
 )
 
 cat("\nIntersected gene lists and DEG tables were saved in:\n")
