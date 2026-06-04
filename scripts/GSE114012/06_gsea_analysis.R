@@ -19,7 +19,12 @@ CLINICAL_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_clinical_edit.csv"
 FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
 TABLE_ROOT <- file.path(RESULT_ROOT, "tables")
-PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "GSEA")
+
+# 默认输出到results目录。测试脚本性能时可临时设置环境变量GSEA_OUTPUT_ROOT，
+# 将GSEA表格和图片输出到temporary目录，避免覆盖正式全量结果。
+OUTPUT_ROOT <- Sys.getenv("GSEA_OUTPUT_ROOT", unset = RESULT_ROOT)
+TABLE_OUTPUT_ROOT <- file.path(OUTPUT_ROOT, "tables")
+PLOT_ROOT <- file.path(OUTPUT_ROOT, "plots", "GSEA")
 
 # 公共函数脚本：差异分析文件定位、绘图保存、统一绘图风格、文本表格转义。
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
@@ -101,7 +106,7 @@ REPLACE_UNDERSCORE_WITH_SPACE_IN_PLOT <- TRUE
 
 GSEAVIS_DOTPLOT_PARAMS <- list(
   # topn：每个富集方向展示的Top通路数量；NULL则展示通过阈值的全部通路。
-  topn = 10,
+  topn = 20,
 
   # pval：按原始P值过滤；NULL表示不用原始P值过滤，只按pajust等条件绘图。
   pval = NULL,
@@ -149,11 +154,12 @@ DOTPLOT_LABEL_MAX_WIDTH <- 6.2
 DOTPLOT_LEGEND_WIDTH <- 1.4
 DOTPLOT_VERTICAL_PADDING <- 0.45
 
-# 单通路GSEA图配置。默认绘制每个分析设计、每个基因集中的Top10显著通路。
+# 单通路GSEA图配置。默认绘制每个分析设计、每个基因集中的Top20显著通路。
+# 这里与上方GseaVis气泡图topn保持一致，便于一张dotplot对应一批单通路细节图。
 DRAW_SINGLE_PATHWAY_GSEA <- TRUE
-SINGLE_PATHWAY_TOP_N <- 10
+SINGLE_PATHWAY_TOP_N <- GSEAVIS_DOTPLOT_PARAMS$topn
 
-# 若填写关键词，则不再按Top10，而是在当前基因集的显著GSEA结果中按ID/Description搜索。
+# 若填写关键词，则不再按Top20，而是在当前基因集的显著GSEA结果中按ID/Description搜索。
 # 例如：SINGLE_PATHWAY_KEYWORDS <- c("TGF", "IL6", "WNT")
 SINGLE_PATHWAY_KEYWORDS <- character(0)
 SINGLE_PATHWAY_MAX_KEYWORD_TERMS <- 20
@@ -314,19 +320,21 @@ source(REPORT_TABLE_FUNCTION_FILE)
 CLEAN_GSEA_OUTPUT_DIR <- TRUE
 READABLE_GENE_SYMBOLS <- TRUE
 USE_QS2_CACHE <- TRUE
-REFRESH_QS2_CACHE <- FALSE
+REFRESH_QS2_CACHE <- Sys.getenv("GSEA_REFRESH_QS2_CACHE", unset = "0") == "1"
 QS2_CACHE_DIR <- file.path("temporary", DATA_TYPE, DATASET_ID, "GSEA_qs2_cache")
 MSIGDB_REFERENCE_DIR <- file.path("data", "reference", "msigdb")
 MSIGDB_REFERENCE_MAX_AGE_DAYS <- 7
 QS2_NTHREADS <- max(1L, parallel::detectCores(logical = TRUE))
-GSEA_PARALLEL_WORKERS <- QS2_NTHREADS
+GSEA_TASK_WORKERS <- QS2_NTHREADS
+GSEA_INNER_NPROC <- 1L
+SINGLE_PATHWAY_PLOT_WORKERS <- 1L
 
 qs2::qopt("nthreads", QS2_NTHREADS)
-options(mc.cores = GSEA_PARALLEL_WORKERS)
+options(mc.cores = GSEA_TASK_WORKERS)
 
 if (requireNamespace("BiocParallel", quietly = TRUE)) {
   BiocParallel::register(
-    BiocParallel::MulticoreParam(workers = GSEA_PARALLEL_WORKERS),
+    BiocParallel::MulticoreParam(workers = GSEA_TASK_WORKERS),
     default = TRUE
   )
 }
@@ -532,7 +540,7 @@ clean_previous_gsea_outputs <- function(selected_analyses) {
     return(invisible(FALSE))
   }
 
-  table_dirs <- file.path(TABLE_ROOT, selected_analyses, "GSEA")
+  table_dirs <- file.path(TABLE_OUTPUT_ROOT, selected_analyses, "GSEA")
   plot_dirs <- file.path(PLOT_ROOT, sanitize_file_name(selected_analyses))
 
   unlink(table_dirs, recursive = TRUE, force = TRUE)
@@ -892,11 +900,12 @@ prepare_gene_list <- function(deg_table, gene_id_type, rank_metric_column) {
 
 run_clusterprofiler_gsea <- function(gene_list, term2gene, term2name, params) {
   # 只把官方GSEA支持的参数传入clusterProfiler::GSEA，保持结果字段为官方格式。
-  # nproc经由...传递给fgsea/multilevel底层函数，尽量调用本机全部CPU核心。
+  # nproc经由...传递给fgsea/multilevel底层函数。
+  # 当前脚本优先做任务级并行；若任务数少，再自动把更多核心分配给单个GSEA。
   set.seed(GSEA_RANDOM_SEED)
   params_for_run <- params
   if (!"nproc" %in% names(params_for_run)) {
-    params_for_run$nproc <- GSEA_PARALLEL_WORKERS
+    params_for_run$nproc <- GSEA_INNER_NPROC
   }
 
   gsea_call <- function() {
@@ -1692,12 +1701,13 @@ save_single_pathway_gsea_plots <- function(
 
   plot_index <- seq_along(selected_term_ids)
   if (.Platform$OS.type != "windows" &&
-      GSEA_PARALLEL_WORKERS > 1 &&
+      SINGLE_PATHWAY_PLOT_WORKERS > 1 &&
       length(plot_index) > 1) {
     saved_flags <- parallel::mclapply(
       plot_index,
       save_one_single_pathway_plot,
-      mc.cores = min(GSEA_PARALLEL_WORKERS, length(plot_index))
+      mc.cores = min(SINGLE_PATHWAY_PLOT_WORKERS, length(plot_index)),
+      mc.preschedule = FALSE
     )
   } else {
     saved_flags <- lapply(plot_index, save_one_single_pathway_plot)
@@ -1772,7 +1782,8 @@ cat(
   sep = ""
 )
 cat("qs2 threads: ", QS2_NTHREADS, "\n", sep = "")
-cat("GSEA nproc:  ", GSEA_PARALLEL_WORKERS, "\n", sep = "")
+cat("Output root:  ", OUTPUT_ROOT, "\n", sep = "")
+cat("Refresh qs2 cache: ", REFRESH_QS2_CACHE, "\n", sep = "")
 cat("Previous GSEA outputs were cleaned before this run.\n")
 
 cat("\nLoading MSigDB gene sets...\n")
@@ -1809,20 +1820,8 @@ print(geneset_summary, row.names = FALSE)
 
 # 4. 批量运行GSEA并绘图 --------------------------------------------------------
 
-summary_records <- list()
-record_index <- 0L
-
-cat("\nRunning batch GSEA analyses...\n")
-total_tasks <- length(selected_analyses) * length(geneset_cache)
-progress_bar <- utils::txtProgressBar(
-  min = 0,
-  max = total_tasks,
-  style = 3
-)
-
-task_index <- 0L
-
-for (analysis_name in selected_analyses) {
+cat("\nPreparing analysis-level inputs...\n")
+analysis_cache <- lapply(selected_analyses, function(analysis_name) {
   deg_index <- match(analysis_name, file_info$Analysis_Name)
   deg_file <- file_info$All_Genes_File[deg_index]
   deg_result <- read_deg_result(file_info, analysis_name)
@@ -1843,109 +1842,183 @@ for (analysis_name in selected_analyses) {
     NULL
   }
 
-  table_parent_dir <- file.path(TABLE_ROOT, analysis_name, "GSEA")
-  plot_parent_dir <- file.path(PLOT_ROOT, sanitize_file_name(analysis_name))
+  list(
+    deg_file = deg_file,
+    gene_list = gene_list,
+    expression_data = expression_data
+  )
+})
+names(analysis_cache) <- selected_analyses
 
-  if (CLEAN_GSEA_OUTPUT_DIR) {
-    unlink(table_parent_dir, recursive = TRUE)
-    unlink(plot_parent_dir, recursive = TRUE)
-  }
+task_table <- expand.grid(
+  Analysis_Name = selected_analyses,
+  GeneSet_Name = names(geneset_cache),
+  KEEP.OUT.ATTRS = FALSE,
+  stringsAsFactors = FALSE
+)
+total_tasks <- nrow(task_table)
 
-  dir.create(table_parent_dir, recursive = TRUE, showWarnings = FALSE)
-  dir.create(plot_parent_dir, recursive = TRUE, showWarnings = FALSE)
-
-  for (geneset_name in names(geneset_cache)) {
-    cache <- geneset_cache[[geneset_name]]
-    output_name <- cache$config$output_name
-    output_dir_name <- sanitize_file_name(output_name)
-    table_output_dir <- file.path(table_parent_dir, output_dir_name)
-    plot_output_dir <- file.path(plot_parent_dir, output_dir_name)
-    dir.create(table_output_dir, recursive = TRUE, showWarnings = FALSE)
-    dir.create(plot_output_dir, recursive = TRUE, showWarnings = FALSE)
-
-    gsea_run <- load_or_run_gsea(
-      analysis_name = analysis_name,
-      deg_file = deg_file,
-      geneset_name = geneset_name,
-      config = cache$config,
-      gene_list = gene_list,
-      term2gene = cache$term2gene,
-      term2name = cache$term2name
-    )
-
-    gsea_result <- gsea_run$result
-    csv_file <- file.path(table_output_dir, "gsea_result.csv")
-    result_table <- write_gsea_result_tables(gsea_result, csv_file)
-
-    if (is_gsea_result_object(gsea_result)) {
-      plot_gsea_result <- prepare_gsea_result_for_plot(gsea_result)
-      plot_result_table <- as.data.frame(plot_gsea_result)
-      dotplot_result <- make_gsea_dotplot(
-        gsea_result = plot_gsea_result,
-        result_table = plot_result_table,
-        analysis_name = analysis_name,
-        geneset_name = geneset_name
-      )
-    } else {
-      plot_result_table <- make_empty_gsea_result_table()
-      dotplot_result <- list(
-        plot = make_empty_gsea_plot(),
-        shown_terms = 0L,
-        plot_labels = character(0)
-      )
-    }
-
-    plot_size <- get_gsea_dotplot_size(
-      shown_terms = dotplot_result$shown_terms,
-      plot_labels = dotplot_result$plot_labels
-    )
-    pdf_file <- file.path(plot_output_dir, "dotplot.pdf")
-    plot_files <- with_gsea_warnings_suppressed(
-      save_ggplot_pdf_png(
-        plot = dotplot_result$plot,
-        pdf_file = pdf_file,
-        width = plot_size$width,
-        height = plot_size$height
-      )
-    )
-    single_pathway_count <- if (DRAW_SINGLE_PATHWAY_GSEA &&
-                                is_gsea_result_object(gsea_result)) {
-      with_gsea_warnings_suppressed(
-        save_single_pathway_gsea_plots(
-          gsea_result = gsea_result,
-          result_table = result_table,
-          analysis_name = analysis_name,
-          geneset_name = geneset_name,
-          plot_output_dir = plot_output_dir,
-          expression_data = expression_data
-        )
-      )
-    } else {
-      0L
-    }
-
-    record_index <- record_index + 1L
-    summary_records[[record_index]] <- data.frame(
-      Analysis_Name = analysis_name,
-      GeneSet_Name = geneset_name,
-      Source = gsea_run$source,
-      Ranked_Genes = length(gene_list),
-      GSEA_Terms = nrow(result_table),
-      Positive_NES = count_nes_direction(result_table, "positive"),
-      Negative_NES = count_nes_direction(result_table, "negative"),
-      Single_Pathway_Plots = single_pathway_count,
-      CSV_File = csv_file,
-      PDF_File = plot_files$pdf_file,
-      PNG_File = plot_files$png_file,
-      stringsAsFactors = FALSE
-    )
-
-    task_index <- task_index + 1L
-    utils::setTxtProgressBar(progress_bar, task_index)
-  }
+# 任务级并行策略：
+# 1. 任务很多时，外层同时运行多个analysis x geneset任务，使CPU长期保持高负荷；
+# 2. 任务很少时，单个GSEA任务自动获得更多nproc核心；
+# 3. 外层并行开启时，单通路图在任务内部顺序保存，避免嵌套并行导致CPU过度抢占。
+GSEA_TASK_WORKERS <- if (.Platform$OS.type != "windows") {
+  min(QS2_NTHREADS, total_tasks)
+} else {
+  1L
+}
+GSEA_INNER_NPROC <- if (GSEA_TASK_WORKERS > 0) {
+  max(1L, floor(QS2_NTHREADS / GSEA_TASK_WORKERS))
+} else {
+  QS2_NTHREADS
+}
+SINGLE_PATHWAY_PLOT_WORKERS <- if (GSEA_TASK_WORKERS > 1) {
+  1L
+} else {
+  QS2_NTHREADS
 }
 
-close(progress_bar)
+options(mc.cores = GSEA_TASK_WORKERS)
+if (requireNamespace("BiocParallel", quietly = TRUE)) {
+  BiocParallel::register(
+    BiocParallel::MulticoreParam(workers = GSEA_INNER_NPROC),
+    default = TRUE
+  )
+}
+
+cat("\nParallel execution strategy:\n")
+cat("Total tasks:              ", total_tasks, "\n", sep = "")
+cat("Task-level workers:       ", GSEA_TASK_WORKERS, "\n", sep = "")
+cat("GSEA nproc per task:      ", GSEA_INNER_NPROC, "\n", sep = "")
+cat("Single-pathway workers:   ", SINGLE_PATHWAY_PLOT_WORKERS, "\n", sep = "")
+
+run_gsea_task <- function(task_id) {
+  analysis_name <- task_table$Analysis_Name[task_id]
+  geneset_name <- task_table$GeneSet_Name[task_id]
+  analysis_input <- analysis_cache[[analysis_name]]
+  cache <- geneset_cache[[geneset_name]]
+  output_name <- cache$config$output_name
+  output_dir_name <- sanitize_file_name(output_name)
+
+  table_output_dir <- file.path(
+    TABLE_OUTPUT_ROOT,
+    analysis_name,
+    "GSEA",
+    output_dir_name
+  )
+  plot_output_dir <- file.path(
+    PLOT_ROOT,
+    sanitize_file_name(analysis_name),
+    output_dir_name
+  )
+  dir.create(table_output_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(plot_output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  gsea_run <- load_or_run_gsea(
+    analysis_name = analysis_name,
+    deg_file = analysis_input$deg_file,
+    geneset_name = geneset_name,
+    config = cache$config,
+    gene_list = analysis_input$gene_list,
+    term2gene = cache$term2gene,
+    term2name = cache$term2name
+  )
+
+  gsea_result <- gsea_run$result
+  csv_file <- file.path(table_output_dir, "gsea_result.csv")
+  result_table <- write_gsea_result_tables(gsea_result, csv_file)
+
+  if (is_gsea_result_object(gsea_result)) {
+    plot_gsea_result <- prepare_gsea_result_for_plot(gsea_result)
+    plot_result_table <- as.data.frame(plot_gsea_result)
+    dotplot_result <- make_gsea_dotplot(
+      gsea_result = plot_gsea_result,
+      result_table = plot_result_table,
+      analysis_name = analysis_name,
+      geneset_name = geneset_name
+    )
+  } else {
+    plot_result_table <- make_empty_gsea_result_table()
+    dotplot_result <- list(
+      plot = make_empty_gsea_plot(),
+      shown_terms = 0L,
+      plot_labels = character(0)
+    )
+  }
+
+  plot_size <- get_gsea_dotplot_size(
+    shown_terms = dotplot_result$shown_terms,
+    plot_labels = dotplot_result$plot_labels
+  )
+  pdf_file <- file.path(plot_output_dir, "dotplot.pdf")
+  plot_files <- with_gsea_warnings_suppressed(
+    save_ggplot_pdf_png(
+      plot = dotplot_result$plot,
+      pdf_file = pdf_file,
+      width = plot_size$width,
+      height = plot_size$height
+    )
+  )
+
+  single_pathway_count <- if (DRAW_SINGLE_PATHWAY_GSEA &&
+                              is_gsea_result_object(gsea_result)) {
+    with_gsea_warnings_suppressed(
+      save_single_pathway_gsea_plots(
+        gsea_result = gsea_result,
+        result_table = result_table,
+        analysis_name = analysis_name,
+        geneset_name = geneset_name,
+        plot_output_dir = plot_output_dir,
+        expression_data = analysis_input$expression_data
+      )
+    )
+  } else {
+    0L
+  }
+
+  data.frame(
+    Analysis_Name = analysis_name,
+    GeneSet_Name = geneset_name,
+    Source = gsea_run$source,
+    Ranked_Genes = length(analysis_input$gene_list),
+    GSEA_Terms = nrow(result_table),
+    Positive_NES = count_nes_direction(result_table, "positive"),
+    Negative_NES = count_nes_direction(result_table, "negative"),
+    Single_Pathway_Plots = single_pathway_count,
+    CSV_File = csv_file,
+    PDF_File = plot_files$pdf_file,
+    PNG_File = plot_files$png_file,
+    stringsAsFactors = FALSE
+  )
+}
+
+cat("\nRunning batch GSEA analyses...\n")
+task_ids <- seq_len(total_tasks)
+
+if (GSEA_TASK_WORKERS > 1) {
+  summary_records <- parallel::mclapply(
+    task_ids,
+    run_gsea_task,
+    mc.cores = GSEA_TASK_WORKERS,
+    mc.preschedule = FALSE
+  )
+} else {
+  progress_bar <- utils::txtProgressBar(min = 0, max = total_tasks, style = 3)
+  summary_records <- vector("list", total_tasks)
+  for (task_id in task_ids) {
+    summary_records[[task_id]] <- run_gsea_task(task_id)
+    utils::setTxtProgressBar(progress_bar, task_id)
+  }
+  close(progress_bar)
+}
+
+task_errors <- vapply(summary_records, inherits, logical(1), "try-error")
+if (any(task_errors)) {
+  stop(
+    "Some GSEA tasks failed: ",
+    paste(which(task_errors), collapse = ", ")
+  )
+}
 
 
 # 5. 终端快速汇总 --------------------------------------------------------------
@@ -1953,7 +2026,7 @@ close(progress_bar)
 summary_table <- do.call(rbind, summary_records)
 rownames(summary_table) <- NULL
 
-summary_output_dir <- file.path(RESULT_ROOT, "tables", "GSEA_summary")
+summary_output_dir <- file.path(OUTPUT_ROOT, "tables", "GSEA_summary")
 dir.create(summary_output_dir, recursive = TRUE, showWarnings = FALSE)
 write_csv_with_report_previews(
   summary_table,
@@ -1975,7 +2048,7 @@ print(
 )
 
 cat("\nOutput summary:\n")
-cat("GSEA table directory: ", file.path(TABLE_ROOT, "<analysis_name>", "GSEA"), "\n", sep = "")
+cat("GSEA table directory: ", file.path(TABLE_OUTPUT_ROOT, "<analysis_name>", "GSEA"), "\n", sep = "")
 cat("GSEA plot directory:  ", file.path(PLOT_ROOT, "<analysis_name>"), "\n", sep = "")
 cat("GSEA summary table:   ", file.path(summary_output_dir, "summary.csv"), "\n", sep = "")
 cat("CSV/MD/TEX result sets: ", nrow(summary_table), " each\n", sep = "")
