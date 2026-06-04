@@ -45,8 +45,8 @@ results/ngs/GSE114012/
   intersect/                             # 02号脚本输出的交集结果
   plots/                                 # 00/03/04号脚本输出的PDF和PNG图片
 
-results/reports/beamer/
-  beamer_report.pdf                      # 汇报PDF
+results/reports/
+  beamer_report.pdf                      # 最终汇报PDF
 
 temporary/
   beamer/                                # Beamer临时编译目录
@@ -203,8 +203,8 @@ Markdown 表格预览示例：
 当前汇报文件已经整合 00 到 04 的主要结果。
 
 - TeX 源文件：`scripts/beamer/beamer_report.tex`
-- 最终 PDF：`results/reports/beamer/beamer_report.pdf`
-- 中间编译目录：`temporary/beamer/`
+- 最终 PDF：`results/reports/beamer_report.pdf`
+- 中间编译目录：`temporary/LatexBuild/`
 
 ## 复现命令
 
@@ -221,16 +221,16 @@ Rscript scripts/GSE114012/04_multiple_volcano_plot.R
 Beamer 编译命令：
 
 ```bash
-mkdir -p temporary/beamer results/reports/beamer
+mkdir -p temporary/LatexBuild results/reports
 latexmk -xelatex \
   -synctex=1 \
   -interaction=nonstopmode \
   -file-line-error \
-  -outdir=temporary/beamer \
-  -auxdir=temporary/beamer \
+  -outdir=temporary/LatexBuild \
+  -auxdir=temporary/LatexBuild \
   -shell-escape \
   scripts/beamer/beamer_report.tex
-cp temporary/beamer/beamer_report.pdf results/reports/beamer/beamer_report.pdf
+cp temporary/LatexBuild/beamer_report.pdf results/reports/beamer_report.pdf
 ```
 
 ## 后续分析方向
