@@ -399,7 +399,7 @@ for (scheme_index in seq_along(active_schemes)) {
     "gene_list.csv"
   )
 
-  write_csv_with_latex_preview(gene_annotation_table, gene_list_file)
+  write_csv_with_report_previews(gene_annotation_table, gene_list_file)
 
   saved_gene_annotation_table <- read.csv(
     gene_list_file,
@@ -441,7 +441,7 @@ for (scheme_index in seq_along(active_schemes)) {
       "deg_results.csv"
     )
 
-    write_csv_with_latex_preview(intersect_deg, deg_output_file)
+    write_csv_with_report_previews(intersect_deg, deg_output_file)
 
     saved_intersect_deg <- read.csv(
       deg_output_file,
@@ -458,7 +458,7 @@ for (scheme_index in seq_along(active_schemes)) {
     "summary.csv"
   )
 
-  write_csv_with_latex_preview(scheme_summary, scheme_summary_file)
+  write_csv_with_report_previews(scheme_summary, scheme_summary_file)
 
   saved_scheme_summary <- read.csv(
     scheme_summary_file,

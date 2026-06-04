@@ -2,7 +2,7 @@
 #
 # 读取01号limma脚本生成的all_genes.csv结果，为每个差异分析设计绘制火山图。
 # 横坐标为logFC，纵坐标为-log10(P值)；上调基因标红，下调基因标蓝，
-# 未达到阈值的基因标灰。输出PDF为矢量格式，适合后续排版和发表使用。
+# 未达到阈值的基因标灰。输出PDF用于排版，PNG用于Markdown文档插图。
 
 
 # 0. 可修改配置 ---------------------------------------------------------------
@@ -17,7 +17,7 @@ DE_SCRIPT_FILE <- "scripts/GSE114012/01_limma_differential_expression.R"
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 
 # 输入目录为01号脚本输出的tables/<analysis_name>/DEG/all_genes.csv。
-# 输出目录为plots/volcano/<analysis_name>/volcano_plot.pdf。
+# 输出目录为plots/volcano/<analysis_name>/。
 RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
 TABLE_ROOT <- file.path(RESULT_ROOT, "tables")
 PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "volcano")
@@ -35,7 +35,7 @@ LOGFC_CUTOFF <- 0.5
 ANALYSES_TO_PLOT <- "all"
 # ANALYSES_TO_PLOT <- c("DLD1", "HCT15")
 
-# 重跑时清理当前分析火山图目录内旧PDF，避免旧文件残留。
+# 重跑时清理当前分析火山图目录内旧图片，避免旧文件残留。
 CLEAN_VOLCANO_OUTPUT_DIR <- TRUE
 
 # 传统火山图特有的NS颜色。Up/Down颜色和点样式来自公共配置文件。
@@ -53,7 +53,7 @@ THRESHOLD_LINE_COLOR <- "#333333"
 THRESHOLD_LINE_WIDTH <- 0.45
 THRESHOLD_LINE_TYPE <- "dashed"
 
-# PDF和字体设置。文件名固定为volcano_plot.pdf；分析名由目录体现。
+# PDF/PNG和字体设置。文件名固定为volcano_plot.*；分析名由目录体现。
 # 火山图本体保持正方形；整体宽度只因右侧图例略大于高度。
 BASE_PDF_HEIGHT <- 6.2
 MAX_EXTRA_PDF_HEIGHT <- 0.8
@@ -69,7 +69,6 @@ options(width = 200)
 
 suppressPackageStartupMessages({
   library(ggplot2)
-  library(Cairo)
 })
 
 source(PLOTTING_FUNCTION_FILE)
@@ -271,12 +270,12 @@ for (i in seq_along(selected_analyses)) {
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
   if (CLEAN_VOLCANO_OUTPUT_DIR) {
-    unlink(list.files(output_dir, pattern = "[.]pdf$", full.names = TRUE))
+    unlink(list.files(output_dir, pattern = "[.](pdf|png)$", full.names = TRUE))
   }
 
   pdf_file <- file.path(output_dir, "volcano_plot.pdf")
 
-  save_ggplot_pdf(
+  output_files <- save_ggplot_pdf_png(
     plot = volcano_plot,
     pdf_file = pdf_file,
     width = pdf_size$width,
@@ -295,7 +294,8 @@ for (i in seq_along(selected_analyses)) {
     Y_Max = axis_limits$y[2],
     PDF_Width = round(pdf_size$width, 2),
     PDF_Height = round(pdf_size$height, 2),
-    PDF_File = pdf_file,
+    PDF_File = output_files$pdf_file,
+    PNG_File = output_files$png_file,
     stringsAsFactors = FALSE
   )
 
@@ -322,6 +322,8 @@ print(
   row.names = FALSE
 )
 
-cat("\nVolcano plots were saved in:\n")
+cat("\nVolcano PDF plots were saved in:\n")
 cat(file.path(PLOT_ROOT, "<analysis_name>", "volcano_plot.pdf"), "\n", sep = "")
+cat("\nVolcano PNG plots were saved in:\n")
+cat(file.path(PLOT_ROOT, "<analysis_name>", "volcano_plot.png"), "\n", sep = "")
 cat("\nVolcano plot generation finished.\n")

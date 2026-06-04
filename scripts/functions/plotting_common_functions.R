@@ -21,6 +21,9 @@ DOWN_COLOR <- "#2166AC"
 POINT_SIZE <- 3.2
 POINT_ALPHA <- 0.60
 
+# 绘图脚本同步输出PNG，方便插入Markdown文档。
+PNG_DPI <- 300
+
 # 图中展示基因名时优先使用的列；若该列不存在则不会标注基因名。
 TOP_GENE_SYMBOL_COLUMN <- "Symbol"
 
@@ -652,9 +655,14 @@ count_status <- function(status_counts, status_name) {
   as.integer(value)
 }
 
-save_ggplot_pdf <- function(plot, pdf_file, width, height) {
-  # 使用Cairo输出高清矢量PDF，并在保存后检查文件是否存在。
+get_png_file_from_pdf <- function(pdf_file) {
+  sub("[.]pdf$", ".png", pdf_file)
+}
+
+save_grid_pdf_png <- function(pdf_file, width, height, draw_fun, png_dpi = PNG_DPI) {
+  # 使用同一套绘图函数分别输出矢量PDF和高清PNG。
   dir.create(dirname(pdf_file), recursive = TRUE, showWarnings = FALSE)
+  png_file <- get_png_file_from_pdf(pdf_file)
 
   Cairo::CairoPDF(
     file = pdf_file,
@@ -662,9 +670,45 @@ save_ggplot_pdf <- function(plot, pdf_file, width, height) {
     height = height,
     bg = "white"
   )
-  print(plot)
+  draw_fun()
+  invisible(dev.off())
+
+  Cairo::Cairo(
+    file = png_file,
+    type = "png",
+    width = width,
+    height = height,
+    units = "in",
+    dpi = png_dpi,
+    bg = "white",
+    canvas = "white"
+  )
+  draw_fun()
   invisible(dev.off())
 
   stopifnot(file.exists(pdf_file))
-  invisible(pdf_file)
+  stopifnot(file.exists(png_file))
+
+  invisible(list(pdf_file = pdf_file, png_file = png_file))
+}
+
+save_ggplot_pdf_png <- function(plot, pdf_file, width, height, png_dpi = PNG_DPI) {
+  # 保存ggplot图形为PDF和PNG。
+  save_grid_pdf_png(
+    pdf_file = pdf_file,
+    width = width,
+    height = height,
+    png_dpi = png_dpi,
+    draw_fun = function() print(plot)
+  )
+}
+
+save_ggplot_pdf <- function(plot, pdf_file, width, height) {
+  # 兼容旧调用名；现在同步输出同名PNG。
+  save_ggplot_pdf_png(
+    plot = plot,
+    pdf_file = pdf_file,
+    width = width,
+    height = height
+  )
 }

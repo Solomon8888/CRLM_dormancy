@@ -27,7 +27,7 @@ LOGFC_CUTOFF <- 0.5
 
 OUTPUT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID, "tables")
 
-# 重跑时清理当前<analysis_name>/DEG目录内旧CSV，避免旧长文件名残留。
+# 重跑时清理当前<analysis_name>/DEG目录内旧表格，避免旧长文件名残留。
 CLEAN_DEG_OUTPUT_DIR <- TRUE
 
 # 输出结果中不再保留的辅助注释列。
@@ -263,7 +263,7 @@ for (i in seq_len(nrow(analysis_designs))) {
   if (CLEAN_DEG_OUTPUT_DIR) {
     unlink(list.files(
       analysis_output_dir,
-      pattern = "[.](csv|tex)$",
+      pattern = "[.](csv|tex|md)$",
       full.names = TRUE
     ))
   }
@@ -290,9 +290,9 @@ for (i in seq_len(nrow(analysis_designs))) {
     stringsAsFactors = FALSE
   )
 
-  write_csv_with_latex_preview(diff_results_output, all_results_file)
-  write_csv_with_latex_preview(significant_results_output, significant_results_file)
-  write_csv_with_latex_preview(summary_table, summary_file)
+  write_csv_with_report_previews(diff_results_output, all_results_file)
+  write_csv_with_report_previews(significant_results_output, significant_results_file)
+  write_csv_with_report_previews(summary_table, summary_file)
 
   stopifnot(file.exists(all_results_file))
   stopifnot(file.exists(significant_results_file))

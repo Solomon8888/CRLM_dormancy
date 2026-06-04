@@ -20,11 +20,11 @@ CLINICAL_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_clinical_edit.csv"
 FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 
-# 输出根目录。最终PDF保存到plots/sample_clustering_heatmap/<gene_biotype>/<sample_group>/heatmap.pdf。
+# 输出根目录。最终图片保存到plots/sample_clustering_heatmap/<gene_biotype>/<sample_group>/。
 RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
 PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "sample_clustering_heatmap")
 
-# 重跑时清理当前热图输出目录里的旧PDF，避免新旧命名混在一起。
+# 重跑时清理当前热图输出目录里的旧图片，避免新旧命名混在一起。
 CLEAN_PLOT_OUTPUT_DIR <- TRUE
 
 # 基因类型筛选。可选："coding", "protein", "protein_coding", "non_coding", "all"。
@@ -83,7 +83,7 @@ HEATMAP_COLOR_HIGH <- "#cd0e0e"    # 鲜红
 CORRELATION_COLOR_MIN <- 0.80
 CORRELATION_COLOR_MAX <- 1.00
 
-# PDF大小会根据样本数量和样本名长度自动调整；上下限用于避免图片过小或过大。
+# 图片大小会根据样本数量和样本名长度自动调整；上下限用于避免图片过小或过大。
 MIN_PDF_WIDTH <- 8.0
 MIN_PDF_HEIGHT <- 8.0
 MAX_PDF_WIDTH <- 24.0
@@ -120,7 +120,6 @@ suppressPackageStartupMessages({
   library(circlize)
   library(grid)
   library(RColorBrewer)
-  library(Cairo)
 })
 
 source(FUNCTION_FILE)
@@ -187,7 +186,7 @@ gene_filter <- filter_genes_by_biotype(
   biotype_filter = gene_biotype_filter
 )
 
-# 输出目录用基因类型区分；PDF文件名只保留结果类型。
+# 输出目录用基因类型区分；图片文件名只保留结果类型。
 plot_filter_name <- sanitize_file_name(gene_filter$filter)
 PLOT_DIR <- file.path(PLOT_ROOT, plot_filter_name)
 dir.create(PLOT_DIR, recursive = TRUE, showWarnings = FALSE)
@@ -195,18 +194,18 @@ dir.create(PLOT_DIR, recursive = TRUE, showWarnings = FALSE)
 if (CLEAN_PLOT_OUTPUT_DIR) {
   unlink(list.files(
     PLOT_DIR,
-    pattern = "[.]pdf$",
+    pattern = "[.](pdf|png)$",
     recursive = TRUE,
     full.names = TRUE
   ))
 
-  legacy_pdf_files <- list.files(
+  legacy_plot_files <- list.files(
     PLOT_ROOT,
-    pattern = "[.]pdf$",
+    pattern = "[.](pdf|png)$",
     full.names = TRUE
   )
-  if (length(legacy_pdf_files) > 0) {
-    unlink(legacy_pdf_files)
+  if (length(legacy_plot_files) > 0) {
+    unlink(legacy_plot_files)
   }
 }
 
@@ -216,7 +215,7 @@ tpm_filtered <- gene_filter$exprSet
 # 4. 单组样本聚类热图绘制函数 --------------------------------------------------
 
 draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value) {
-  # 对一个样本集合完成筛选、相关性计算、层次聚类、PDF排版和保存。
+  # 对一个样本集合完成筛选、相关性计算、层次聚类、排版和保存。
   # 聚类只基于TPM表达谱得到的样本相关性，不按细胞系分组强行排序。
   sample_status <- trimws(as.character(sample_info_all[[LRC_COLUMN]]))
   sample_status[is.na(sample_status)] <- ""
@@ -419,53 +418,52 @@ draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value
     gap = grid::unit(LEGEND_GROUP_GAP_MM, "mm")
   )
 
-  Cairo::CairoPDF(
-    file = pdf_file,
+  draw_heatmap_output <- function() {
+    grid::grid.newpage()
+    grid::pushViewport(grid::viewport(
+      layout = grid::grid.layout(
+        nrow = 3,
+        ncol = 5,
+        widths = grid::unit.c(
+          grid::unit(OUTER_MARGIN_INCH, "in"),
+          grid::unit(LEGEND_LEFT_WIDTH_INCH, "in"),
+          grid::unit(LEGEND_HEATMAP_GAP_INCH, "in"),
+          grid::unit(heatmap_panel_width, "in"),
+          grid::unit(OUTER_MARGIN_INCH, "in")
+        ),
+        heights = grid::unit.c(
+          grid::unit(OUTER_MARGIN_INCH, "in"),
+          grid::unit(heatmap_panel_height, "in"),
+          grid::unit(OUTER_MARGIN_INCH, "in")
+        )
+      )
+    ))
+
+    grid::pushViewport(grid::viewport(layout.pos.row = 2, layout.pos.col = 2))
+    ComplexHeatmap::draw(
+      legend_pack,
+      x = grid::unit(LEGEND_INNER_MARGIN_INCH, "in"),
+      y = grid::unit(1, "npc") - grid::unit(LEGEND_TOP_MARGIN_INCH, "in"),
+      just = c("left", "top")
+    )
+    grid::popViewport()
+
+    grid::pushViewport(grid::viewport(layout.pos.row = 2, layout.pos.col = 4))
+    ComplexHeatmap::draw(
+      ht,
+      newpage = FALSE,
+      show_heatmap_legend = FALSE,
+      show_annotation_legend = FALSE
+    )
+    grid::popViewport(2)
+  }
+
+  output_files <- save_grid_pdf_png(
+    pdf_file = pdf_file,
     width = pdf_width,
     height = pdf_height,
-    bg = "white"
+    draw_fun = draw_heatmap_output
   )
-
-  grid::grid.newpage()
-  grid::pushViewport(grid::viewport(
-    layout = grid::grid.layout(
-      nrow = 3,
-      ncol = 5,
-      widths = grid::unit.c(
-        grid::unit(OUTER_MARGIN_INCH, "in"),
-        grid::unit(LEGEND_LEFT_WIDTH_INCH, "in"),
-        grid::unit(LEGEND_HEATMAP_GAP_INCH, "in"),
-        grid::unit(heatmap_panel_width, "in"),
-        grid::unit(OUTER_MARGIN_INCH, "in")
-      ),
-      heights = grid::unit.c(
-        grid::unit(OUTER_MARGIN_INCH, "in"),
-        grid::unit(heatmap_panel_height, "in"),
-        grid::unit(OUTER_MARGIN_INCH, "in")
-      )
-    )
-  ))
-
-  grid::pushViewport(grid::viewport(layout.pos.row = 2, layout.pos.col = 2))
-  ComplexHeatmap::draw(
-    legend_pack,
-    x = grid::unit(LEGEND_INNER_MARGIN_INCH, "in"),
-    y = grid::unit(1, "npc") - grid::unit(LEGEND_TOP_MARGIN_INCH, "in"),
-    just = c("left", "top")
-  )
-  grid::popViewport()
-
-  grid::pushViewport(grid::viewport(layout.pos.row = 2, layout.pos.col = 4))
-  ComplexHeatmap::draw(
-    ht,
-    newpage = FALSE,
-    show_heatmap_legend = FALSE,
-    show_annotation_legend = FALSE
-  )
-  grid::popViewport(2)
-
-  invisible(dev.off())
-  stopifnot(file.exists(pdf_file))
 
   data.frame(
     Sample_Group = sample_group_name,
@@ -475,7 +473,8 @@ draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value
     Genes_After_Removing_Zero_Variance = nrow(expr_for_correlation),
     PDF_Width = round(pdf_width, 2),
     PDF_Height = round(pdf_height, 2),
-    PDF_File = pdf_file,
+    PDF_File = output_files$pdf_file,
+    PNG_File = output_files$png_file,
     stringsAsFactors = FALSE
   )
 }
@@ -514,3 +513,5 @@ print(
 
 cat("\nPDF files:\n")
 cat(paste(summary_table$PDF_File, collapse = "\n"), "\n", sep = "")
+cat("\nPNG files:\n")
+cat(paste(summary_table$PNG_File, collapse = "\n"), "\n", sep = "")

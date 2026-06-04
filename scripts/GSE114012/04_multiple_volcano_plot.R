@@ -4,10 +4,6 @@
 # 合并到一张多组火山图中。每个差异分析设计占一个分面；
 # 横轴为-log10(P值)，纵轴为logFC。图中只展示达到阈值的Up和Down基因；
 # NS基因只参与终端汇总，不在图中绘制。阈值与01号脚本保持一致。
-#
-# 参考图形思路：
-# 1. R2Omics多组火山图：按分组展示显著性和logFC分布，显著基因用颜色突出。
-# 2. openbiox/Bizard多组火山图：多个比较对在同一图中并排展示。
 
 
 # 0. 可修改配置 ---------------------------------------------------------------
@@ -22,7 +18,7 @@ DE_SCRIPT_FILE <- "scripts/GSE114012/01_limma_differential_expression.R"
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 
 # 输入目录为01号脚本输出的tables/<analysis_name>/DEG/all_genes.csv。
-# 输出目录为plots/multiple_volcano/<scheme_name>/multiple_volcano_plot.pdf。
+# 输出目录为plots/multiple_volcano/<scheme_name>/。
 RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
 TABLE_ROOT <- file.path(RESULT_ROOT, "tables")
 PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "multiple_volcano")
@@ -38,8 +34,8 @@ LOGFC_CUTOFF <- 0.5
 
 # 多套多组火山图方案。
 # 新增方案时，只需要按下面格式增加一行；顺序会影响图中分组排列。
-# 每个方案会单独输出一个PDF：
-# results/ngs/GSE114012/plots/multiple_volcano/<scheme_name>/multiple_volcano_plot.pdf
+# 每个方案会单独输出PDF和PNG：
+# results/ngs/GSE114012/plots/multiple_volcano/<scheme_name>/multiple_volcano_plot.*
 MULTIPLE_VOLCANO_SCHEMES <- list(
   ALL = c("DLD1", "HCT15", "HT55", "RKO", "SW48", "SW948"),
   DLD1_HCT15_SW48 = c("DLD1", "HCT15", "SW48"),
@@ -57,7 +53,7 @@ SCHEMES_TO_RUN <- names(MULTIPLE_VOLCANO_SCHEMES)
 # 重跑时清理整个multiple_volcano目录，保证最终只保留当前配置生成的方案图。
 CLEAN_MULTIPLE_VOLCANO_ROOT <- TRUE
 
-# 重跑时清理当前方案目录内旧PDF，避免旧文件残留。
+# 重跑时清理当前方案目录内旧图片，避免旧文件残留。
 OVERWRITE_SCHEME_OUTPUT <- TRUE
 
 # 每组标注Top显著基因。Top排序优先按P值，其次按logFC幅度。
@@ -117,7 +113,7 @@ Y_AXIS_PADDING_FRACTION <- 0.07
 # 组名框越高，PDF纵向空间会等比例略微增加，避免压缩真实logFC坐标区域。
 LABEL_BOX_HEIGHT_PDF_SCALE <- 1.8
 
-# PDF和字体设置。文件名固定为multiple_volcano_plot.pdf；方案名由目录体现。
+# PDF/PNG和字体设置。文件名固定为multiple_volcano_plot.*；方案名由目录体现。
 BASE_PDF_HEIGHT <- 6.0
 GROUP_WIDTH_INCH <- 1.78
 LEGEND_WIDTH_INCH <- 1.18
@@ -137,7 +133,6 @@ options(width = 200)
 
 suppressPackageStartupMessages({
   library(ggplot2)
-  library(Cairo)
 })
 
 source(PLOTTING_FUNCTION_FILE)
@@ -571,7 +566,7 @@ make_multiple_volcano_plot <- function(plot_data, group_layout, selected_analyse
 }
 
 run_multiple_volcano_scheme <- function(scheme_name, selected_analyses, file_info) {
-  # 单套方案的完整流程：读取数据、绘图、保存PDF、返回终端汇总表。
+  # 单套方案的完整流程：读取数据、绘图、保存图片、返回终端汇总表。
   stopifnot(is.character(scheme_name))
   stopifnot(length(scheme_name) == 1)
   stopifnot(scheme_name != "")
@@ -653,7 +648,7 @@ run_multiple_volcano_scheme <- function(scheme_name, selected_analyses, file_inf
 
   pdf_file <- file.path(output_dir, "multiple_volcano_plot.pdf")
 
-  save_ggplot_pdf(
+  output_files <- save_ggplot_pdf_png(
     plot = multiple_volcano_plot,
     pdf_file = pdf_file,
     width = pdf_size$width,
@@ -685,7 +680,8 @@ run_multiple_volcano_scheme <- function(scheme_name, selected_analyses, file_inf
       Y_Max = round(axis_info$true_limits[2], 2),
       PDF_Width = round(pdf_size$width, 2),
       PDF_Height = round(pdf_size$height, 2),
-      PDF_File = pdf_file,
+      PDF_File = output_files$pdf_file,
+      PNG_File = output_files$png_file,
       stringsAsFactors = FALSE
     )
   }))
@@ -781,7 +777,10 @@ print(
   row.names = FALSE
 )
 
-cat("\nMultiple volcano plot was saved in:\n")
+cat("\nMultiple volcano PDF plots were saved in:\n")
 saved_files <- unique(summary_table$PDF_File)
 cat(paste(saved_files, collapse = "\n"), "\n", sep = "")
+cat("\nMultiple volcano PNG plots were saved in:\n")
+saved_png_files <- unique(summary_table$PNG_File)
+cat(paste(saved_png_files, collapse = "\n"), "\n", sep = "")
 cat("\nMultiple volcano plot generation finished.\n")
