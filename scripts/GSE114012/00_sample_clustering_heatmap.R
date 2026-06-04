@@ -19,6 +19,7 @@ CLINICAL_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_clinical_edit.csv"
 # PLOTTING_FUNCTION_FILE保存跨绘图脚本共用的风格配置和基础函数。
 FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
+PARALLEL_FUNCTION_FILE <- "scripts/functions/parallel_runtime_functions.R"
 
 # 输出根目录。最终图片保存到plots/sample_clustering_heatmap/<gene_biotype>/<sample_group>/。
 RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
@@ -124,6 +125,9 @@ suppressPackageStartupMessages({
 
 source(FUNCTION_FILE)
 source(PLOTTING_FUNCTION_FILE)
+source(PARALLEL_FUNCTION_FILE)
+
+SCRIPT_START_TIME <- start_runtime_timer()
 
 
 # 2. 读取数据 ------------------------------------------------------------------
@@ -480,14 +484,29 @@ draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value
 }
 
 
-# 5. 依次绘制LRC和BULK样本聚类热图 -------------------------------------------
+# 5. 批量绘制LRC和BULK样本聚类热图 -------------------------------------------
 
-summary_list <- lapply(names(SAMPLE_GROUPS), function(sample_group_name) {
-  draw_sample_clustering_heatmap(
-    sample_group_name = sample_group_name,
-    sample_group_value = SAMPLE_GROUPS[[sample_group_name]]
-  )
-})
+cat("\nRunning sample TPM clustering heatmap generation...\n")
+parallel_strategy <- setup_parallel_strategy(
+  total_tasks = length(SAMPLE_GROUPS),
+  inner_label = "Heatmap inner workers",
+  nested_label = "Nested workers"
+)
+
+sample_group_names <- names(SAMPLE_GROUPS)
+summary_list <- run_indexed_tasks_with_progress(
+  total_tasks = length(sample_group_names),
+  workers = parallel_strategy$task_workers,
+  task_function = function(i) {
+    sample_group_name <- sample_group_names[i]
+
+    draw_sample_clustering_heatmap(
+      sample_group_name = sample_group_name,
+      sample_group_value = SAMPLE_GROUPS[[sample_group_name]]
+    )
+  }
+)
+stop_on_parallel_errors(summary_list, task_ids = sample_group_names, label = "sample heatmap tasks")
 
 summary_table <- do.call(rbind, summary_list)
 rownames(summary_table) <- NULL
@@ -515,3 +534,4 @@ cat("\nPDF files:\n")
 cat(paste(summary_table$PDF_File, collapse = "\n"), "\n", sep = "")
 cat("\nPNG files:\n")
 cat(paste(summary_table$PNG_File, collapse = "\n"), "\n", sep = "")
+print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")

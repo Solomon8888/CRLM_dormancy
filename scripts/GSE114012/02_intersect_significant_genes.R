@@ -12,6 +12,7 @@
 DATASET_ID <- "GSE114012"
 DATA_TYPE <- "ngs"
 REPORT_TABLE_FUNCTION_FILE <- "scripts/functions/report_table_functions.R"
+PARALLEL_FUNCTION_FILE <- "scripts/functions/parallel_runtime_functions.R"
 
 TABLE_ROOT <- file.path("results", DATA_TYPE, DATASET_ID, "tables")
 DEG_DIR_NAME <- "DEG"
@@ -66,6 +67,9 @@ options(width = 200)
 # 1. 常用函数 -----------------------------------------------------------------
 
 source(REPORT_TABLE_FUNCTION_FILE)
+source(PARALLEL_FUNCTION_FILE)
+
+SCRIPT_START_TIME <- start_runtime_timer()
 
 sanitize_file_name <- function(x) {
   # 文件夹名保留字母、数字、下划线、点和短横线，避免不同系统下路径出错。
@@ -340,17 +344,7 @@ print(input_summary, row.names = FALSE)
 
 # 5. 按方案计算交集并保存 ------------------------------------------------------
 
-scheme_summary_list <- vector("list", length(active_schemes))
-names(scheme_summary_list) <- names(active_schemes)
-
-cat("\nRunning intersection schemes...\n")
-progress_bar <- utils::txtProgressBar(
-  min = 0,
-  max = length(active_schemes),
-  style = 3
-)
-
-for (scheme_index in seq_along(active_schemes)) {
+run_one_intersection_scheme <- function(scheme_index) {
   intersection_name <- names(active_schemes)[scheme_index]
   selected_analyses <- unique(active_schemes[[scheme_index]])
   deg_output_analyses <- get_deg_output_analyses(selected_analyses)
@@ -419,8 +413,6 @@ for (scheme_index in seq_along(active_schemes)) {
     stringsAsFactors = FALSE
   )
 
-  scheme_summary_list[[scheme_index]] <- scheme_summary
-
   for (analysis_name in deg_output_analyses) {
     dat <- all_gene_tables[[analysis_name]]
     match_index <- match(intersect_gene_ids, dat[[GENE_ID_COLUMN]])
@@ -468,10 +460,27 @@ for (scheme_index in seq_along(active_schemes)) {
   stopifnot(nrow(saved_scheme_summary) == 1)
   stopifnot(saved_scheme_summary$Total_Intersected_Genes == length(intersect_gene_ids))
 
-  utils::setTxtProgressBar(progress_bar, scheme_index)
+  scheme_summary
 }
 
-close(progress_bar)
+cat("\nRunning intersection schemes...\n")
+parallel_strategy <- setup_parallel_strategy(
+  total_tasks = length(active_schemes),
+  inner_label = "Intersection inner workers",
+  nested_label = "Nested workers"
+)
+
+scheme_summary_list <- run_indexed_tasks_with_progress(
+  total_tasks = length(active_schemes),
+  workers = parallel_strategy$task_workers,
+  task_function = run_one_intersection_scheme
+)
+stop_on_parallel_errors(
+  scheme_summary_list,
+  task_ids = names(active_schemes),
+  label = "intersection schemes"
+)
+names(scheme_summary_list) <- names(active_schemes)
 
 
 # 6. 终端快速汇总 --------------------------------------------------------------
@@ -494,3 +503,4 @@ print(
 cat("\nIntersected gene lists and DEG tables were saved in:\n")
 cat(file.path(INTERSECT_ROOT, "<INTERSECTION_SCHEME>"), "\n", sep = "")
 cat("\nSignificant DEG intersection analysis finished.\n")
+print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")

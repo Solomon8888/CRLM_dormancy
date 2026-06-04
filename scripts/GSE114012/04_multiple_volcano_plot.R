@@ -16,6 +16,7 @@ DATA_TYPE <- "ngs"
 # PLOTTING_FUNCTION_FILE保存跨绘图脚本共用的风格配置和基础函数。
 DE_SCRIPT_FILE <- "scripts/GSE114012/01_limma_differential_expression.R"
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
+PARALLEL_FUNCTION_FILE <- "scripts/functions/parallel_runtime_functions.R"
 
 # 输入目录为01号脚本输出的tables/<analysis_name>/DEG/all_genes.csv。
 # 输出目录为plots/multiple_volcano/<scheme_name>/。
@@ -136,6 +137,9 @@ suppressPackageStartupMessages({
 })
 
 source(PLOTTING_FUNCTION_FILE)
+source(PARALLEL_FUNCTION_FILE)
+
+SCRIPT_START_TIME <- start_runtime_timer()
 
 USE_GG_REPEL <- requireNamespace("ggrepel", quietly = TRUE)
 
@@ -732,32 +736,30 @@ if (CLEAN_MULTIPLE_VOLCANO_ROOT && dir.exists(PLOT_ROOT)) {
 }
 dir.create(PLOT_ROOT, recursive = TRUE, showWarnings = FALSE)
 
-summary_list <- vector("list", length(SCHEMES_TO_RUN))
-names(summary_list) <- SCHEMES_TO_RUN
-
-for (scheme_index in seq_along(SCHEMES_TO_RUN)) {
+run_one_multiple_volcano_scheme <- function(scheme_index) {
   scheme_name <- SCHEMES_TO_RUN[scheme_index]
   selected_analyses <- MULTIPLE_VOLCANO_SCHEMES[[scheme_name]]
 
-  cat(
-    "[",
-    scheme_index,
-    "/",
-    length(SCHEMES_TO_RUN),
-    "] ",
-    scheme_name,
-    ": ",
-    paste(selected_analyses, collapse = ", "),
-    "\n",
-    sep = ""
-  )
-
-  summary_list[[scheme_index]] <- run_multiple_volcano_scheme(
+  run_multiple_volcano_scheme(
     scheme_name = scheme_name,
     selected_analyses = selected_analyses,
     file_info = file_info
   )
 }
+
+parallel_strategy <- setup_parallel_strategy(
+  total_tasks = length(SCHEMES_TO_RUN),
+  inner_label = "Multiple volcano inner workers",
+  nested_label = "Nested workers"
+)
+
+summary_list <- run_indexed_tasks_with_progress(
+  total_tasks = length(SCHEMES_TO_RUN),
+  workers = parallel_strategy$task_workers,
+  task_function = run_one_multiple_volcano_scheme
+)
+stop_on_parallel_errors(summary_list, task_ids = SCHEMES_TO_RUN, label = "multiple volcano schemes")
+names(summary_list) <- SCHEMES_TO_RUN
 
 summary_table <- do.call(rbind, summary_list)
 
@@ -784,3 +786,4 @@ cat("\nMultiple volcano PNG plots were saved in:\n")
 saved_png_files <- unique(summary_table$PNG_File)
 cat(paste(saved_png_files, collapse = "\n"), "\n", sep = "")
 cat("\nMultiple volcano plot generation finished.\n")
+print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")

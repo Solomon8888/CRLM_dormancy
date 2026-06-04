@@ -99,14 +99,49 @@ print_parallel_execution_strategy <- function(
     inner_label = "Inner workers per task",
     nested_label = "Nested workers") {
   # 统一打印批量任务并行策略，便于运行前快速确认CPU使用方式。
+  print_parallel_metric <- function(label, value) {
+    cat(sprintf("%-28s %s\n", paste0(label, ":"), value))
+  }
+
   cat("\nParallel execution strategy:\n")
-  cat("Total tasks:              ", strategy$total_tasks, "\n", sep = "")
-  cat("Available workers:        ", strategy$max_workers, "\n", sep = "")
-  cat("Task-level workers:       ", strategy$task_workers, "\n", sep = "")
-  cat(inner_label, ":      ", strategy$inner_workers, "\n", sep = "")
-  cat("qs2 nthreads per task:    ", strategy$qs2_threads_per_task, "\n", sep = "")
-  cat(nested_label, ":       ", strategy$nested_workers, "\n", sep = "")
+  print_parallel_metric("Total tasks", strategy$total_tasks)
+  print_parallel_metric("Available workers", strategy$max_workers)
+  print_parallel_metric("Task-level workers", strategy$task_workers)
+  print_parallel_metric(inner_label, strategy$inner_workers)
+  print_parallel_metric("qs2 nthreads per task", strategy$qs2_threads_per_task)
+  print_parallel_metric(nested_label, strategy$nested_workers)
   invisible(strategy)
+}
+
+setup_parallel_strategy <- function(
+    total_tasks,
+    max_workers = NULL,
+    inner_label = "Inner workers per task",
+    nested_label = "Nested workers",
+    print_strategy = TRUE) {
+  # 一站式生成并配置批量任务并行策略。
+  # 返回值中的task_workers用于外层run_parallel_tasks_with_progress；
+  # inner_workers和qs2_threads_per_task已在本函数内配置到R运行环境。
+  strategy <- make_parallel_execution_strategy(
+    total_tasks = total_tasks,
+    max_workers = max_workers
+  )
+
+  configure_parallel_runtime(
+    task_workers = strategy$task_workers,
+    inner_workers = strategy$inner_workers,
+    qs2_threads = strategy$qs2_threads_per_task
+  )
+
+  if (print_strategy) {
+    print_parallel_execution_strategy(
+      strategy = strategy,
+      inner_label = inner_label,
+      nested_label = nested_label
+    )
+  }
+
+  strategy
 }
 
 run_parallel_tasks_with_progress <- function(task_ids, task_function, workers) {
@@ -193,4 +228,29 @@ run_parallel_tasks_with_progress <- function(task_ids, task_function, workers) {
   }
 
   results
+}
+
+run_indexed_tasks_with_progress <- function(total_tasks, task_function, workers) {
+  # 适合大多数批量脚本：任务天然按1:n编号。
+  run_parallel_tasks_with_progress(
+    task_ids = seq_len(total_tasks),
+    task_function = task_function,
+    workers = workers
+  )
+}
+
+stop_on_parallel_errors <- function(results, task_ids = names(results), label = "parallel tasks") {
+  # 统一检查并行任务返回值中的try-error，便于各脚本保持相同的失败提示。
+  task_errors <- vapply(results, inherits, logical(1), "try-error")
+  if (!any(task_errors)) {
+    return(invisible(FALSE))
+  }
+
+  failed_tasks <- task_ids[task_errors]
+  stop(
+    "Some ",
+    label,
+    " failed: ",
+    paste(failed_tasks, collapse = ", ")
+  )
 }

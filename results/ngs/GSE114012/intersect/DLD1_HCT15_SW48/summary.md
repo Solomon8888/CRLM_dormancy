@@ -1,3 +1,0 @@
-| Selected_Analyses | DEG_Result_Analyses | Total_Intersected_Genes | Common_Up | Common_Down | Mixed_Direction |
-| --- | --- | --- | --- | --- | --- |
-| DLD1;HCT15;SW48 | DLD1;HCT15;SW48 | 19 | 17 | 1 | 1 |

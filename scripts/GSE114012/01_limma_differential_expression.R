@@ -13,6 +13,7 @@ SE_RDS_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_se_raw.rds"
 CLINICAL_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_clinical_edit.csv"
 FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 REPORT_TABLE_FUNCTION_FILE <- "scripts/functions/report_table_functions.R"
+PARALLEL_FUNCTION_FILE <- "scripts/functions/parallel_runtime_functions.R"
 
 # 基因类型过滤
 # 可选："coding", "non_coding", "all"
@@ -55,6 +56,9 @@ if (DATA_TYPE == "ngs") {
 
 source(FUNCTION_FILE)
 source(REPORT_TABLE_FUNCTION_FILE)
+source(PARALLEL_FUNCTION_FILE)
+
+SCRIPT_START_TIME <- start_runtime_timer()
 
 
 # 1.1 输出表格整理函数 --------------------------------------------------------
@@ -147,17 +151,7 @@ gene_annotation <- gene_filter$gene_annotation
 
 # 5. 逐个分析设计运行limma -----------------------------------------------------
 
-summary_list <- vector("list", nrow(analysis_designs))
-output_check_list <- vector("list", nrow(analysis_designs))
-
-cat("\nRunning limma differential expression analyses...\n")
-progress_bar <- utils::txtProgressBar(
-  min = 0,
-  max = nrow(analysis_designs),
-  style = 3
-)
-
-for (i in seq_len(nrow(analysis_designs))) {
+run_one_limma_analysis <- function(i) {
   analysis_order <- analysis_designs$Analysis_Order[i]
   analysis_base_name <- analysis_designs$Analysis_Base_Name[i]
   analysis_duplicate_order <- analysis_designs$Duplicate_Order[i]
@@ -317,23 +311,42 @@ for (i in seq_len(nrow(analysis_designs))) {
   stopifnot(saved_summary$Total_Significant_Genes == summary_table$Total_Significant_Genes)
   stopifnot(saved_summary$Total_Significant_Genes == saved_summary$Up + saved_summary$Down)
 
-  summary_list[[i]] <- summary_table
-  output_check_list[[i]] <- data.frame(
-    Analysis_Name = analysis_name,
-    All_Genes_File_Exists = file.exists(all_results_file),
-    Significant_Genes_File_Exists = file.exists(significant_results_file),
-    Summary_File_Exists = file.exists(summary_file),
-    Significant_Genes_Rows = nrow(saved_significant_results),
-    Summary_Total_Significant_Genes = saved_summary$Total_Significant_Genes,
-    Summary_Total_Equals_Up_Down = saved_summary$Total_Significant_Genes ==
-      saved_summary$Up + saved_summary$Down,
-    stringsAsFactors = FALSE
+  list(
+    summary = summary_table,
+    output_check = data.frame(
+      Analysis_Name = analysis_name,
+      All_Genes_File_Exists = file.exists(all_results_file),
+      Significant_Genes_File_Exists = file.exists(significant_results_file),
+      Summary_File_Exists = file.exists(summary_file),
+      Significant_Genes_Rows = nrow(saved_significant_results),
+      Summary_Total_Significant_Genes = saved_summary$Total_Significant_Genes,
+      Summary_Total_Equals_Up_Down = saved_summary$Total_Significant_Genes ==
+        saved_summary$Up + saved_summary$Down,
+      stringsAsFactors = FALSE
+    )
   )
-
-  utils::setTxtProgressBar(progress_bar, i)
 }
 
-close(progress_bar)
+cat("\nRunning limma differential expression analyses...\n")
+parallel_strategy <- setup_parallel_strategy(
+  total_tasks = nrow(analysis_designs),
+  inner_label = "limma inner workers",
+  nested_label = "Nested workers"
+)
+
+analysis_task_results <- run_indexed_tasks_with_progress(
+  total_tasks = nrow(analysis_designs),
+  workers = parallel_strategy$task_workers,
+  task_function = run_one_limma_analysis
+)
+stop_on_parallel_errors(
+  analysis_task_results,
+  task_ids = analysis_designs$Analysis_Name,
+  label = "limma analyses"
+)
+
+summary_list <- lapply(analysis_task_results, `[[`, "summary")
+output_check_list <- lapply(analysis_task_results, `[[`, "output_check")
 
 all_summary <- do.call(rbind, summary_list)
 output_check <- do.call(rbind, output_check_list)
@@ -350,3 +363,4 @@ stopifnot(all(output_check$Summary_Total_Equals_Up_Down))
 cat("\nAll analyses finished.\n")
 cat("Output file check passed.\n\n")
 print(all_summary[, SUMMARY_DISPLAY_COLUMNS], row.names = FALSE)
+print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")

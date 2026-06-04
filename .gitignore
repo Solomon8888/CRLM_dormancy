@@ -20,5 +20,5 @@
 # 2. 影子构建层：这是最重要的部分
 # 忽略 temporary 下的所有内容
 temporary/*
-
+results/*
 data/*

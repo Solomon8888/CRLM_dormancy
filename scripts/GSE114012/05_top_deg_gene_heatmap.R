@@ -21,6 +21,7 @@ CLINICAL_FILE <- "data/ngs/GSE114012/data_prepare/GSE114012_clinical_edit.csv"
 DE_SCRIPT_FILE <- "scripts/GSE114012/01_limma_differential_expression.R"
 FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
+PARALLEL_FUNCTION_FILE <- "scripts/functions/parallel_runtime_functions.R"
 
 # 输入目录为01号脚本输出的tables/<analysis_name>/DEG/significant_genes.csv。
 # 输出目录为plots/gene_heatmap/<analysis_name>/gene_heatmap.*。
@@ -136,6 +137,9 @@ suppressPackageStartupMessages({
 
 source(FUNCTION_FILE)
 source(PLOTTING_FUNCTION_FILE)
+source(PARALLEL_FUNCTION_FILE)
+
+SCRIPT_START_TIME <- start_runtime_timer()
 
 # 让Top基因热图的红蓝体系明确跟随火山图脚本的公共显著基因配色。
 HEATMAP_COLOR_LOW <- DOWN_COLOR
@@ -678,34 +682,35 @@ if (CLEAN_GENE_HEATMAP_ROOT && dir.exists(PLOT_ROOT)) {
 }
 dir.create(PLOT_ROOT, recursive = TRUE, showWarnings = FALSE)
 
-summary_list <- vector("list", length(selected_analyses))
-names(summary_list) <- selected_analyses
-
 cat("\nRunning top DEG gene heatmap generation...\n")
 cat("P value column: ", P_VALUE_COLUMN, "\n", sep = "")
 cat("TPM assay: ", TPM_ASSAY_NAME, "\n", sep = "")
 cat("Top DEG count: ", TOP_GENE_COUNT, "\n", sep = "")
 
-progress_bar <- utils::txtProgressBar(
-  min = 0,
-  max = length(selected_analyses),
-  style = 3
-)
-
-for (i in seq_along(selected_analyses)) {
+run_one_top_deg_heatmap <- function(i) {
   analysis_name <- selected_analyses[i]
-  summary_list[[i]] <- draw_top_deg_gene_heatmap(
+  draw_top_deg_gene_heatmap(
     analysis_name = analysis_name,
     file_info = file_info,
     analysis_designs = analysis_designs,
     tpm_matrix = tpm_matrix,
     sample_info_all = sample_info_all
   )
-
-  utils::setTxtProgressBar(progress_bar, i)
 }
 
-close(progress_bar)
+parallel_strategy <- setup_parallel_strategy(
+  total_tasks = length(selected_analyses),
+  inner_label = "Gene heatmap inner workers",
+  nested_label = "Nested workers"
+)
+
+summary_list <- run_indexed_tasks_with_progress(
+  total_tasks = length(selected_analyses),
+  workers = parallel_strategy$task_workers,
+  task_function = run_one_top_deg_heatmap
+)
+stop_on_parallel_errors(summary_list, task_ids = selected_analyses, label = "top DEG heatmaps")
+names(summary_list) <- selected_analyses
 
 
 # 5. 终端快速汇总 --------------------------------------------------------------
@@ -730,3 +735,4 @@ cat(paste(summary_table$PDF_File, collapse = "\n"), "\n", sep = "")
 cat("\nTop DEG gene heatmap PNG files:\n")
 cat(paste(summary_table$PNG_File, collapse = "\n"), "\n", sep = "")
 cat("\nTop DEG gene heatmap generation finished.\n")
+print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")

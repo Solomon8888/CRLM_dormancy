@@ -15,6 +15,7 @@ DATA_TYPE <- "ngs"
 # PLOTTING_FUNCTION_FILE保存跨绘图脚本共用的风格配置和基础函数。
 DE_SCRIPT_FILE <- "scripts/GSE114012/01_limma_differential_expression.R"
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
+PARALLEL_FUNCTION_FILE <- "scripts/functions/parallel_runtime_functions.R"
 
 # 输入目录为01号脚本输出的tables/<analysis_name>/DEG/all_genes.csv。
 # 输出目录为plots/volcano/<analysis_name>/。
@@ -72,6 +73,9 @@ suppressPackageStartupMessages({
 })
 
 source(PLOTTING_FUNCTION_FILE)
+source(PARALLEL_FUNCTION_FILE)
+
+SCRIPT_START_TIME <- start_runtime_timer()
 
 USE_GG_REPEL <- requireNamespace("ggrepel", quietly = TRUE)
 
@@ -236,20 +240,12 @@ selected_analyses <- get_selected_analysis_names(file_info, ANALYSES_TO_PLOT)
 
 # 4. 绘制并保存火山图 ----------------------------------------------------------
 
-summary_list <- vector("list", length(selected_analyses))
-
 cat("\nRunning volcano plot generation...\n")
 cat("P value column: ", P_VALUE_COLUMN, "\n", sep = "")
 cat("P value cutoff: ", P_VALUE_CUTOFF, "\n", sep = "")
 cat("logFC cutoff: ", LOGFC_CUTOFF, "\n", sep = "")
 
-progress_bar <- utils::txtProgressBar(
-  min = 0,
-  max = length(selected_analyses),
-  style = 3
-)
-
-for (i in seq_along(selected_analyses)) {
+run_one_volcano_plot <- function(i) {
   analysis_name <- selected_analyses[i]
   dat <- read_deg_result(file_info, analysis_name)
 
@@ -283,7 +279,7 @@ for (i in seq_along(selected_analyses)) {
   )
 
   status_counts <- table(plot_data$Regulation)
-  summary_list[[i]] <- data.frame(
+  data.frame(
     Analysis_Name = analysis_name,
     Genes_Plotted = nrow(plot_data),
     Up = count_status(status_counts, "Up"),
@@ -298,11 +294,20 @@ for (i in seq_along(selected_analyses)) {
     PNG_File = output_files$png_file,
     stringsAsFactors = FALSE
   )
-
-  utils::setTxtProgressBar(progress_bar, i)
 }
 
-close(progress_bar)
+parallel_strategy <- setup_parallel_strategy(
+  total_tasks = length(selected_analyses),
+  inner_label = "Volcano inner workers",
+  nested_label = "Nested workers"
+)
+
+summary_list <- run_indexed_tasks_with_progress(
+  total_tasks = length(selected_analyses),
+  workers = parallel_strategy$task_workers,
+  task_function = run_one_volcano_plot
+)
+stop_on_parallel_errors(summary_list, task_ids = selected_analyses, label = "volcano plots")
 
 
 # 5. 终端快速汇总 --------------------------------------------------------------
@@ -327,3 +332,4 @@ cat(file.path(PLOT_ROOT, "<analysis_name>", "volcano_plot.pdf"), "\n", sep = "")
 cat("\nVolcano PNG plots were saved in:\n")
 cat(file.path(PLOT_ROOT, "<analysis_name>", "volcano_plot.png"), "\n", sep = "")
 cat("\nVolcano plot generation finished.\n")
+print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")

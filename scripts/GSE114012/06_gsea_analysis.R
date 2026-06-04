@@ -1858,24 +1858,15 @@ task_table <- expand.grid(
 )
 total_tasks <- nrow(task_table)
 
-parallel_strategy <- make_parallel_execution_strategy(
+parallel_strategy <- setup_parallel_strategy(
   total_tasks = total_tasks,
-  max_workers = PARALLEL_WORKERS
+  max_workers = PARALLEL_WORKERS,
+  inner_label = "GSEA nproc per task",
+  nested_label = "Single-pathway workers"
 )
 GSEA_TASK_WORKERS <- parallel_strategy$task_workers
 GSEA_INNER_NPROC <- parallel_strategy$inner_workers
 SINGLE_PATHWAY_PLOT_WORKERS <- parallel_strategy$nested_workers
-
-configure_parallel_runtime(
-  task_workers = GSEA_TASK_WORKERS,
-  inner_workers = GSEA_INNER_NPROC,
-  qs2_threads = parallel_strategy$qs2_threads_per_task
-)
-print_parallel_execution_strategy(
-  strategy = parallel_strategy,
-  inner_label = "GSEA nproc per task",
-  nested_label = "Single-pathway workers"
-)
 
 run_gsea_task <- function(task_id) {
   analysis_name <- task_table$Analysis_Name[task_id]
@@ -1984,14 +1975,7 @@ summary_records <- run_parallel_tasks_with_progress(
   task_function = run_gsea_task,
   workers = GSEA_TASK_WORKERS
 )
-
-task_errors <- vapply(summary_records, inherits, logical(1), "try-error")
-if (any(task_errors)) {
-  stop(
-    "Some GSEA tasks failed: ",
-    paste(which(task_errors), collapse = ", ")
-  )
-}
+stop_on_parallel_errors(summary_records, task_ids = task_ids, label = "GSEA tasks")
 
 
 # 5. 终端快速汇总 --------------------------------------------------------------
