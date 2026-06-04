@@ -25,6 +25,74 @@ get_runtime_vector <- function(env_name, default_value) {
   trimws(strsplit(env_value, ",", fixed = TRUE)[[1]])
 }
 
+is_tf_cache_fresh <- function(cache_file, max_age_days = 7) {
+  # 网络资源与远程API结果默认缓存7天；超过有效期则重新获取。
+  if (!file.exists(cache_file)) {
+    return(FALSE)
+  }
+
+  cache_age_days <- as.numeric(
+    difftime(Sys.time(), file.info(cache_file)$mtime, units = "days")
+  )
+  !is.na(cache_age_days) && cache_age_days <= max_age_days
+}
+
+make_tf_gene_cache_metadata <- function(method, input, genes, extra = list()) {
+  # 缓存不仅按分析名区分，也按实际基因集合与关键参数校验，避免参数改变后误用旧缓存。
+  list(
+    method = method,
+    input_type = input$input_type,
+    input_name = input$input_name,
+    genes_key = paste(sort(unique(as.character(genes))), collapse = "\t"),
+    extra = extra
+  )
+}
+
+make_tf_resource_cache_metadata <- function(resource_name, species, extra = list()) {
+  list(
+    resource = resource_name,
+    species = tolower(as.character(species)),
+    extra = extra
+  )
+}
+
+read_tf_cache <- function(
+    cache_file,
+    expected_metadata,
+    max_age_days = 7,
+    use_cache = TRUE) {
+  if (!use_cache || !is_tf_cache_fresh(cache_file, max_age_days = max_age_days)) {
+    return(list(found = FALSE, result = NULL))
+  }
+
+  cache_object <- tryCatch(
+    readRDS(cache_file),
+    error = function(e) NULL
+  )
+  if (
+    is.null(cache_object) ||
+      !is.list(cache_object) ||
+      !all(c("metadata", "result") %in% names(cache_object))
+  ) {
+    return(list(found = FALSE, result = NULL))
+  }
+
+  if (!identical(cache_object$metadata, expected_metadata)) {
+    return(list(found = FALSE, result = NULL))
+  }
+
+  list(found = TRUE, result = cache_object$result)
+}
+
+write_tf_cache <- function(cache_file, metadata, result) {
+  dir.create(dirname(cache_file), recursive = TRUE, showWarnings = FALSE)
+  saveRDS(
+    object = list(metadata = metadata, result = result),
+    file = cache_file
+  )
+  invisible(cache_file)
+}
+
 read_result_table <- function(file_name) {
   read.csv(
     file_name,
@@ -50,6 +118,21 @@ get_tf_deg_inputs <- function(table_root, analyses_to_run = "all") {
     basename(dirname(significant_files)) == "DEG"
   ]
 
+  all_genes_files <- list.files(
+    table_root,
+    pattern = "all_genes[.]csv$",
+    recursive = TRUE,
+    full.names = TRUE
+  )
+  all_genes_files <- all_genes_files[
+    basename(dirname(all_genes_files)) == "DEG"
+  ]
+  all_genes_names <- vapply(
+    all_genes_files,
+    get_analysis_name_from_significant_file,
+    character(1)
+  )
+
   if (length(significant_files) == 0L) {
     stop("No significant_genes.csv files were found under: ", table_root)
   }
@@ -73,11 +156,16 @@ get_tf_deg_inputs <- function(table_root, analyses_to_run = "all") {
   }
 
   inputs <- Map(function(analysis_name, significant_file) {
+    rank_file <- all_genes_files[all_genes_names == analysis_name][1]
+    if (is.na(rank_file) || !file.exists(rank_file)) {
+      rank_file <- significant_file
+    }
+
     list(
       input_type = "DEG",
       input_name = analysis_name,
       gene_file = significant_file,
-      rank_files = setNames(significant_file, analysis_name),
+      rank_files = setNames(rank_file, analysis_name),
       file_prefix = "deg",
       output_label = analysis_name
     )
@@ -87,7 +175,10 @@ get_tf_deg_inputs <- function(table_root, analyses_to_run = "all") {
   inputs[order(names(inputs))]
 }
 
-get_tf_intersection_inputs <- function(intersect_root, schemes_to_run = "all") {
+get_tf_intersection_inputs <- function(
+    intersect_root,
+    schemes_to_run = "all",
+    table_root = NULL) {
   if (!dir.exists(intersect_root)) {
     return(list())
   }
@@ -129,6 +220,34 @@ get_tf_intersection_inputs <- function(intersect_root, schemes_to_run = "all") {
     rank_names <- basename(dirname(rank_files))
     if (length(rank_files) > 0L) {
       rank_files <- setNames(rank_files, rank_names)
+    }
+
+    # VIPER/CollecTRI需要连续全量ranked signature。
+    # 交集目录下的deg_results.csv只包含交集基因，适合展示但不适合构建VIPER signature；
+    # 因此优先使用01号脚本的tables/<analysis>/DEG/all_genes.csv，缺失时才回退到deg_results.csv。
+    if (!is.null(table_root) && length(rank_names) > 0L) {
+      full_rank_files <- file.path(
+        table_root,
+        rank_names,
+        "DEG",
+        "all_genes.csv"
+      )
+      usable_full_rank_files <- file.exists(full_rank_files)
+      if (any(usable_full_rank_files)) {
+        fallback_rank_files <- rank_files
+        rank_files <- setNames(
+          full_rank_files[usable_full_rank_files],
+          rank_names[usable_full_rank_files]
+        )
+
+        missing_full <- rank_names[!usable_full_rank_files]
+        if (length(missing_full) > 0L) {
+          rank_files <- c(
+            rank_files,
+            fallback_rank_files[names(fallback_rank_files) %in% missing_full]
+          )
+        }
+      }
     }
 
     list(
@@ -388,6 +507,36 @@ load_trrust_network <- function(species = "human") {
   network
 }
 
+load_trrust_network_cached <- function(
+    species = "human",
+    reference_root = file.path("data", "reference", "TF"),
+    max_age_days = 7,
+    use_cache = TRUE) {
+  cache_file <- file.path(
+    reference_root,
+    "trrust",
+    paste0("trrust_", sanitize_tf_path_name(species), ".rds")
+  )
+  metadata <- make_tf_resource_cache_metadata(
+    resource_name = "TRRUST",
+    species = species
+  )
+
+  cached <- read_tf_cache(
+    cache_file = cache_file,
+    expected_metadata = metadata,
+    max_age_days = max_age_days,
+    use_cache = use_cache
+  )
+  if (cached$found) {
+    return(cached$result)
+  }
+
+  network <- load_trrust_network(species = species)
+  write_tf_cache(cache_file = cache_file, metadata = metadata, result = network)
+  network
+}
+
 read_collectri_static_table <- function(species = "human") {
   # 当前OmnipathR版本在解析CollecTRI evidences时可能报错；
   # 因此这里使用OmnipathR官方static_tables索引定位官方静态TSV，再由R直接解析。
@@ -420,19 +569,9 @@ read_collectri_static_table <- function(species = "human") {
 }
 
 load_collectri_network <- function(species = "human", split_complexes = FALSE) {
-  # 优先使用decoupleR官方接口；若当前OmnipathR解析失败，则使用官方静态表兜底。
-  collectri <- try(
-    decoupleR::get_collectri(
-      organism = species,
-      split_complexes = split_complexes,
-      load_meta = FALSE
-    ),
-    silent = TRUE
-  )
-
-  if (inherits(collectri, "try-error")) {
-    collectri <- read_collectri_static_table(species = species)
-  }
+  # 当前decoupleR::get_collectri在部分OmnipathR版本中会触发evidences解析错误并打印logger warning。
+  # 为保证批量脚本稳定，直接使用OmnipathR官方static_tables索引定位CollecTRI静态TSV。
+  collectri <- read_collectri_static_table(species = species)
 
   if (all(c("source", "target", "mor") %in% colnames(collectri))) {
     network <- format_network_for_decoupler(
@@ -461,6 +600,47 @@ load_collectri_network <- function(species = "human", split_complexes = FALSE) {
     )
   }
 
+  network
+}
+
+load_collectri_network_cached <- function(
+    species = "human",
+    split_complexes = FALSE,
+    reference_root = file.path("data", "reference", "TF"),
+    max_age_days = 7,
+    use_cache = TRUE) {
+  cache_file <- file.path(
+    reference_root,
+    "collectri",
+    paste0(
+      "collectri_",
+      sanitize_tf_path_name(species),
+      "_split_complexes_",
+      as.integer(isTRUE(split_complexes)),
+      ".rds"
+    )
+  )
+  metadata <- make_tf_resource_cache_metadata(
+    resource_name = "CollecTRI",
+    species = species,
+    extra = list(split_complexes = isTRUE(split_complexes))
+  )
+
+  cached <- read_tf_cache(
+    cache_file = cache_file,
+    expected_metadata = metadata,
+    max_age_days = max_age_days,
+    use_cache = use_cache
+  )
+  if (cached$found) {
+    return(cached$result)
+  }
+
+  network <- load_collectri_network(
+    species = species,
+    split_complexes = split_complexes
+  )
+  write_tf_cache(cache_file = cache_file, metadata = metadata, result = network)
   network
 }
 
@@ -581,6 +761,52 @@ run_chea3_enrichment <- function(
   )
 }
 
+run_chea3_enrichment_cached <- function(
+    input,
+    symbol_column = "Symbol",
+    min_genes = 5,
+    api_url = "https://maayanlab.cloud/chea3/api/enrich/",
+    reference_root = file.path("data", "reference", "TF"),
+    max_age_days = 7,
+    use_cache = TRUE) {
+  dat <- read_result_table(input$gene_file)
+  genes <- extract_gene_symbols(dat, symbol_column = symbol_column)
+  if (length(genes) < min_genes) {
+    return(list())
+  }
+
+  cache_file <- file.path(
+    reference_root,
+    "chea3",
+    input$input_type,
+    paste0(sanitize_tf_path_name(input$output_label), ".rds")
+  )
+  metadata <- make_tf_gene_cache_metadata(
+    method = "chea3",
+    input = input,
+    genes = genes,
+    extra = list(min_genes = min_genes, api_url = api_url)
+  )
+  cached <- read_tf_cache(
+    cache_file = cache_file,
+    expected_metadata = metadata,
+    max_age_days = max_age_days,
+    use_cache = use_cache
+  )
+  if (cached$found) {
+    return(cached$result)
+  }
+
+  result <- rChEA3::queryChEA3(
+    genes = genes,
+    query_name = paste(input$input_type, input$input_name, sep = "_"),
+    verbose = FALSE,
+    url = api_url
+  )
+  write_tf_cache(cache_file = cache_file, metadata = metadata, result = result)
+  result
+}
+
 run_enrichr_enrichment <- function(
     input,
     databases,
@@ -610,6 +836,67 @@ run_enrichr_enrichment <- function(
     include_overlap = include_overlap,
     sleepTime = sleep_time
   )
+}
+
+run_enrichr_enrichment_cached <- function(
+    input,
+    databases,
+    symbol_column = "Symbol",
+    min_genes = 5,
+    background = NULL,
+    include_overlap = TRUE,
+    sleep_time = 1,
+    enrichr_site = "Enrichr",
+    reference_root = file.path("data", "reference", "TF"),
+    max_age_days = 7,
+    use_cache = TRUE) {
+  dat <- read_result_table(input$gene_file)
+  genes <- extract_gene_symbols(dat, symbol_column = symbol_column)
+  if (length(genes) < min_genes) {
+    return(list())
+  }
+
+  cache_file <- file.path(
+    reference_root,
+    "enrichr",
+    input$input_type,
+    paste0(sanitize_tf_path_name(input$output_label), ".rds")
+  )
+  metadata <- make_tf_gene_cache_metadata(
+    method = "enrichr",
+    input = input,
+    genes = genes,
+    extra = list(
+      databases = sort(as.character(databases)),
+      min_genes = min_genes,
+      background = background,
+      include_overlap = include_overlap,
+      sleep_time = sleep_time,
+      enrichr_site = enrichr_site
+    )
+  )
+  cached <- read_tf_cache(
+    cache_file = cache_file,
+    expected_metadata = metadata,
+    max_age_days = max_age_days,
+    use_cache = use_cache
+  )
+  if (cached$found) {
+    return(cached$result)
+  }
+
+  result <- run_enrichr_enrichment(
+    input = input,
+    databases = databases,
+    symbol_column = symbol_column,
+    min_genes = min_genes,
+    background = background,
+    include_overlap = include_overlap,
+    sleep_time = sleep_time,
+    enrichr_site = enrichr_site
+  )
+  write_tf_cache(cache_file = cache_file, metadata = metadata, result = result)
+  result
 }
 
 run_network_ora_enrichment <- function(
@@ -773,13 +1060,22 @@ run_tf_enrichment_task <- function(
     enrichr_include_overlap,
     enrichr_sleep_time,
     enrichr_site,
+    reference_root = file.path("data", "reference", "TF"),
+    reference_max_age_days = 7,
+    use_reference_cache = TRUE,
     preview_rows) {
   method <- task$method
   input <- task$input
+  output_group <- if (toupper(input$input_type) == "DEG") {
+    "DEG"
+  } else {
+    "intersect"
+  }
   output_dir <- file.path(
     tf_root,
-    method,
-    sanitize_tf_path_name(input$output_label)
+    output_group,
+    sanitize_tf_path_name(input$output_label),
+    method
   )
 
   if (method == "dorothea") {
@@ -811,11 +1107,14 @@ run_tf_enrichment_task <- function(
       preview_rows = preview_rows
     )
   } else if (method == "chea3") {
-    result <- run_chea3_enrichment(
+    result <- run_chea3_enrichment_cached(
       input = input,
       symbol_column = symbol_column,
       min_genes = chea3_min_genes,
-      api_url = chea3_api_url
+      api_url = chea3_api_url,
+      reference_root = reference_root,
+      max_age_days = reference_max_age_days,
+      use_cache = use_reference_cache
     )
     output_files <- save_chea3_tables(
       result_list = result,
@@ -824,7 +1123,7 @@ run_tf_enrichment_task <- function(
       preview_rows = preview_rows
     )
   } else if (method == "enrichr") {
-    result <- run_enrichr_enrichment(
+    result <- run_enrichr_enrichment_cached(
       input = input,
       databases = enrichr_databases,
       symbol_column = symbol_column,
@@ -832,7 +1131,10 @@ run_tf_enrichment_task <- function(
       background = enrichr_background,
       include_overlap = enrichr_include_overlap,
       sleep_time = enrichr_sleep_time,
-      enrichr_site = enrichr_site
+      enrichr_site = enrichr_site,
+      reference_root = reference_root,
+      max_age_days = reference_max_age_days,
+      use_cache = use_reference_cache
     )
     output_files <- save_named_result_tables(
       result_list = result,

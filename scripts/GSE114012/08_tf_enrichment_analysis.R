@@ -6,6 +6,11 @@
 # 2. 02号脚本生成的每套交集基因列表：
 #    results/ngs/GSE114012/intersect/<intersection_scheme>/gene_list.csv
 #
+# 注意：
+# - ORA/API类方法使用显著基因列表或交集gene_list作为离散输入；
+# - VIPER/CollecTRI类activity方法使用对应差异分析的全量all_genes.csv作为连续ranked signature，
+#   这是官方方法对连续分子读数/统计签名的要求，不使用交集后很短的deg_results.csv构建signature。
+#
 # 方法：
 # - DoRothEA：
 #   官方定位是signed TF-target regulon资源，不是单一统计检验。
@@ -31,7 +36,8 @@
 #   统计部分使用decoupleR::run_viper基于连续DEG签名推断TF活性。
 #
 # 输出：
-# results/ngs/GSE114012/TF/<method>/<analysis_name_or_intersection_scheme>/
+# results/ngs/GSE114012/TF/DEG/<analysis_name>/<method>/
+# results/ngs/GSE114012/TF/intersect/<intersection_scheme>/<method>/
 # 同步保存csv、md、tex三种表格格式。
 # 文件名也带方法前缀，例如dorothea_deg_tf_enrichment.csv、
 # chea3_deg_Integrated--meanRank.csv、collectri_intersect_tf_activity.csv。
@@ -53,6 +59,13 @@ INTERSECT_ROOT <- file.path(RESULT_ROOT, "intersect")
 # 测试时可临时设置TF_OUTPUT_ROOT，把结果写到temporary而不覆盖正式results。
 OUTPUT_ROOT <- Sys.getenv("TF_OUTPUT_ROOT", unset = RESULT_ROOT)
 TF_ROOT <- file.path(OUTPUT_ROOT, "TF")
+
+# 远程API结果与网络TF资源缓存目录。
+# ChEA3、Enrichr、TRRUST、CollecTRI等涉及网络访问的内容会优先读取本地缓存；
+# 缓存缺失或超过7天后才重新获取，避免重复占用远程资源。
+TF_REFERENCE_ROOT <- file.path("data", "reference", "TF")
+TF_REFERENCE_MAX_AGE_DAYS <- 7
+USE_TF_REFERENCE_CACHE <- TRUE
 
 # 需要运行的转录因子富集方法。
 # 可选："dorothea"、"chea3"、"viper"、"enrichr"、"trrust"、"collectri"。
@@ -145,9 +158,10 @@ ENRICHR_BACKGROUND <- NULL
 ENRICHR_INCLUDE_OVERLAP <- TRUE
 ENRICHR_SLEEP_TIME <- 1
 
-# ChEA3/ENRICHR是远程API。macOS上HTTP请求在fork子进程中偶尔会触发底层Objective-C初始化错误，
-# 因此默认串行请求以保证稳定；DoRothEA/VIPER/TRRUST/CollecTRI仍会使用本机多进程并行。
-REMOTE_API_MAX_PARALLEL_REQUESTS <- 1
+# ChEA3/ENRICHR是远程API方法。
+# 这两类方法按官方普通调用方式逐个运行，并使用本地缓存减少真实远程请求；
+# DoRothEA/VIPER/TRRUST/CollecTRI均为本地统计运算，继续使用parallel函数全速并行。
+REMOTE_API_METHODS <- c("chea3", "enrichr")
 
 # 表格预览行数。CSV保存完整结果；md/tex预览前若干行。
 TABLE_PREVIEW_ROWS <- 21
@@ -261,7 +275,8 @@ if ("INTERSECT" %in% runtime_input_types) {
     all_inputs,
     get_tf_intersection_inputs(
       INTERSECT_ROOT,
-      schemes_to_run = INTERSECTION_SCHEMES_TO_RUN
+      schemes_to_run = INTERSECTION_SCHEMES_TO_RUN,
+      table_root = TABLE_ROOT
     )
   )
 }
@@ -278,36 +293,47 @@ if (length(all_inputs) == 0L) {
 }
 
 if (CLEAN_TF_OUTPUT_DIR) {
-  for (method_name in runtime_methods) {
-    method_dir <- file.path(TF_ROOT, method_name)
-    if (dir.exists(method_dir)) {
-      unlink(method_dir, recursive = TRUE, force = TRUE)
+  # 清理当前新目录结构，同时删除旧版TF/<method>/结构，避免历史结果混淆。
+  clean_dirs <- c(
+    file.path(TF_ROOT, c("DEG", "intersect", "summary")),
+    file.path(TF_ROOT, runtime_methods)
+  )
+  for (clean_dir in unique(clean_dirs)) {
+    if (dir.exists(clean_dir)) {
+      unlink(clean_dir, recursive = TRUE, force = TRUE)
     }
-  }
-  summary_dir <- file.path(TF_ROOT, "summary")
-  if (dir.exists(summary_dir)) {
-    unlink(summary_dir, recursive = TRUE, force = TRUE)
   }
 }
 
-cat("\nLoading DoRothEA regulons...\n")
-dorothea_network <- load_dorothea_regulon(
-  species = DOROTHEA_SPECIES,
-  confidence_levels = DOROTHEA_CONFIDENCE_LEVELS
-)
+dorothea_network <- data.frame()
+if (any(c("dorothea", "viper") %in% runtime_methods)) {
+  cat("\nLoading DoRothEA regulons...\n")
+  dorothea_network <- load_dorothea_regulon(
+    species = DOROTHEA_SPECIES,
+    confidence_levels = DOROTHEA_CONFIDENCE_LEVELS
+  )
+}
 
 trrust_network <- data.frame()
 if ("trrust" %in% runtime_methods) {
   cat("Loading TRRUST regulons...\n")
-  trrust_network <- load_trrust_network(species = TRRUST_SPECIES)
+  trrust_network <- load_trrust_network_cached(
+    species = TRRUST_SPECIES,
+    reference_root = TF_REFERENCE_ROOT,
+    max_age_days = TF_REFERENCE_MAX_AGE_DAYS,
+    use_cache = USE_TF_REFERENCE_CACHE
+  )
 }
 
 collectri_network <- data.frame()
 if ("collectri" %in% runtime_methods) {
   cat("Loading CollecTRI regulons...\n")
-  collectri_network <- load_collectri_network(
+  collectri_network <- load_collectri_network_cached(
     species = COLLECTRI_SPECIES,
-    split_complexes = COLLECTRI_SPLIT_COMPLEXES
+    split_complexes = COLLECTRI_SPLIT_COMPLEXES,
+    reference_root = TF_REFERENCE_ROOT,
+    max_age_days = TF_REFERENCE_MAX_AGE_DAYS,
+    use_cache = USE_TF_REFERENCE_CACHE
   )
 }
 
@@ -315,8 +341,10 @@ cat("\nTF enrichment runtime configuration:\n")
 cat("Selected methods: ", paste(runtime_methods, collapse = ", "), "\n", sep = "")
 cat("Selected inputs:  ", length(all_inputs), "\n", sep = "")
 cat("Input types:      ", paste(unique(vapply(all_inputs, `[[`, character(1), "input_type")), collapse = ", "), "\n", sep = "")
-cat("DoRothEA edges:   ", nrow(dorothea_network), "\n", sep = "")
-cat("DoRothEA TFs:     ", length(unique(dorothea_network$tf)), "\n", sep = "")
+if (any(c("dorothea", "viper") %in% runtime_methods)) {
+  cat("DoRothEA edges:   ", nrow(dorothea_network), "\n", sep = "")
+  cat("DoRothEA TFs:     ", length(unique(dorothea_network$tf)), "\n", sep = "")
+}
 if ("trrust" %in% runtime_methods) {
   cat("TRRUST edges:     ", nrow(trrust_network), "\n", sep = "")
   cat("TRRUST TFs:       ", length(unique(trrust_network$source)), "\n", sep = "")
@@ -326,6 +354,7 @@ if ("collectri" %in% runtime_methods) {
   cat("CollecTRI TFs:    ", length(unique(collectri_network$source)), "\n", sep = "")
 }
 cat("Output root:      ", TF_ROOT, "\n", sep = "")
+cat("Reference cache:  ", TF_REFERENCE_ROOT, "\n", sep = "")
 
 
 # 3. 构建并行任务 -------------------------------------------------------------
@@ -350,7 +379,7 @@ make_tf_tasks <- function(methods, inputs) {
 tf_tasks <- make_tf_tasks(runtime_methods, all_inputs)
 remote_task_ids <- which(vapply(
   tf_tasks,
-  function(x) x$method %in% c("chea3", "enrichr"),
+  function(x) x$method %in% REMOTE_API_METHODS,
   logical(1)
 ))
 local_task_ids <- setdiff(seq_along(tf_tasks), remote_task_ids)
@@ -383,6 +412,9 @@ run_one_tf_task <- function(task_id) {
     enrichr_include_overlap = ENRICHR_INCLUDE_OVERLAP,
     enrichr_sleep_time = ENRICHR_SLEEP_TIME,
     enrichr_site = ENRICHR_SITE,
+    reference_root = TF_REFERENCE_ROOT,
+    reference_max_age_days = TF_REFERENCE_MAX_AGE_DAYS,
+    use_reference_cache = USE_TF_REFERENCE_CACHE,
     preview_rows = TABLE_PREVIEW_ROWS
   )
 }
@@ -408,17 +440,28 @@ if (length(local_task_ids) > 0L) {
 }
 
 if (length(remote_task_ids) > 0L) {
-  cat("\nRunning remote API TF enrichment tasks...\n")
-  remote_workers <- min(
-    REMOTE_API_MAX_PARALLEL_REQUESTS,
-    task_strategy$task_workers,
-    length(remote_task_ids)
-  )
-  remote_results <- run_parallel_tasks_with_progress(
-    task_ids = remote_task_ids,
-    task_function = run_one_tf_task,
-    workers = remote_workers
-  )
+  cat("\nRunning remote API TF enrichment tasks with local cache...\n")
+  remote_results <- vector("list", length(remote_task_ids))
+  names(remote_results) <- as.character(remote_task_ids)
+
+  for (remote_index in seq_along(remote_task_ids)) {
+    task_id <- remote_task_ids[remote_index]
+    task <- tf_tasks[[task_id]]
+    cat(
+      sprintf(
+        "Remote API task %d/%d: %s / %s\n",
+        remote_index,
+        length(remote_task_ids),
+        task$method,
+        task$input$input_name
+      )
+    )
+    remote_results[[as.character(task_id)]] <- try(
+      run_one_tf_task(task_id),
+      silent = TRUE
+    )
+  }
+
   stop_on_parallel_errors(
     remote_results,
     task_ids = remote_task_ids,
@@ -456,7 +499,8 @@ print(
 )
 
 cat("\nOutput summary:\n")
-cat("TF result directory: ", TF_ROOT, "/<method>/<analysis_or_intersection>\n", sep = "")
+cat("TF result directory: ", TF_ROOT, "/DEG/<analysis>/<method>\n", sep = "")
+cat("TF intersect directory: ", TF_ROOT, "/intersect/<scheme>/<method>\n", sep = "")
 cat("TF summary table:    ", file.path(summary_output_dir, "summary.csv"), "\n", sep = "")
 print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
 cat("\nBatch TF enrichment analysis finished.\n")
