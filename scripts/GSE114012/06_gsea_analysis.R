@@ -4,8 +4,6 @@
 # 使用clusterProfiler::GSEA和msigdbr基因集批量运行GSEA分析。
 # GSEA结果表保存为csv/md/tex三种完整格式，Top通路气泡图使用GseaVis绘制。
 
-SCRIPT_START_TIME <- Sys.time()
-
 
 # 0. 可修改配置 ---------------------------------------------------------------
 
@@ -28,9 +26,10 @@ OUTPUT_ROOT <- Sys.getenv("GSEA_OUTPUT_ROOT", unset = RESULT_ROOT)
 TABLE_OUTPUT_ROOT <- file.path(OUTPUT_ROOT, "tables")
 PLOT_ROOT <- file.path(OUTPUT_ROOT, "plots", "GSEA")
 
-# 公共函数脚本：差异分析文件定位、绘图保存、统一绘图风格、文本表格转义。
+# 公共函数脚本：差异分析文件定位、绘图风格、报告表格和批量并行调度。
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 REPORT_TABLE_FUNCTION_FILE <- "scripts/functions/report_table_functions.R"
+PARALLEL_FUNCTION_FILE <- "scripts/functions/parallel_runtime_functions.R"
 
 # 需要运行哪些差异分析设计。设为"all"时自动运行全部DEG/all_genes.csv。
 ANALYSES_TO_RUN <- "all"
@@ -317,6 +316,9 @@ if (length(missing_packages) > 0) {
 source(FUNCTION_FILE)
 source(PLOTTING_FUNCTION_FILE)
 source(REPORT_TABLE_FUNCTION_FILE)
+source(PARALLEL_FUNCTION_FILE)
+
+SCRIPT_START_TIME <- start_runtime_timer()
 
 # 以下为脚本内部固定声明，通常不需要在日常分析中修改。
 CLEAN_GSEA_OUTPUT_DIR <- TRUE
@@ -330,20 +332,12 @@ REFRESH_QS2_CACHE <- Sys.getenv("GSEA_REFRESH_QS2_CACHE", unset = "1") == "1"
 QS2_CACHE_DIR <- file.path("temporary", DATA_TYPE, DATASET_ID, "GSEA_qs2_cache")
 MSIGDB_REFERENCE_DIR <- file.path("data", "reference", "msigdb")
 MSIGDB_REFERENCE_MAX_AGE_DAYS <- 7
-QS2_NTHREADS <- max(1L, parallel::detectCores(logical = TRUE))
-GSEA_TASK_WORKERS <- QS2_NTHREADS
-GSEA_INNER_NPROC <- 1L
-SINGLE_PATHWAY_PLOT_WORKERS <- 1L
-
-qs2::qopt("nthreads", QS2_NTHREADS)
-options(mc.cores = GSEA_TASK_WORKERS)
-
-if (requireNamespace("BiocParallel", quietly = TRUE)) {
-  BiocParallel::register(
-    BiocParallel::MulticoreParam(workers = GSEA_TASK_WORKERS),
-    default = TRUE
-  )
-}
+PARALLEL_WORKERS <- get_available_worker_count()
+configure_parallel_runtime(
+  task_workers = PARALLEL_WORKERS,
+  inner_workers = PARALLEL_WORKERS,
+  qs2_threads = PARALLEL_WORKERS
+)
 
 GENE_ID_COLUMN_BY_TYPE <- c(
   ENTREZ = "Entrez",
@@ -1787,7 +1781,7 @@ cat(
   "\n",
   sep = ""
 )
-cat("qs2 threads: ", QS2_NTHREADS, "\n", sep = "")
+cat("Available workers: ", PARALLEL_WORKERS, "\n", sep = "")
 cat("Output root:  ", OUTPUT_ROOT, "\n", sep = "")
 cat("Refresh qs2 cache: ", REFRESH_QS2_CACHE, "\n", sep = "")
 cat("Previous GSEA outputs were cleaned before this run.\n")
@@ -1864,42 +1858,24 @@ task_table <- expand.grid(
 )
 total_tasks <- nrow(task_table)
 
-# 任务级并行策略：
-# 1. 任务很多时，外层同时运行多个analysis x geneset任务，使CPU长期保持高负荷；
-# 2. 任务很少时，单个GSEA任务自动获得更多nproc核心；
-# 3. 外层并行开启时，单通路图在任务内部顺序保存，避免嵌套并行导致CPU过度抢占。
-GSEA_TASK_WORKERS <- if (.Platform$OS.type != "windows") {
-  min(QS2_NTHREADS, total_tasks)
-} else {
-  1L
-}
-GSEA_INNER_NPROC <- if (GSEA_TASK_WORKERS > 0) {
-  max(1L, floor(QS2_NTHREADS / GSEA_TASK_WORKERS))
-} else {
-  QS2_NTHREADS
-}
-QS2_NTHREADS_PER_TASK <- GSEA_INNER_NPROC
-SINGLE_PATHWAY_PLOT_WORKERS <- if (GSEA_TASK_WORKERS > 1) {
-  1L
-} else {
-  QS2_NTHREADS
-}
+parallel_strategy <- make_parallel_execution_strategy(
+  total_tasks = total_tasks,
+  max_workers = PARALLEL_WORKERS
+)
+GSEA_TASK_WORKERS <- parallel_strategy$task_workers
+GSEA_INNER_NPROC <- parallel_strategy$inner_workers
+SINGLE_PATHWAY_PLOT_WORKERS <- parallel_strategy$nested_workers
 
-qs2::qopt("nthreads", QS2_NTHREADS_PER_TASK)
-options(mc.cores = GSEA_TASK_WORKERS)
-if (requireNamespace("BiocParallel", quietly = TRUE)) {
-  BiocParallel::register(
-    BiocParallel::MulticoreParam(workers = GSEA_INNER_NPROC),
-    default = TRUE
-  )
-}
-
-cat("\nParallel execution strategy:\n")
-cat("Total tasks:              ", total_tasks, "\n", sep = "")
-cat("Task-level workers:       ", GSEA_TASK_WORKERS, "\n", sep = "")
-cat("GSEA nproc per task:      ", GSEA_INNER_NPROC, "\n", sep = "")
-cat("qs2 nthreads per task:    ", QS2_NTHREADS_PER_TASK, "\n", sep = "")
-cat("Single-pathway workers:   ", SINGLE_PATHWAY_PLOT_WORKERS, "\n", sep = "")
+configure_parallel_runtime(
+  task_workers = GSEA_TASK_WORKERS,
+  inner_workers = GSEA_INNER_NPROC,
+  qs2_threads = parallel_strategy$qs2_threads_per_task
+)
+print_parallel_execution_strategy(
+  strategy = parallel_strategy,
+  inner_label = "GSEA nproc per task",
+  nested_label = "Single-pathway workers"
+)
 
 run_gsea_task <- function(task_id) {
   analysis_name <- task_table$Analysis_Name[task_id]
@@ -2001,91 +1977,9 @@ run_gsea_task <- function(task_id) {
   )
 }
 
-run_gsea_tasks_with_progress <- function(task_ids, task_function, workers) {
-  # 主进程维护进度条，子进程负责实际GSEA与绘图任务。
-  # 与parallel::mclapply相比，这里可以实时回收已完成任务并刷新终端进度。
-  total_task_count <- length(task_ids)
-  progress_bar <- utils::txtProgressBar(
-    min = 0,
-    max = total_task_count,
-    style = 3
-  )
-  on.exit(close(progress_bar), add = TRUE)
-
-  results <- vector("list", total_task_count)
-  names(results) <- as.character(task_ids)
-
-  if (workers <= 1L || .Platform$OS.type == "windows") {
-    for (task_position in seq_along(task_ids)) {
-      task_id <- task_ids[task_position]
-      results[[as.character(task_id)]] <- try(task_function(task_id), silent = TRUE)
-      utils::setTxtProgressBar(progress_bar, task_position)
-    }
-
-    return(results)
-  }
-
-  workers <- max(1L, min(as.integer(workers), total_task_count))
-  next_task_position <- 1L
-  completed_tasks <- 0L
-  active_jobs <- list()
-  active_task_by_pid <- list()
-
-  launch_next_task <- function() {
-    task_id <- task_ids[next_task_position]
-    job <- parallel::mcparallel(
-      try(task_function(task_id), silent = TRUE),
-      silent = TRUE
-    )
-    pid <- as.character(job$pid)
-
-    active_jobs[[pid]] <<- job
-    active_task_by_pid[[pid]] <<- task_id
-    next_task_position <<- next_task_position + 1L
-  }
-
-  while (
-    next_task_position <= total_task_count &&
-      length(active_jobs) < workers
-  ) {
-    launch_next_task()
-  }
-
-  while (completed_tasks < total_task_count) {
-    ready_results <- parallel::mccollect(
-      active_jobs,
-      wait = FALSE,
-      timeout = 0.5
-    )
-
-    if (is.null(ready_results) || length(ready_results) == 0) {
-      Sys.sleep(0.2)
-      next
-    }
-
-    for (pid in names(ready_results)) {
-      task_id <- active_task_by_pid[[pid]]
-      results[[as.character(task_id)]] <- ready_results[[pid]]
-      active_jobs[[pid]] <- NULL
-      active_task_by_pid[[pid]] <- NULL
-      completed_tasks <- completed_tasks + 1L
-      utils::setTxtProgressBar(progress_bar, completed_tasks)
-
-      while (
-        next_task_position <= total_task_count &&
-          length(active_jobs) < workers
-      ) {
-        launch_next_task()
-      }
-    }
-  }
-
-  results
-}
-
 cat("\nRunning batch GSEA analyses...\n")
 task_ids <- seq_len(total_tasks)
-summary_records <- run_gsea_tasks_with_progress(
+summary_records <- run_parallel_tasks_with_progress(
   task_ids = task_ids,
   task_function = run_gsea_task,
   workers = GSEA_TASK_WORKERS
@@ -2134,15 +2028,6 @@ cat("CSV/MD/TEX result sets: ", nrow(summary_table), " each\n", sep = "")
 cat("PDF/PNG dotplots: ", nrow(summary_table), " each\n", sep = "")
 cat("Single-pathway GSEA PDF/PNG plots: ", sum(summary_table$Single_Pathway_Plots), " each\n", sep = "")
 
-SCRIPT_END_TIME <- Sys.time()
-SCRIPT_RUNTIME_SECONDS <- as.numeric(
-  difftime(SCRIPT_END_TIME, SCRIPT_START_TIME, units = "secs")
-)
-cat(
-  "Total runtime: ",
-  sprintf("%.2f min (%.1f sec)", SCRIPT_RUNTIME_SECONDS / 60, SCRIPT_RUNTIME_SECONDS),
-  "\n",
-  sep = ""
-)
+print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
 
 cat("\nBatch GSEA analysis finished.\n")
