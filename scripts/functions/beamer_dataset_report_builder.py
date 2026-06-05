@@ -1027,10 +1027,10 @@ def build_00() -> str:
     lines += text_frame(
         "为什么先做样本聚类",
         [
-            "输入使用 SE 对象中的 TPM，而不是原始 count；这样样本间相关性更适合表达模式质控。",
-            "样本标签使用 clinical table 的 Title 列，便于直接识别细胞系、重复和 LRC/BULK 状态。",
-            "聚类只由表达相关性决定，不强制把同一细胞系或同一分组放在一起；如果图中出现离群或异常聚类，后续 DEG 和富集结果需要谨慎解释。",
-            "该步骤在证据链中的作用是确认模型结构：我们后续讨论的休眠样转录程序，必须建立在样本表达结构可解释的基础上。",
+            "输入文件来自数据准备阶段保存的 SummarizedExperiment 对象和临床注释表；表达矩阵使用 SE 中的 TPM assay，样本显示名使用临床表 Title 列，避免 GSM 编号影响阅读。",
+            "运算设计是先按基因类型过滤，再在 LRC 或 BULK 样本内部计算 TPM 表达相关性，并用层次聚类展示样本间表达模式。这里不强制按细胞系或分组排序，聚类结构完全由表达数据决定。",
+            "结果阅读时重点看是否存在离群样本、同类样本是否呈现稳定相关性、LRC 与 BULK 是否各自具有可解释的表达结构。若样本结构稳定，后续 DEG、GSEA 和 TF 推断才有更可靠的样本基础。",
+            "这一页在课题中的作用是质量控制：先确认 label-retaining cells 与 cycling bulk 的表达结构可信，再讨论休眠样转录程序和潜在苏醒机制。",
         ],
     )
     plot_dir = PLOT_ROOT / "sample_clustering_heatmap"
@@ -1041,9 +1041,9 @@ def build_00() -> str:
             image_result_title("00", label, "样本相关性层级聚类"),
             fig,
             [
-                "热图主体为样本间 TPM 相关性矩阵；颜色越接近高相关端，说明两个样本整体表达谱越相似。",
-                "层级聚类树反映表达模式驱动的样本相似性，而不是预设分组；因此可用于识别潜在离群样本、批次结构或细胞系特异性。",
-                "若 LRC 或 BULK 样本在该图中呈现相对稳定结构，后续 LRC vs BULK 的差异表达、GSEA 和 TF 推断才更容易被解释为生物状态差异，而非样本质量问题。",
+                "输入为当前样本组的 TPM 矩阵；图中每个格子表示两个样本之间的表达相关性，颜色越接近高相关端，说明整体表达谱越相似。",
+                "层次聚类树用于检查表达模式是否自然形成稳定结构，而不是验证预设标签。若某个样本远离同类样本，需要回到临床注释、测序质量和后续 DEG 结果中复查。",
+                "该图主要服务于模型可信度判断：如果 LRC/BULK 样本结构清楚，后续看到的差异基因和通路偏移更可能反映休眠样状态，而不是样本混乱或批次问题。",
             ],
         )
     write_text(section_file(section_name), lines)
@@ -1337,16 +1337,16 @@ def build_08() -> list[str]:
     lines = section_cover(
         "08. TF 富集/活性推断：寻找休眠样转录程序的上游调控因子",
         "六种方法分别从基因列表、调控网络、数据库证据和 signed regulon 角度推断 TF",
-        "08 号脚本产生的是原始 TF 证据；不同方法的输入、统计量和方向性并不完全一致，因此本报告不逐页展示原始表，而是把 08 号输出交给 09 号统一整理、排序和取交集。",
+        "08 号脚本产生原始 TF 证据。由于六种方法的输入、统计量、方向性和数据库来源并不完全相同，本报告把原始结果作为中间层，重点展示 09 号脚本整理后的可比较 TF 排名和多方法交集候选。",
     )
     lines += text_frame(
         "六种 TF 方法在证据链中的定位",
         [
-            "DoRothEA 与 TRRUST 更偏向 TF-target overlap，适合快速筛选与显著基因集合存在靶基因重叠的 TF。",
-            "ChEA3 与 ENRICHR 提供多数据库/多 library 的排名证据，适合判断某个 TF 是否在多个外部证据源中反复出现。",
-            "VIPER 与 CollecTRI 使用带方向的 regulon 或 signed network，可以提供 TF activity 倾向，更适合解释“哪个 TF 可能在 LRC 中被激活或抑制”。",
-            "输入分两类：DEG significant_genes 用于单个/组合分析设计，intersect gene_list 用于跨模型稳定候选；这两类输入分别回答模型特异和跨模型稳定 TF 线索。",
-            "09 号整合脚本会把这些异构结果压缩成 method_final、intersection_summary 和 Top10 candidate 表，便于最终人工筛选。",
+            "输入分为两类：一类是每个 DEG 分析设计的 significant_genes，用于寻找模型特异 TF 线索；另一类是 02 号交集方案的 gene_list，用于寻找跨模型更稳定的 TF 候选。",
+            "DoRothEA、TRRUST 侧重已整理 TF-target 网络与显著基因集合的重叠，适合快速筛出可能解释 DEG 集合的转录因子。",
+            "ChEA3、ENRICHR 侧重外部数据库和多 library 证据，适合判断某个 TF 是否在 ChIP、共表达、文献或其他资源中反复支持。",
+            "VIPER、CollecTRI 利用带方向的 regulon 或 signed network，对全量 ranked signature 推断 TF activity 倾向，因此更适合回答某个 TF 在 LRC 方向是否可能被激活或抑制。",
+            "这些方法不是彼此替代，而是提供不同证据层。09 号整合脚本会把异构输出压缩成可横向比较的 final 排名和多方法交集候选。",
         ],
     )
     write_text(section_file(section_names[0]), lines)
@@ -1363,10 +1363,10 @@ def build_09() -> list[str]:
     lines += text_frame(
         "TF 整合结果的阅读顺序",
         [
-            "每个输入方案对应一个目录层级：DEG/<analysis> 表示来自某套差异分析的显著基因；intersect/<scheme> 表示来自 02 号跨模型交集基因。",
-            "先看 TF 交集方案摘要，判断哪些方法组合得到的候选数量更少、更严格；再看六种方法 final 结果，理解每种方法给出的排序基础。",
-            "最后看 Top10 候选交集表。Consensus_Rank 越靠前、Source_Method_Count 越高、CheA3_Library_Count 越大，通常说明该 TF 更值得进入后续验证。",
-            "需要注意：不同方法的统计量含义不同。VIPER/CollecTRI 的 NES/Direction 更接近活性方向；DoRothEA/TRRUST/ENRICHR/ChEA3 更偏向靶基因或数据库证据支持。",
+            "每个输入方案对应一个独立证据单元：DEG/<analysis> 表示来自某套 LRC/BULK 差异分析的显著基因，intersect/<scheme> 表示来自跨模型共同 DEG 的候选基因。",
+            "第一步看交集方案摘要，判断哪些方法组合更严格、候选规模是否可控；第二步看六种方法 final 排名，理解每种方法单独给出的 TF 线索。",
+            "第三步看 Top10 候选交集表。Consensus_Rank 越靠前、Source_Method_Count 越高、CheA3_Library_Count 越大，通常表示该 TF 同时具有跨方法一致性和外部 library 支持。",
+            "解释时需要区分证据类型：VIPER/CollecTRI 的 NES 或 Direction 更接近 TF 活性方向；DoRothEA/TRRUST/ENRICHR/ChEA3 更偏向靶基因重叠和数据库证据支持。",
         ],
     )
     summary_csv = find_result_csv(TF_SUMMARY_ROOT / "run_summary", "summary")
@@ -1377,8 +1377,8 @@ def build_09() -> list[str]:
                 "09. TF整合运行总览 | 全部输入方案",
                 summary_tex,
                 [
-                    "该表概括 09 号脚本整合了多少 TF 输入方案和交集方案。Input_Type 区分 DEG 与 intersect；TF_Analysis_Name 对应差异分析设计或交集方案。",
-                    "Methods_Integrated 表示纳入的 TF 方法数量；Intersection_Schemes 表示后续会展示多少种多方法交集组合。",
+                    "该表概括 09 号脚本实际整合的输入方案和方法组合。Input_Type 区分 DEG 与 intersect；TF_Analysis_Name 对应差异分析设计或交集方案。",
+                    "Methods_Integrated 表示纳入的 TF 方法数；Intersection_Schemes 表示后续会展示多少种多方法交集组合，用于评估候选 TF 的跨方法稳定性。",
                 ],
                 source_csv=summary_csv,
             )
@@ -1401,7 +1401,7 @@ def build_09() -> list[str]:
         lines = section_cover(
             f"09. TF结果整合：{input_label} / {analysis}",
             "按目录结构展示该输入方案的 TF final 结果和多方法交集候选",
-            "本分文件对应 TF_summary 下的一个输入方案。先看交集方案摘要，再看六种方法各自 final 排序，最后看多方法交集 Top10 候选。这样可以同时保留单方法证据和跨方法稳定性。",
+            "本节对应一个 TF 输入方案。展示顺序先从交集方案摘要判断候选规模，再查看六种方法各自的 final 排名，最后用多方法 Top10 交集表提炼更适合进入机制验证的转录因子。",
         )
         csv_files = sorted(csv_files, key=sort_tf_csv)
         preview_map = make_preview_tables_parallel(csv_files)
@@ -1433,9 +1433,9 @@ def build_09() -> list[str]:
                     f"09. TF交集方案摘要 | {input_label}/{analysis}",
                     tex,
                     [
-                        "该页先展示当前输入方案下全部 TF 交集方案摘要，用于判断不同组合的严格程度和候选规模。",
-                        "Intersection_Name 为交集方案名；Required_Methods 列出参与方法；Number_Of_Methods 为方法数量；Intersected_TF_Count 为全量交集 TF 数；Reported_Top_N 为后续候选表展示数量。",
-                        "交集数量越少通常越严格；若严格交集仍保留多个可解释 TF，说明该输入方案具有较强跨方法一致性。",
+                        "输入为当前方案下六种 TF 方法的 final 结果；该 summary 汇总不同方法组合取交集后的候选 TF 数量。",
+                        "Intersection_Name 为交集方案名；Number_Of_Methods 表示参与方法数量；Intersected_TF_Count 表示全量交集 TF 数；Reported_Top_N 表示候选表展示数量。",
+                        "阅读时重点看严格组合是否仍保留可解释 TF。若六方法共同交集或功能相近方法交集仍有候选，说明该输入方案存在较强跨方法一致性。",
                     ],
                     source_csv=intersection_summary,
                 )
@@ -1447,9 +1447,9 @@ def build_09() -> list[str]:
                     f"09. 六方法整合摘要 | {input_label}/{analysis}",
                     tex,
                     [
-                        "该页展示六种 TF 富集/活性推断方法整理后的 final TF 数量，是后续多方法交集的输入来源。",
-                        "Method 表示方法名；Final_TF_Count 表示该方法最终进入排序和交集分析的 TF 数目。",
-                        "如果某方法 Final_TF_Count 很低，说明该方法在当前基因集或 ranked signature 上覆盖有限，解释交集结果时需要考虑方法覆盖度。",
+                        "输入为 08 号脚本的原始 TF 输出；09 号脚本先为每种方法整理一版 final TF 排名，再把这些 final 表作为多方法交集的输入。",
+                        "Method 表示 TF 方法名；Final_TF_Count 表示该方法最终进入排序和交集分析的 TF 数量。",
+                        "如果某方法 Final_TF_Count 很低，通常提示当前基因集或 ranked signature 与该方法 regulon/library 的覆盖有限，解释交集结果时需要考虑方法覆盖度。",
                     ],
                     source_csv=method_summary,
                 )
@@ -1465,10 +1465,10 @@ def build_09() -> list[str]:
                 f"09. 单方法TF整合结果 | {input_label}/{analysis} | {tf_method_label(method)}",
                 tex,
                 [
-                    f"该页展示 {tf_method_label(method)} 方法整理后的 final TF 排名。该表用于回答：在单一方法证据下，哪些 TF 最可能解释当前输入基因集。",
-                    "Rank 为该方法内部排序；TF 为转录因子 symbol；Score/P_Value/Adjusted_P_Value/NES/Direction 为该方法可提供的统计量或活性方向。",
-                    "CheA3_Library_Count 表示该 TF 在 ChEA3 多 library 中出现的证据数量；CheA3_Integrated_TopRank 用于补充跨数据库可靠性判断。",
-                    "单方法排名不是最终结论，后续需要结合交集候选表判断其跨方法稳定性。",
+                    f"该表展示 {tf_method_label(method)} 的 final TF 排名。输入可能是显著基因列表或 ranked signature，具体取决于该方法在 08 号脚本中的标准流程。",
+                    "Rank/TF 用于快速定位候选；Score、P_Value、Adjusted_P_Value、NES 或 Direction 是该方法可提供的核心统计量或活性方向，不能在不同方法之间直接等价比较。",
+                    "CheA3_Library_Count 和 CheA3_Integrated_TopRank 是统一补充字段，用于判断该 TF 在 ChEA3 多 library 证据中的可重复支持情况。",
+                    "单方法排名用于保留方法特异线索；最终优先级需要结合后续多方法交集表、通路结果以及候选基因表达模式综合判断。",
                 ],
                 source_csv=csv_path,
             )
@@ -1487,9 +1487,9 @@ def build_09() -> list[str]:
                 candidate_entries.append((scheme, tex, csv_path))
 
         candidate_note = [
-            "Consensus_Rank 为综合排序；TF 为转录因子 symbol；Source_Methods 显示该候选来自哪些方法组合。",
-            "Source_Method_Count 表示支持该 TF 的方法数；CheA3_Library_Count 表示 ChEA3 多证据库支持数，数量越高通常说明外部证据越丰富。",
-            "DoRothEA/ChEA3/VIPER/ENRICHR/TRRUST/CollecTRI 列保留各方法紧凑证据。优先关注多方法支持、ChEA3 library 较多、且在活性方法中方向清楚的 TF。",
+            "Consensus_Rank 是候选 TF 的综合排序；TF 为转录因子 symbol；Source_Methods 显示该候选被哪些方法支持。",
+            "Source_Method_Count 表示支持方法数量；CheA3_Library_Count 表示 ChEA3 多 library 支持数量，数量越高通常说明外部数据库证据越丰富。",
+            "DoRothEA/ChEA3/VIPER/ENRICHR/TRRUST/CollecTRI 列保留各方法的紧凑证据。优先关注多方法支持、ChEA3 library 较多、并且在活性方法中方向较清楚的 TF。",
         ]
         for i in range(0, len(candidate_entries), 2):
             first = candidate_entries[i]
@@ -1575,9 +1575,10 @@ def append_deg_frames(lines: list[str], analysis: str) -> None:
     lines += text_frame(
         f"{analysis}：差异表达分析阅读顺序",
         [
-            f"本组以 {analysis} 为一个完整分析单元，连续展示 summary、显著差异基因表、传统火山图和 Top DEG 表达热图。",
-            "summary 用于确认显著基因总量、上下调方向和阈值；显著基因表用于定位具体候选；火山图查看 logFC 与显著性分布；Top DEG 热图回到样本表达层面验证分组分离。",
-            "这四页共同回答：该分析设计中 LRC 相对 BULK 是否形成稳定、可解释、可被后续富集承接的休眠样转录改变。",
+            f"输入为 {analysis} 对应的 LRC/BULK 样本和 01 号脚本生成的表达矩阵。该分析单元会连续展示统计摘要、显著差异基因、传统火山图和 Top DEG 表达热图。",
+            "运算设计采用 limma 线性模型框架，对 LRC 相对 BULK 的表达差异进行建模，并按脚本配置的 p 值列和 logFC 阈值筛选显著 DEG；火山图和热图沿用同一阈值，保证图表口径一致。",
+            "阅读顺序是先判断显著基因规模和方向，再定位具体候选，随后看效应量与显著性分布，最后回到样本表达层面确认这些候选是否真的能区分 LRC 与 BULK。",
+            "这一组结果的作用是为后续 GSEA 和 TF 推断提供 ranked genes 与显著基因列表，是整条探索性证据链的起点。",
         ],
     )
 
@@ -1589,9 +1590,9 @@ def append_deg_frames(lines: list[str], analysis: str) -> None:
                 f"{analysis} | DEG统计摘要",
                 tex,
                 [
-                    "该 summary 是当前 LRC/BULK 比较的入口页。重点核对 Up、Down 与 Total_Significant_Genes，三者应满足 Total=Up+Down。",
-                    "P_Value_Column、P_Value_Cutoff 与 LogFC_Cutoff 说明当前脚本采用的显著性判定标准；这些阈值也会被火山图和后续富集输入沿用。",
-                    "Samples_Used 帮助判断样本量是否足够支撑该比较；如果显著基因数很少或方向严重失衡，需要结合后续图形谨慎解释。",
+                    "输入为当前分析设计的样本分组和 limma 输出结果；summary 汇总了样本数、比较方向、显著性阈值以及上/下调 DEG 数量。",
+                    "结果阅读时先核对 Up、Down 与 Total_Significant_Genes，三者应满足 Total=Up+Down；再看 Samples_Used 判断样本量是否足以支撑该比较。",
+                    "该表用于快速判断当前模型的差异信号强弱。若显著 DEG 很少，说明该模型对休眠样差异贡献有限；若方向严重失衡，需要结合火山图和热图判断是否由少数强效基因驱动。",
                 ],
                 source_csv=summary_csv,
             )
@@ -1604,9 +1605,9 @@ def append_deg_frames(lines: list[str], analysis: str) -> None:
                 f"{analysis} | 显著差异基因表",
                 tex,
                 [
-                    "该表展示通过阈值筛选后的显著 DEG 预览；按 logFC 先展示 LRC 方向效应量最强的 Top10，再展示反方向效应量最强的 Top10。Symbol/Ensembl/Entrez 用于后续交集、GSEA leading-edge 回查和 TF 富集。",
-                    "logFC 为 LRC 相对 BULK 的效应量；正值表示 LRC 方向上调，负值表示 BULK 方向更高。t、P.Value、adj.P.Val 用于判断统计强度。",
-                    "阅读时优先关注效应量大、校正后 p 值稳定，并且在多个模型或交集方案中反复出现的候选基因。",
+                    "输入为当前 DEG 的完整显著基因表；Beamer 预览按 logFC 先展示 LRC 方向效应量最强的 Top10，再展示反方向效应量最强的 Top10。",
+                    "结果中 Symbol、Ensembl、Entrez 用于后续交集、GSEA leading-edge 回查和 TF 富集；logFC 表示 LRC 相对 BULK 的效应量，t、P.Value、adj.P.Val 用于判断统计证据。",
+                    "该表用于从统计结果中提炼候选基因。优先关注效应量大、p 值稳定、并且在多个模型或交集方案中反复出现的基因，它们更适合作为休眠维持或苏醒转换的后续验证对象。",
                 ],
                 source_csv=significant_csv,
             )
@@ -1617,9 +1618,9 @@ def append_deg_frames(lines: list[str], analysis: str) -> None:
             f"{analysis} | 传统火山图",
             volcano_fig,
             [
-                "火山图横坐标为 logFC，纵坐标为显著性指标；红色 Sig_Up 与蓝色 Sig_Down 分别表示 LRC 方向上调和下调显著基因。",
-                "该页用于快速判断当前分析的显著基因是否呈现清晰方向结构：红蓝点数量、左右分布和标注基因的位置都可提示该模型的差异强度。",
-                "若被标注基因位于高显著性、高效应量区域，并且在交集、GSEA 或 TF 整合中反复出现，应优先进入后续机制验证。",
+                "输入为当前分析设计的 all_genes.csv；横坐标展示 logFC，纵坐标展示显著性，红色和蓝色分别对应通过阈值的 Sig_Up 与 Sig_Down。",
+                "运算设计与 01 号 DEG 阈值保持一致，因此火山图可直接作为显著基因分布的可视化检查。图中 0 点居中，便于比较 LRC 方向与 BULK 方向的效应强度。",
+                "阅读时看红蓝点数量、两侧分布和标注基因的位置。强效且高显著性的候选如果在交集、GSEA 或 TF 结果中再次出现，说明其具有更高的机制解释价值。",
             ],
         )
 
@@ -1629,9 +1630,9 @@ def append_deg_frames(lines: list[str], analysis: str) -> None:
             f"{analysis} | Top DEG表达热图",
             heatmap_fig,
             [
-                "Top DEG 热图将统计结果重新投射到样本表达矩阵上，检查这些候选基因是否能把 LRC 与 BULK 样本分开。",
-                "顶部条带标记 Group 与 Cell_Line，左侧方向条保留 Up/Down 信息。若 LRC 样本在热图中形成一致表达块，说明 DEG 不只是统计显著，也具有样本层面的状态区分能力。",
-                "该图是连接 DEG 与后续机制分析的重要质量控制：分离越清晰，后续用这些基因做交集、TF 富集或候选验证越有解释力。",
+                "输入为当前 significant_genes.csv 中排序靠前的 Top DEG，以及 SE 对象中的 TPM 表达矩阵；表达值经 log2(TPM+1) 和行 Z-score 处理后绘制热图。",
+                "运算设计是在样本层面重新检查 DEG 是否具有分组分离能力。顶部条带显示 Group 与 Cell_Line，左侧方向条保留 Up/Down 信息，列聚类用于观察样本表达模式。",
+                "阅读时看 LRC 与 BULK 是否形成清晰表达块、同一细胞系内部是否一致、候选基因是否呈现方向稳定的表达模式。该图帮助判断显著 DEG 是否具有实际样本层面的可解释性。",
             ],
             wide=True,
         )
@@ -1646,9 +1647,10 @@ def append_intersection_frames(lines: list[str], scheme: str) -> None:
     lines += text_frame(
         f"{scheme}：交集方案阅读顺序",
         [
-            f"本组以 {scheme} 为一个完整交集单元，先展示交集统计摘要，再展示交集基因注释列表，随后回查参与交集的各 DEG 结果，最后展示多组火山图。",
-            "交集策略的目的不是取最大基因数，而是从多个 LRC/BULK 模型中筛出方向更稳定、可重复性更强的候选基因。",
-            "阅读时要同时看交集规模、方向一致性和成员 DEG 统计量；只有在多个成员分析中方向和显著性都较稳定的基因，才更适合进入后续机制解释。",
+            f"输入为 {scheme} 中配置的多个 significant_genes.csv。该交集单元先展示交集统计摘要和基因注释，再回查每个成员 DEG 结果，并用多组火山图观察参与模型的整体差异方向。",
+            "运算设计是按基因标识取共同出现的显著 DEG，同时记录这些基因在不同成员分析中的方向一致性。这样可以减少单一细胞系背景噪音，突出跨模型更稳定的候选。",
+            "结果阅读时先看交集规模和 Common_Up/Common_Down，再看 Mixed_Direction 是否提示方向不一致，最后回到成员 DEG 表确认每个候选在原始比较中的 logFC 与 p 值。",
+            "该部分的作用是从单模型 DEG 过渡到跨模型候选基因，为后续 TF 富集和人工筛选提供更稳健的基因集合。",
         ],
     )
 
@@ -1660,8 +1662,9 @@ def append_intersection_frames(lines: list[str], scheme: str) -> None:
                 f"{scheme} | 交集统计摘要",
                 tex,
                 [
-                    "该 summary 用于判断当前交集方案的严格程度。Total_Intersected_Genes 是交集基因数量；Common_Up/Common_Down 表示方向一致候选；Mixed_Direction 提示成员分析间方向不完全一致。",
-                    "如果交集基因很少但方向一致，说明该组合更严格、更偏向稳定候选；如果 Mixed_Direction 较多，则需要回到成员 DEG 表逐个判断是否值得保留。",
+                    "输入为该交集方案中所有成员分析的显著 DEG；summary 汇总共同基因数量和方向一致性。",
+                    "Total_Intersected_Genes 表示交集规模，Common_Up/Common_Down 表示方向一致候选，Mixed_Direction 提示同一基因在不同模型中方向不完全一致。",
+                    "该表用于判断交集方案的严格程度。交集小但方向一致通常更适合提炼稳定候选；Mixed_Direction 较多时，应结合成员 DEG 表逐个判断是否保留。",
                 ],
                 source_csv=summary_csv,
             )
@@ -1674,8 +1677,9 @@ def append_intersection_frames(lines: list[str], scheme: str) -> None:
                 f"{scheme} | 交集基因注释列表",
                 tex,
                 [
-                    "该 gene_list 只保留交集基因的可追踪注释信息，适合作为后续 TF 富集、人工筛选、文献检索和实验验证的输入。",
-                    "这里不混合展示 p 值和 logFC，是为了避免不同 DEG 设计的统计量被误读；统计证据会在后续成员 DEG 结果中分别回查。",
+                    "输入为交集后得到的共同基因集合；gene_list 只保留 Symbol、Ensembl、Entrez 等可追踪注释，不混合不同成员分析的 p 值和 logFC。",
+                    "结果阅读时重点确认候选基因的命名是否可追踪、是否存在缺失 ID，以及后续是否可以稳定映射到 TF 富集、文献检索或实验验证体系。",
+                    "该表是交集方案的“候选清单”，统计证据需要在后续成员 DEG 结果中分别回查。",
                 ],
                 source_csv=gene_list_csv,
             )
@@ -1695,8 +1699,9 @@ def append_intersection_frames(lines: list[str], scheme: str) -> None:
             f"{scheme} | {member}中的交集基因DEG结果",
             tex,
             [
-                f"该表回查 {scheme} 交集基因在 {member} 原始 DEG 结果中的 logFC、t、P.Value 和 adj.P.Val；含 logFC 的预览按正反方向各取 Top10。",
-                "如果同一 Symbol 在不同成员分析中 logFC 方向一致，并且显著性稳定，说明它更可能代表跨模型休眠样转录程序，而不是单一细胞系背景噪音。",
+                f"输入为 {scheme} 的交集基因列表和 {member} 的完整 DEG 结果；该表回查交集基因在原始分析中的 logFC、t、P.Value 和 adj.P.Val。",
+                "预览按 logFC 正反方向各取 Top10，用于同时观察 LRC 方向和 BULK 方向效应量最强的共同基因。",
+                "阅读时关注同一 Symbol 在多个成员分析中是否方向一致、显著性是否稳定。方向和统计证据越稳定，越可能代表跨模型休眠样转录程序。",
             ],
             source_csv=csv_path,
         )
@@ -1707,9 +1712,9 @@ def append_intersection_frames(lines: list[str], scheme: str) -> None:
             f"{scheme} | 多组火山图",
             multiple_volcano_fig,
             [
-                "多组火山图把参与该交集方案的多个 LRC/BULK 分析并列展示，红色 Sig_Up 与蓝色 Sig_Down 对应各模型显著上/下调基因。",
-                "该图用于判断不同模型中的显著 DEG 是否具有相似方向结构。若多个成员均显示相近的红蓝分布和强效候选，说明该交集方案更可能提炼到稳定生物信号。",
-                "中心组名与每组坐标轴帮助快速定位参与比较的模型；后续 TF 整合会继续沿用该交集基因列表进行上游调控因子筛选。",
+                "输入为参与该交集方案的多个 all_genes.csv；每个小面板按同一显著性阈值展示该成员分析中的 Sig_Up 与 Sig_Down。",
+                "运算设计是把多个模型的火山图压缩到同一画面，便于观察不同模型的显著 DEG 是否呈现相似方向结构和效应量范围。",
+                "阅读时看各成员红蓝点分布是否一致、是否存在共同的强效方向，以及组合模型是否被单一成员主导。该图帮助判断交集方案是否具有跨模型解释力。",
             ],
             wide=True,
         )
@@ -1728,9 +1733,10 @@ def append_gsea_frames(lines: list[str], analysis: str) -> None:
     lines += text_frame(
         f"{analysis}：GSEA通路富集阅读顺序",
         [
-            "GSEA 使用全量 ranked genes，而不是只使用显著基因列表；rank metric 由 06 号脚本统一定义，当前用于判断 LRC/BULK 状态的整体通路偏移。",
-            "每个 MSigDB 类别先展示 dotplot，再展示同一结果表。dotplot 用于快速看 top10 通路主题，结果表用于核对 NES、pvalue、p.adjust 和 qvalue。",
-            "NES 为正通常表示 LRC 方向富集，NES 为负通常表示 BULK 方向富集。优先关注与炎症、免疫微环境、ECM remodeling、细胞周期、代谢重编程和 TF 靶集相关的通路。",
+            "输入为 01 号脚本生成的 all_genes.csv 全量排序基因，而不是显著基因子集；rank metric 由 GSEA 脚本统一配置，当前用于捕捉 LRC/BULK 转录程序的整体通路偏移。",
+            "运算设计采用 clusterProfiler::GSEA 和 msigdbr 基因集，按多个 MSigDB 类别批量运行。dotplot 展示 top 通路主题，结果表用于核对 NES、pvalue、p.adjust 和 qvalue。",
+            "结果阅读时，NES 为正通常表示 LRC 方向富集，NES 为负通常表示 BULK 方向富集。与炎症、EMT/ECM、细胞周期、代谢重编程、免疫反应或 TF 靶集相关的通路，是当前休眠/苏醒假说中更值得跟进的方向。",
+            "该部分的作用是把单基因 DEG 证据提升到通路层面，帮助判断候选基因是否集中指向可解释的生物过程。",
         ],
     )
 
@@ -1744,9 +1750,9 @@ def append_gsea_frames(lines: list[str], analysis: str) -> None:
                 f"{analysis} | GSEA dotplot | {gsea_display_label(geneset)}",
                 fig,
                 [
-                    "该 dotplot 展示当前 analysis × MSigDB 类别中通过统一阈值后的 top10 通路，用于快速定位最强富集主题。",
-                    "气泡大小和颜色同时表达富集规模和统计显著性；通路名称若与休眠、苏醒、免疫、炎症、ECM、细胞周期或 TF 靶集相关，应优先进入后续解释。",
-                    "下一页为同一 GSEA 设计的统计表，可用 NES、p.adjust 与 qvalue 对图中通路进行定量核对。",
+                    f"输入为 {analysis} 的全量 ranked genes 与 {gsea_display_label(geneset)} 基因集；dotplot 展示通过统一阈值后的 top10 富集通路。",
+                    "气泡位置对应通路条目，气泡大小和颜色同时表达富集规模和统计显著性。图中可先快速识别是否出现炎症、EMT/ECM、细胞周期、代谢或 TF 靶集相关主题。",
+                    "该图用于快速定位通路层面的候选方向；下一页表格提供 NES 和校正显著性，帮助判断图中通路是否具有明确方向和统计支撑。",
                 ],
                 wide=True,
             )
@@ -1757,7 +1763,7 @@ def append_gsea_frames(lines: list[str], analysis: str) -> None:
             f"{analysis} | GSEA结果表 | {gsea_display_label(geneset)}",
             compact_tex,
             [
-                "该表是GSEA统计结果预览，按NES取正反向Top10。",
+                "该表是 GSEA 统计结果预览，按 NES 取正反向 Top10。",
                 "ID 为通路条目；NES 判断富集方向；pvalue、p.adjust 和 qvalue 判断统计证据。",
                 "本报告展示核心列以便汇报阅读；完整 CSV 中仍保留 clusterProfiler 官方输出的其他字段，可用于回查 leading-edge 基因和通路细节。",
             ],
@@ -1775,9 +1781,10 @@ def append_tf_summary_frames(lines: list[str], input_type: str, analysis: str) -
     lines += text_frame(
         f"{analysis}：TF整合结果阅读顺序",
         [
-            f"本组 TF 结果来自 {input_label}/{analysis} 输入方案。09 号脚本将六种 TF 方法的原始输出整理为 method_final 排名，并进一步计算多方法交集。",
-            "先看 TF 交集方案摘要，判断不同方法组合的候选数量；再看六种单方法 final 排名，理解每种方法的独立证据；最后看 Top10 交集候选，筛选更稳健的上游调控因子。",
-            "Source_Method_Count 越高、CheA3_Library_Count 越大，通常说明跨方法和外部 library 支持更充分；VIPER/CollecTRI 的方向信息可辅助判断 TF 活性倾向。",
+            f"输入来自 {input_label}/{analysis}：DEG 输入使用当前分析设计的显著基因，intersect 输入使用 02 号方案得到的共同基因清单。",
+            "运算设计是先把 DoRothEA、ChEA3、VIPER、ENRICHR、TRRUST 和 CollecTRI 的原始输出整理成 method_final 排名，再对这些 final 结果做多方法交集。",
+            "阅读顺序是先看交集方案摘要判断候选规模，再看六种单方法 final 排名理解各方法证据来源，最后看 Top10 交集候选筛选更稳健的上游调控因子。",
+            "在课题中，这一步用于把 DEG 和通路层面的现象压缩为可验证的 TF 线索。Source_Method_Count 越高、CheA3_Library_Count 越大，通常说明跨方法和外部 library 支持更充分。",
         ],
     )
 
@@ -1811,8 +1818,9 @@ def append_tf_summary_frames(lines: list[str], input_type: str, analysis: str) -
                 f"{analysis} | TF交集方案摘要",
                 tex,
                 [
-                    "该表汇总当前输入方案下全部 TF 交集组合。Intersection_Name 表示组合名；Number_Of_Methods 为参与方法数量；Intersected_TF_Count 为全量交集 TF 数。",
-                    "该页用于判断哪些组合更严格、哪些组合保留候选更多。严格组合若仍有候选，通常更适合优先验证；宽松组合则适合提供补充线索。",
+                    "输入为当前方案下六种 TF 方法的 final 结果；该表汇总不同方法组合取交集后的候选规模。",
+                    "Intersection_Name 表示组合名；Number_Of_Methods 为参与方法数量；Intersected_TF_Count 为全量交集 TF 数。",
+                    "结果阅读时先判断哪些组合更严格、哪些组合保留候选更多。严格组合若仍有候选，通常更适合优先验证；宽松组合可作为补充线索。",
                 ],
                 source_csv=intersection_summary,
             )
@@ -1824,8 +1832,9 @@ def append_tf_summary_frames(lines: list[str], input_type: str, analysis: str) -
                 f"{analysis} | 六方法final结果摘要",
                 tex,
                 [
-                    "该表展示六种 TF 富集/活性推断方法最终进入排序和交集分析的 TF 数量。",
-                    "如果某方法 Final_TF_Count 很低，说明该方法在当前输入基因集或 ranked signature 上覆盖有限；解释交集结果时要考虑方法覆盖度。",
+                    "输入为 08 号脚本生成的六类 TF 原始结果；09 号脚本先为每种方法整理出一版 final TF 排名，再把这些 final 表用于后续交集。",
+                    "Final_TF_Count 表示每种方法最终进入排序和交集的 TF 数量。若某方法数量很低，通常提示当前输入与该方法 regulon/library 覆盖有限。",
+                    "该表的作用是为后续交集结果提供背景：候选 TF 数量越少的方法，对交集的约束越强，解释时需要同时考虑方法覆盖度与证据类型。",
                 ],
                 source_csv=method_summary,
             )
@@ -1840,9 +1849,10 @@ def append_tf_summary_frames(lines: list[str], input_type: str, analysis: str) -
             f"{analysis} | 单方法TF final排序 | {tf_method_label(method)}",
             tex,
             [
-                f"该表展示 {tf_method_label(method)} 方法整理后的 final TF 排名。不同方法的 Score、P_Value、NES 或 Direction 含义不同，应结合方法类型理解。",
-                "Rank/TF 是最直接的候选定位字段；CheA3_Library_Count 与 CheA3_Integrated_TopRank 用于补充跨数据库可靠性判断。",
-                "单方法排名用于保留方法特异线索，最终候选优先结合后续多方法交集表判断。",
+                f"该表展示 {tf_method_label(method)} 的 final TF 排名。输入可能是显著基因列表，也可能是全量 ranked signature，具体取决于该方法在 08 号脚本中的标准流程。",
+                "Rank/TF 用于快速定位候选；Score、P_Value、Adjusted_P_Value、NES 或 Direction 是该方法可提供的核心统计量或活性方向，不应在不同方法之间简单等价比较。",
+                "CheA3_Library_Count 与 CheA3_Integrated_TopRank 是统一补充字段，用于判断该 TF 是否在 ChEA3 多 library 中反复被支持。",
+                "单方法排名用于保留方法特异线索；最终候选优先结合多方法交集、GSEA 通路方向和 DEG 表达模式综合判断。",
             ],
             source_csv=csv_path,
         )
@@ -1862,8 +1872,9 @@ def append_tf_summary_frames(lines: list[str], input_type: str, analysis: str) -
 
     candidate_note = [
         "Consensus_Rank 为综合排序；TF 为转录因子 symbol；Source_Method_Count 表示支持该 TF 的方法数。",
-        "Source_Methods 显示来自哪些方法；CheA3_Library_Count 表示 ChEA3 多 library 支持数量，越高通常说明外部证据越丰富。",
-        "优先关注多方法支持、ChEA3 library 较多，并且在 VIPER/CollecTRI 等活性方法中方向较清楚的 TF。",
+        "Source_Methods 显示具体支持来源；CheA3_Library_Count 表示 ChEA3 多 library 支持数量，越高通常说明外部数据库证据越丰富。",
+        "结果阅读时优先关注多方法支持、ChEA3 library 较多，并且在 VIPER/CollecTRI 等活性方法中方向较清楚的 TF。",
+        "这类 TF 可作为后续 SCENIC/ChIP-X、药物重定位或实验验证的优先候选，用于构建休眠维持或苏醒启动调控轴。",
     ]
     for i in range(0, len(candidate_entries), 2):
         first = candidate_entries[i]
@@ -1902,10 +1913,10 @@ def build_result_overview() -> str:
     lines += text_frame(
         "本报告的主线结构",
         [
-            "第一部分仍保留研究设计与 00 号样本结构质控，用于说明课题逻辑和数据基础。",
+            "第一部分展示研究设计与 00 号样本结构质控，用于说明为什么选择 LRC/BULK 模型以及样本表达结构是否支持后续比较。",
             "随后进入 DEG 分析方案主线：每个 analysis 依次展示 DEG summary、显著基因、传统火山图、Top DEG 热图、GSEA 图表和 TF 整合结果。",
-            "再进入 intersect 交集方案主线：每个交集方案依次展示交集 summary、交集基因注释、成员 DEG 结果、多组火山图和 TF 整合结果。",
-            "这种结构有助于在同一方案内完整追踪证据：从差异基因到通路，再到可能驱动休眠维持或苏醒的 TF。",
+            "再进入 intersect 交集方案主线：每个交集方案依次展示交集 summary、交集基因注释、成员 DEG 结果、多组火山图和 TF 整合结果；由于当前没有交集专属 GSEA 运算，这部分不展示 GSEA。",
+            "这种结构能够在同一模型或交集方案内连续追踪证据：先判断基因层面差异，再提升到通路层面，最后寻找可能驱动休眠维持或苏醒启动的上游 TF。",
         ],
     )
     write_text(section_file(section_name), lines)
@@ -1921,7 +1932,7 @@ def build_analysis_scheme_sections() -> list[str]:
         lines = section_cover(
             f"分析方案：{analysis}",
             "DEG → 火山图/热图 → GSEA → TF整合 的连续证据链",
-            f"本节围绕 {analysis} 这一差异分析方案展开。先确认 LRC/BULK 差异基因是否稳定，再查看通路层面的方向性富集，最后整合多方法 TF 结果寻找可能驱动休眠样状态的上游调控因子。",
+            f"本节围绕 {analysis} 这一差异分析方案展开。它把 LRC 相对 BULK 的单基因差异、表达热图、通路富集和 TF 证据放在同一条线上阅读，用于判断该模型是否支持休眠样转录程序及其潜在上游调控。",
         )
         append_deg_frames(lines, analysis)
         append_gsea_frames(lines, analysis)
@@ -1939,7 +1950,7 @@ def build_intersection_scheme_sections() -> list[str]:
         lines = section_cover(
             f"交集方案：{scheme}",
             "交集基因 → 多组火山图 → TF整合 的跨模型证据链",
-            f"本节围绕 {scheme} 这一交集方案展开。它的核心目的，是从多个 LRC/BULK 模型中提炼方向更稳定、可重复性更高的候选基因，并进一步追踪这些候选对应的通路和 TF 证据。",
+            f"本节围绕 {scheme} 这一交集方案展开。它的核心目的，是从多个 LRC/BULK 模型中提炼方向更稳定、可重复性更高的候选基因，并进一步用多方法 TF 证据寻找可能共同调控这些候选的上游因子。",
         )
         append_intersection_frames(lines, scheme)
         append_tf_summary_frames(lines, "intersect", scheme)
@@ -1974,8 +1985,8 @@ def build_main(section_names: list[str]) -> None:
         r"\newunicodechar{κ}{\ensuremath{\kappa}}",
         r"\setbeamertemplate{navigation symbols}{}",
         r"\setbeamersize{text margin left=1.5mm,text margin right=1.5mm}",
-        r"\newcommand{\ReportBodyFont}{\fontsize{6.55pt}{8.15pt}\selectfont}",
-        r"\setbeamerfont{normal text}{size*={6.55pt}{8.15pt}}",
+        r"\newcommand{\ReportBodyFont}{\fontsize{5.90pt}{7.25pt}\selectfont}",
+        r"\setbeamerfont{normal text}{size*={5.90pt}{7.25pt}}",
         r"\setbeamerfont{frametitle}{size=\Large,series=\bfseries}",
         r"\AtBeginEnvironment{frame}{\ReportBodyFont}",
         r"\hfuzz=80pt",
@@ -2009,8 +2020,8 @@ def build_main(section_names: list[str]) -> None:
         r"  \begin{frame}[plain,t]%",
         r"    {\normalsize\bfseries #1}\par\vspace{0.06em}%",
         r"    \IfFileExists{\CRLMROOT/\detokenize{#2}}{%",
-        r"      \sbox{\ResultImageBox}{\includegraphics[width=0.69\textwidth,height=0.915\paperheight,keepaspectratio]{\CRLMROOT/\detokenize{#2}}}%",
-        r"      \setlength{\ResultImageTextWidth}{\dimexpr\textwidth-\wd\ResultImageBox-0.6mm\relax}%",
+        r"      \sbox{\ResultImageBox}{\includegraphics[width=0.675\textwidth,height=0.840\textheight,keepaspectratio]{\CRLMROOT/\detokenize{#2}}}%",
+        r"      \setlength{\ResultImageTextWidth}{\dimexpr\textwidth-\wd\ResultImageBox-0.45mm\relax}%",
         r"      \noindent\parbox[t]{\wd\ResultImageBox}{\vspace{0pt}\noindent\usebox{\ResultImageBox}}%",
         r"      \parbox[t]{\ResultImageTextWidth}{\vspace{0pt}\RaggedRight\ReportBodyFont\setlength{\rightskip}{0pt plus 1fil}#3}%",
         r"    }{\MissingBox{#2}}%",
@@ -2021,8 +2032,8 @@ def build_main(section_names: list[str]) -> None:
         r"  \begin{frame}[plain,t]%",
         r"    {\normalsize\bfseries #1}\par\vspace{0.06em}%",
         r"    \IfFileExists{\CRLMROOT/\detokenize{#2}}{%",
-        r"      \sbox{\ResultImageBox}{\includegraphics[width=0.735\textwidth,height=0.915\paperheight,keepaspectratio]{\CRLMROOT/\detokenize{#2}}}%",
-        r"      \setlength{\ResultImageTextWidth}{\dimexpr\textwidth-\wd\ResultImageBox-0.6mm\relax}%",
+        r"      \sbox{\ResultImageBox}{\includegraphics[width=0.720\textwidth,height=0.840\textheight,keepaspectratio]{\CRLMROOT/\detokenize{#2}}}%",
+        r"      \setlength{\ResultImageTextWidth}{\dimexpr\textwidth-\wd\ResultImageBox-0.45mm\relax}%",
         r"      \noindent\parbox[t]{\wd\ResultImageBox}{\vspace{0pt}\noindent\usebox{\ResultImageBox}}%",
         r"      \parbox[t]{\ResultImageTextWidth}{\vspace{0pt}\RaggedRight\ReportBodyFont\setlength{\rightskip}{0pt plus 1fil}#3}%",
         r"    }{\MissingBox{#2}}%",
@@ -2036,7 +2047,7 @@ def build_main(section_names: list[str]) -> None:
         r"    \par\vspace{0.22em}%",
         r"    \IfFileExists{\CRLMROOT/\detokenize{#3}}{%",
         r"      \begingroup\centering%",
-        r"      \begin{adjustbox}{max width=0.948\textwidth,max totalheight=0.755\textheight,keepaspectratio}%",
+        r"      \begin{adjustbox}{max width=0.982\textwidth,max totalheight=0.748\textheight,keepaspectratio}%",
         r"        \input{\CRLMROOT/\detokenize{#3}}%",
         r"      \end{adjustbox}%",
         r"      \par\endgroup%",
@@ -2052,7 +2063,7 @@ def build_main(section_names: list[str]) -> None:
         r"      \par\vspace{0.18em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#3}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.955\linewidth,max totalheight=0.632\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.982\linewidth,max totalheight=0.588\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#3}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
@@ -2064,7 +2075,7 @@ def build_main(section_names: list[str]) -> None:
         r"      \par\vspace{0.18em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#6}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.955\linewidth,max totalheight=0.632\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.982\linewidth,max totalheight=0.588\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#6}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
@@ -2081,7 +2092,7 @@ def build_main(section_names: list[str]) -> None:
         r"      \par\vspace{0.16em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#3}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.948\textwidth,max totalheight=0.302\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.982\textwidth,max totalheight=0.286\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#3}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
@@ -2093,7 +2104,7 @@ def build_main(section_names: list[str]) -> None:
         r"      \par\vspace{0.16em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#6}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.948\textwidth,max totalheight=0.302\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.982\textwidth,max totalheight=0.286\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#6}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
