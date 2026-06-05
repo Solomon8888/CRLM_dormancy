@@ -68,11 +68,34 @@ prefer_report_csv_files <- function(files, group_function) {
   files[!duplicated(groups)]
 }
 
+format_report_csv_values <- function(dat) {
+  # 仅用于写出CSV前的展示格式整理，不改变分析脚本中的原始运算对象。
+  # 所有数值列都按普通十进制字符写出，避免p值、q值、Entrez等字段出现科学计数法。
+  dat <- as.data.frame(dat, stringsAsFactors = FALSE, check.names = FALSE)
+
+  for (column_name in names(dat)) {
+    if (is.numeric(dat[[column_name]])) {
+      dat[[column_name]] <- ifelse(
+        is.na(dat[[column_name]]),
+        NA,
+        format(
+          dat[[column_name]],
+          scientific = FALSE,
+          trim = TRUE,
+          digits = 16
+        )
+      )
+    }
+  }
+
+  dat
+}
+
 write_csv_with_report_previews <- function(dat, csv_file, n_rows = 21, ...) {
   # 保留历史函数名，避免逐个分析脚本改调用；现在仅写CSV。
   output_file <- normalize_report_csv_path(csv_file)
   dir.create(dirname(output_file), recursive = TRUE, showWarnings = FALSE)
-  write.csv(dat, output_file, row.names = FALSE, ...)
+  write.csv(format_report_csv_values(dat), output_file, row.names = FALSE, ...)
   invisible(output_file)
 }
 

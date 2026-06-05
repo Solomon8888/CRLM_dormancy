@@ -36,7 +36,7 @@ RANK_METRIC_COLUMN <- "t"
 
 # GSEA显著性阈值配置。必须与06_gsea_analysis.R保持一致。
 # 若后续改成pvalue或qvalue，请同步修改06号脚本和这里的绘图筛选变量。
-GSEA_SIGNIFICANCE_COLUMN <- "p.adjust"
+GSEA_SIGNIFICANCE_COLUMN <- "pvalue"  # 可选："pvalue", "p.adjust"
 GSEA_SIGNIFICANCE_CUTOFF <- 0.05
 
 GSEA_PARAMS <- list(

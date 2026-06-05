@@ -1,5 +1,37 @@
 # 结直肠癌休眠细胞复苏的转录组分析项目
 
+## 常用一键命令
+
+清空全部可再生成结果、中间文件和 Beamer 自动生成文件：
+
+```zsh
+zsh scripts/beamer/build/cleaner/01_clean_generated_outputs.zsh
+```
+
+全量运行 GSE114012 的 00-09 号分析脚本：
+
+```zsh
+zsh scripts/beamer/build/GSE114012/01_run_all_GSE114012_analysis.zsh
+```
+
+仅重新生成 GSE114012 的 Beamer TeX 源文件：
+
+```zsh
+zsh scripts/beamer/build/GSE114012/02_build_GSE114012_beamer_tex.zsh
+```
+
+重新串联全部数据集的 Beamer TeX 源文件：
+
+```zsh
+zsh scripts/beamer/build/project/01_build_project_beamer_tex.zsh
+```
+
+编译最终 Beamer PDF 报告：
+
+```zsh
+zsh scripts/beamer/build/project/02_compile_project_beamer.zsh
+```
+
 本项目围绕结直肠癌远处复发与播散性肿瘤细胞休眠这一问题，使用公开转录组数据集 GSE114012 建立一套可复现的候选基因筛选流程。当前阶段重点不是直接证明转移复发机制，而是先从 LRC/BULK 休眠模型中提取稳定的差异表达信号，为后续转录因子调控、通路富集、免疫微环境互作和药物重定位分析提供入口。
 
 ## 研究背景与核心假说

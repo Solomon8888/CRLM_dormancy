@@ -27,6 +27,7 @@ import os
 import re
 import shutil
 import subprocess
+from decimal import Decimal, InvalidOperation
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -87,8 +88,7 @@ RESULT_STEM_ORDER = {
     "summary": 0,
     "gene_list": 1,
     "significant_genes": 2,
-    "all_genes": 3,
-    "deg_results": 4,
+    "deg_results": 3,
 }
 
 GSEA_OUTPUT_ORDER = {
@@ -191,42 +191,34 @@ TABLE_COLUMN_PRESETS = {
         "LogFC_Cutoff",
     ],
     "deg_gene_table": [
-        "GeneID",
         "Symbol",
         "Ensembl",
         "Entrez",
         "logFC",
-        "AveExpr",
         "t",
         "P.Value",
         "adj.P.Val",
-        "B",
     ],
     "intersect_summary": [
         "Selected_Analyses",
-        "DEG_Result_Analyses",
         "Total_Intersected_Genes",
         "Common_Up",
         "Common_Down",
         "Mixed_Direction",
     ],
     "intersect_gene_list": [
-        "GeneID",
         "Symbol",
         "Ensembl",
         "Entrez",
     ],
     "intersect_deg_results": [
-        "GeneID",
         "Symbol",
         "Ensembl",
         "Entrez",
         "logFC",
-        "AveExpr",
         "t",
         "P.Value",
         "adj.P.Val",
-        "B",
     ],
     "gsea_summary": [
         "Analysis_Name",
@@ -239,15 +231,10 @@ TABLE_COLUMN_PRESETS = {
     ],
     "gsea_result": [
         "ID",
-        "Description",
-        "setSize",
-        "enrichmentScore",
         "NES",
         "pvalue",
         "p.adjust",
         "qvalue",
-        "rank",
-        "leading_edge",
     ],
     "tf_run_summary": [
         "Input_Type",
@@ -267,11 +254,8 @@ TABLE_COLUMN_PRESETS = {
     "tf_candidates": [
         "Consensus_Rank",
         "TF",
-        "Required_Methods",
         "Source_Method_Count",
         "Source_Methods",
-        "Mean_Selected_Rank",
-        "Best_Selected_Rank",
         "CheA3_Library_Count",
         "CheA3_Integrated_TopRank",
         "DoRothEA",
@@ -452,7 +436,7 @@ def table_preview_key(csv_path: Path) -> str:
     stem = csv_path.stem
     if "DEG" in parts and stem == "summary":
         return "deg_summary"
-    if "DEG" in parts and stem in {"all_genes", "significant_genes"}:
+    if "DEG" in parts and stem == "significant_genes":
         return "deg_gene_table"
     if "run_summary" in parts and stem == "summary":
         return "tf_run_summary"
@@ -536,19 +520,38 @@ def shorten_text(text: object, max_chars: int = 90) -> str:
     return text[: max_chars - 3] + "..."
 
 
+SCI_NUMBER_PATTERN = re.compile(r"(?<![A-Za-z0-9_.+-])([+-]?(?:\d+(?:\.\d*)?|\.\d+)[eE][+-]?\d+)(?![A-Za-z0-9_.+-])")
+
+
+def decimal_text_without_scientific(value: str) -> str:
+    """Replace scientific-notation numbers in text with plain decimal strings."""
+
+    def convert(match: re.Match[str]) -> str:
+        token = match.group(1)
+        try:
+            decimal_value = Decimal(token)
+        except InvalidOperation:
+            return token
+        plain = format(decimal_value, "f")
+        if "." in plain:
+            plain = plain.rstrip("0").rstrip(".")
+        if plain == "-0":
+            plain = "0"
+        return plain
+
+    return SCI_NUMBER_PATTERN.sub(convert, value)
+
+
 def format_table_cell(value: object, max_chars: int = 90) -> str:
     if value is None:
         return "--"
     value = str(value)
     if value == "" or value.lower() == "nan":
         return "--"
-    try:
-        number = float(value)
-        if abs(number) >= 1000 or (abs(number) > 0 and abs(number) < 0.001):
-            return f"{number:.3e}"
-        return f"{number:.4g}"
-    except ValueError:
-        return shorten_text(value, max_chars=max_chars)
+    # 表格预览按字符处理；若CSV中已有科学计数法写法，仅在Beamer展示时
+    # 转成普通十进制字符，避免pvalue/qvalue等字段以e-notation显示。
+    value = re.sub(r"[\r\n\t]+", " ", value).strip()
+    return decimal_text_without_scientific(value)
 
 
 def read_csv_preview(csv_path: Path, columns: list[str], n_rows: int = 21) -> tuple[list[str], list[list[str]]]:
@@ -573,21 +576,22 @@ def write_generated_latex_table(csv_path: Path, output_name: str, columns: list[
 
     tex_path = GENERATED_TABLE_ROOT / output_name
     tex_path.parent.mkdir(parents=True, exist_ok=True)
-    col_spec = "l" * len(headers)
+    col_spec = "|" + "|".join(["c"] * len(headers)) + "|"
     lines = [
         r"\begingroup",
-        r"\tiny",
-        r"\setlength{\tabcolsep}{2pt}",
-        r"\renewcommand{\arraystretch}{1.28}",
+        r"\fontsize{5.25pt}{6.7pt}\selectfont",
+        r"\setlength{\tabcolsep}{2.8pt}",
+        r"\renewcommand{\arraystretch}{1.58}",
+        r"\setlength{\arrayrulewidth}{0.35pt}",
         rf"\begin{{tabular}}{{@{{}}{col_spec}@{{}}}}",
-        r"\toprule",
-        " & ".join(tex_escape(header) for header in headers) + r" \\",
-        r"\midrule",
+        r"\hline",
+        " & ".join(r"\textbf{" + tex_escape(header) + "}" for header in headers) + r" \\",
+        r"\hline",
     ]
     for row in rows:
         lines.append(" & ".join(tex_escape(value) for value in row) + r" \\")
+        lines.append(r"\hline")
     lines.extend([
-        r"\bottomrule",
         r"\end{tabular}",
         r"\endgroup",
     ])
@@ -628,7 +632,7 @@ def text_frame(title: str, items: list[str]) -> list[str]:
         f"\\TextFrame{{{tex_escape(title)}}}",
         "{",
         r"  \begin{itemize}",
-        r"    \setlength{\itemsep}{0.28em}",
+        r"    \setlength{\itemsep}{0.36em}",
         r"    \setlength{\topsep}{0pt}",
         r"    \setlength{\partopsep}{0pt}",
         r"    \setlength{\parsep}{0pt}",
@@ -650,7 +654,7 @@ def figure_frame(title: str, figure_path: Path, items: list[str], wide: bool = F
         f"  {{{rel(figure_path)}}}",
         "  {",
         r"    \begin{itemize}",
-        r"      \setlength{\itemsep}{0.20em}",
+        r"      \setlength{\itemsep}{0.28em}",
         r"      \setlength{\topsep}{0pt}",
         r"      \setlength{\partopsep}{0pt}",
         r"      \setlength{\parsep}{0pt}",
@@ -679,7 +683,7 @@ def two_table_frame(
         f"  {{{rel(left_tex)}}}",
         "  {",
         r"    \begin{itemize}",
-        r"      \setlength{\itemsep}{0.16em}",
+        r"      \setlength{\itemsep}{0.24em}",
         r"      \setlength{\topsep}{0pt}",
         r"      \setlength{\partopsep}{0pt}",
         r"      \setlength{\parsep}{0pt}",
@@ -692,7 +696,7 @@ def two_table_frame(
         f"  {{{rel(right_tex)}}}",
         "  {",
         r"    \begin{itemize}",
-        r"      \setlength{\itemsep}{0.16em}",
+        r"      \setlength{\itemsep}{0.24em}",
         r"      \setlength{\topsep}{0pt}",
         r"      \setlength{\partopsep}{0pt}",
         r"      \setlength{\parsep}{0pt}",
@@ -721,7 +725,7 @@ def stacked_two_table_frame(
         f"  {{{rel(top_tex)}}}",
         "  {",
         r"    \begin{itemize}",
-        r"      \setlength{\itemsep}{0.10em}",
+        r"      \setlength{\itemsep}{0.18em}",
         r"      \setlength{\topsep}{0pt}",
         r"      \setlength{\partopsep}{0pt}",
         r"      \setlength{\parsep}{0pt}",
@@ -734,7 +738,7 @@ def stacked_two_table_frame(
         f"  {{{rel(bottom_tex)}}}",
         "  {",
         r"    \begin{itemize}",
-        r"      \setlength{\itemsep}{0.10em}",
+        r"      \setlength{\itemsep}{0.18em}",
         r"      \setlength{\topsep}{0pt}",
         r"      \setlength{\partopsep}{0pt}",
         r"      \setlength{\parsep}{0pt}",
@@ -756,7 +760,7 @@ def table_frame(title: str, tex_path: Path, items: list[str], source_csv: Path |
         f"  {{{rel(tex_path)}}}",
         "  {",
         r"    \begin{itemize}",
-        r"      \setlength{\itemsep}{0.20em}",
+        r"      \setlength{\itemsep}{0.28em}",
         r"      \setlength{\topsep}{0pt}",
         r"      \setlength{\partopsep}{0pt}",
         r"      \setlength{\parsep}{0pt}",
@@ -780,7 +784,6 @@ def deg_table_title(analysis: str, stem: str) -> str:
     labels = {
         "summary": "DEG统计摘要",
         "significant_genes": "显著差异基因表",
-        "all_genes": "全量差异分析排序表",
     }
     return f"01. 差异表达分析 | {analysis} | {labels.get(stem, stem)}"
 
@@ -843,83 +846,45 @@ def compact_table_frame(title: str, rows: list[tuple[str, str, str]]) -> list[st
 
 def build_project_design() -> str:
     section_name = "project/project_design.tex"
-    rows = [
-        ("00", "00_sample_clustering_heatmap.R", "确认 LRC/BULK 样本结构是否支持后续比较"),
-        ("01", "01_limma_differential_expression.R", "定义休眠样 LRC 相对 BULK 的差异转录程序"),
-        ("02", "02_intersect_significant_genes.R", "提炼跨细胞系反复出现的稳定候选基因"),
-        ("04", "04_multiple_volcano_plot.R", "并列比较多模型 DEG 方向与效应量分布"),
-        ("05", "05_top_deg_gene_heatmap.R", "检验 Top DEG 是否在样本层面分离 LRC 与 BULK"),
-        ("06", "06_gsea_analysis.R", "基于全量排序基因运行 MSigDB GSEA"),
-        ("07", "07_gsea_plot.R", "按同一 GSEA 设计配对展示 dotplot 与结果表"),
-        ("08", "08_tf_enrichment_analysis.R", "用六类 TF 方法生成原始调控因子证据"),
-        ("09", "09_integrate_tf_enrichment_results.R", "整合 TF 方法 final 结果并计算候选交集"),
-    ]
     lines: list[str] = []
     lines += section_cover(
-        "研究设计：从术后复发到休眠细胞复苏",
-        "以 GSE114012 的 LRC/BULK 模型建立结直肠癌休眠样转录组证据链",
-        "本报告不是简单罗列脚本输出，而是把每一步结果放回“休眠癌细胞如何被重新激活”的课题假说中：先确认模型，再定义差异程序，再提炼稳定基因、通路和 TF 调控候选。",
+        "课题设计：结直肠癌休眠细胞苏醒与复发转移",
+        "从远期复发临床问题出发，解析休眠癌细胞苏醒的转录调控与可干预节点",
+        "结直肠癌远处复发可能并不只是癌细胞是否播散的问题，更关键的是长期休眠的播散性肿瘤细胞是否被重新激活。当前分析围绕休眠样 LRC 与循环样 BULK 的转录差异，逐步提炼稳定候选基因、通路和转录因子。",
     )
     lines += text_frame(
-        "临床问题：远期复发可能来自休眠癌细胞的重新苏醒",
+        "研究背景与核心问题",
         [
-            "结直肠癌患者在根治性治疗后仍可能多年甚至十余年后出现远处复发，这提示部分肿瘤细胞可能早期已经播散，并在远处器官或微环境中长期维持低增殖状态。",
-            "本课题的核心问题不是“癌细胞是否已经播散”，而是“什么信号使休眠或低增殖癌细胞重新进入细胞周期并形成可检测转移灶”。",
-            "因此，维持播散癌细胞休眠或阻断复苏信号，可能成为预防复发和转移的治疗策略；本报告当前阶段聚焦转录组层面的候选基因、通路和 TF 证据。",
+            "结直肠癌是全球最常见的恶性肿瘤之一。临床上一个长期存在但尚未完全解决的问题是，许多患者在接受根治性手术后数年甚至十余年仍会发生远处转移复发。",
+            "越来越多的证据表明，部分结直肠癌细胞可能在疾病早期便已完成播散，并定植于肝脏、肺脏或骨髓等远处器官。",
+            "然而，这些播散性肿瘤细胞（Disseminated Tumor Cells, DTCs）并不会立即形成转移灶，而是长期处于一种低增殖甚至静止的休眠状态。",
+            "这一现象提示，对于部分患者而言，“转移的发生”可能早已在疾病早期被决定，而真正决定患者长期预后的关键因素并非癌细胞是否播散，而是这些休眠癌细胞是否被重新激活和苏醒。",
+            "当休眠细胞受到炎症反应、组织重塑、免疫微环境改变或代谢重编程等因素刺激后，可重新进入细胞周期并形成临床可检测的转移灶，最终导致疾病复发。",
         ],
     )
     lines += text_frame(
-        "GSE114012 在本课题中的定位",
+        "研究目的与转化价值",
         [
-            "GSE114012 的实验主题是 colorectal cancer spheroids 中 dormant-like cells 的识别；当前项目将其中 CFSE label-retaining cells 视作 LRC 休眠样/低增殖群体，将 cycling cells 视作 BULK 对照群体。",
-            "该数据覆盖 DLD1、HCT15、HT55、SW948、RKO、SW48 六种 CRC 细胞系，并保留多重复样本，因此既可以做整体 LRC vs BULK，也可以做单细胞系或组合模型比较。",
-            "本报告基于整理后的 SummarizedExperiment 对象、临床样本表和统一结果目录，依次展示样本结构、差异表达、交集、表达热图、GSEA 和 TF 整合。",
-            "所有结果均按固定路径动态扫描生成 Beamer；后续重跑 R 脚本后，只需重建报告即可展示最新版本。",
+            "因此，与传统研究聚焦于抑制肿瘤转移不同，维持播散癌细胞的长期休眠状态可能是一种更具临床转化价值的治疗策略。",
+            "本研究拟系统解析结直肠癌休眠细胞向苏醒细胞转变过程中的关键转录因子调控网络、信号通路变化及免疫微环境重塑特征。",
+            "并进一步通过药物重定位策略筛选能够维持肿瘤休眠状态的候选药物，为预防结直肠癌复发和转移提供新的理论依据和治疗靶点。",
         ],
     )
     lines += text_frame(
-        "当前分析路线：从模型确认到候选调控轴",
+        "整体研究步骤",
         [
-            "第一层证据是样本结构：TPM 相关性热图用于判断 LRC/BULK 内部是否存在稳定表达模式，以及是否存在明显离群样本。",
-            "第二层证据是差异转录程序：DEG summary、显著基因和 Top DEG 热图用于定义 LRC 相对 BULK 的核心表达改变。",
-            "第三层证据是稳定性：交集分析用于从多个细胞系或组合模型中提炼反复出现的候选基因，降低单模型偏差。",
-            "第四层证据是机制解释：GSEA 提供通路层面的方向性，TF 富集/活性推断提供潜在上游调控因子，二者共同服务于后续调控轴和药物重定位。",
+            "步骤一：定义研究模型。找结直肠癌 dormancy / recurrence / minimal residual disease / liver metastasis relapse 数据集。优先分组：原发癌、转移癌、复发癌、治疗后残留癌细胞、休眠样癌细胞。",
+            "步骤二：建立休眠评分。用 dormancy markers 计算休眠 score。",
+            "步骤三：识别“苏醒癌细胞”。单细胞中按 dormancy score 和 proliferation score 分群：休眠型、过渡型、苏醒型、增殖型。核心比较：休眠型 vs 苏醒型。",
+            "步骤四：寻找导致苏醒的转录因子。做 SCENIC / DoRothEA / pySCENIC / ChIP-X enrichment。",
+            "步骤五：构建苏醒轨迹。用 Monocle3 / Slingshot / CytoTRACE。构建：休眠 → 过渡 → 苏醒 → 增殖。沿 pseudotime 找动态 TF 和动态通路。",
+            "步骤六：解析苏醒相关通路。做 GSVA / GSEA。",
+            "步骤七：分析免疫微环境。看苏醒型癌细胞是否伴随 M2 macrophage、TREM2/APOE macrophage、CAF、Treg、exhausted CD8 增加。用 CellChat / NicheNet 分析癌细胞与免疫/基质细胞互作。",
+            "步骤八：提炼关键调控轴。例如：CAF-derived TGFβ/IL6 → STAT3/YAP → 癌细胞苏醒。Macrophage TNF/IL1β → NFκB → 癌细胞苏醒。WNT niche → β-catenin/TCF → 癌细胞苏醒。",
+            "步骤九：Drug repurposing。将“苏醒型上调基因”和“关键 TF 靶基因”输入 CMap / LINCS / DGIdb / Enrichr Drug Signatures。筛选能逆转苏醒 signature、维持休眠状态的候选药物。Alphafold+分子对接证明直接结合。",
+            "步骤十：形成最终假说。结直肠癌复发不是单纯因为癌细胞增殖，而是微环境信号诱导休眠癌细胞苏醒。阻断关键 TF/通路，可让残留癌细胞长期维持休眠，从而减少复发和转移。",
         ],
     )
-    lines += text_frame(
-        "核心科学假说",
-        [
-            "结直肠癌复发并不一定只是残留癌细胞持续增殖的结果，也可能来自长期休眠癌细胞在特定微环境信号刺激下重新苏醒。",
-            "因此，阻断复苏信号或维持休眠状态，可能比单纯追求杀伤全部残留癌细胞更接近临床预防复发的长期策略。",
-            "本项目把“休眠维持”和“苏醒启动”拆解为三个层面：癌细胞内在转录程序、外部通路/微环境刺激、以及可被药物干预的关键调控节点。",
-        ],
-    )
-    lines += text_frame(
-        "总体研究设计：模型、评分与状态识别",
-        [
-            "步骤一：系统收集 colorectal cancer dormancy、recurrence、minimal residual disease、liver metastasis relapse 相关数据集，优先纳入原发癌、转移癌、复发癌、治疗后残留癌细胞和休眠样癌细胞模型。",
-            "步骤二：基于文献 dormancy markers 构建 dormancy score，并结合 proliferation score 区分低增殖休眠样状态与增殖活跃状态。",
-            "步骤三：在单细胞或分选群体数据中识别休眠型、过渡型、苏醒型和增殖型细胞，核心比较设定为休眠型 vs 苏醒型。",
-        ],
-    )
-    lines += text_frame(
-        "总体研究设计：TF、轨迹与通路",
-        [
-            "步骤四：通过 SCENIC、DoRothEA、pySCENIC、ChIP-X enrichment 等方法寻找驱动苏醒的转录因子，重点关注多方法重复支持的 TF。",
-            "步骤五：利用 Monocle3、Slingshot、CytoTRACE 构建休眠到苏醒再到增殖的 pseudotime 轨迹，沿轨迹识别动态 TF 和动态通路。",
-            "步骤六：应用 GSVA/GSEA 解析苏醒相关通路，重点观察炎症、ECM remodeling、TGFβ/IL6、NFκB、WNT/β-catenin、YAP/STAT3 等通路是否被激活。",
-        ],
-    )
-    lines += text_frame(
-        "总体研究设计：微环境、调控轴与药物重定位",
-        [
-            "步骤七：分析免疫微环境重塑，重点关注 M2 macrophage、TREM2/APOE macrophage、CAF、Treg 和 exhausted CD8 是否伴随苏醒型癌细胞增加。",
-            "步骤八：用 CellChat/NicheNet 解析癌细胞与免疫/基质细胞互作，提炼 CAF-derived TGFβ/IL6 → STAT3/YAP、Macrophage TNF/IL1β → NFκB、WNT niche → β-catenin/TCF 等候选轴。",
-            "步骤九：将苏醒型上调基因、关键 TF 靶基因和 leading-edge genes 输入 CMap/LINCS/DGIdb/Enrichr Drug Signatures，筛选可逆转苏醒 signature、维持休眠状态的候选药物。",
-            "步骤十：形成可验证假说：阻断关键 TF/通路可使残留癌细胞长期维持休眠，从而降低结直肠癌复发和远处转移风险。",
-        ],
-    )
-    lines += compact_table_frame("脚本编号与章节组织", rows)
     write_text(section_file(section_name), lines)
     return section_name
 
@@ -960,44 +925,88 @@ def build_00() -> str:
 def build_01() -> str:
     section_name = f"{DATASET_ID}/01_limma_differential_expression.tex"
     lines = section_cover(
-        "01. LRC/BULK 差异表达：定义休眠样转录程序",
-        "从每个分析设计中提取 LRC 相对 BULK 的 DEG、方向和全量排序",
-        "01 号结果是后续所有基因集、通路和 TF 推断的核心输入。这里的目标不是只得到一张 DEG 表，而是为不同细胞系背景下的休眠样状态建立可比较的 ranked gene signature。",
+        "01. 差异表达证据链：每个 LRC/BULK 设计的统计、基因、火山图与表达热图",
+        "同一分析设计内部按 summary → significant genes → volcano → Top DEG heatmap 顺序展示",
+        "01 号差异分析用于定义 LRC 休眠样状态相对 BULK 循环样状态的转录改变。这里按分析设计逐套展示，目的是让每个模型都能同时看到统计规模、显著基因明细、效应量分布和样本层面表达分离。",
     )
     lines += text_frame(
-        "差异表达结果如何进入后续证据链",
+        "差异分析结果的技术含义与阅读顺序",
         [
-            "summary 用于快速判断每个模型中 LRC/BULK 差异强度：上调、下调和总显著基因数决定后续候选空间大小。",
-            "significant_genes 是 02 号交集、05 号 Top DEG 热图和 08 号 TF 富集的主要输入，用于寻找达阈值的候选基因。",
-            "all_genes 保留全量排序信息，是 06/07 号 GSEA 的输入；GSEA 不能只依赖显著基因列表，而需要完整 ranked gene list。",
-            "ALL 代表整体休眠样趋势，单细胞系与组合分析则帮助判断候选信号是否跨遗传背景可重复。",
+            "summary 先回答“这个比较强不强”：Total_Significant_Genes 必须等于 Up 与 Down 的总和；Up/Down 方向定义为 LRC 相对 BULK。",
+            "significant_genes 展示通过 01 号脚本阈值的基因。logFC 表示 LRC 方向效应量，t/P.Value/adj.P.Val 表示统计证据，Symbol/Ensembl/Entrez 用于后续富集和验证。",
+            "传统火山图把显著性与 logFC 同时展示，适合快速判断该分析设计中显著基因是否呈现方向偏倚、强效候选是否集中，以及是否存在明显上下调不平衡。",
+            "Top DEG 表达热图回到样本层面检查这些候选基因是否真正把 LRC 与 BULK 分开；如果统计显著但热图不能分离样本，后续机制解读应更谨慎。",
+            "全量差异基因排序表仍作为 GSEA 输入保存在结果目录，但不再进入 Beamer 展示，避免报告被中间排序表稀释。",
         ],
     )
-    table_records: list[tuple[str, str, Path, str]] = []
-    for analysis_dir in dirs(TABLE_ROOT):
+    analysis_dirs = sorted(
+        [analysis_dir for analysis_dir in dirs(TABLE_ROOT) if (analysis_dir / "DEG").exists()],
+        key=lambda path: sort_analysis_name(path.name),
+    )
+    for analysis_dir in analysis_dirs:
         deg_dir = analysis_dir / "DEG"
-        if not deg_dir.exists():
-            continue
         analysis = analysis_dir.name
-        for stem, note in [
-            ("summary", "该表是本分析设计的 DEG 统计总览。Up/Down/Total_Significant_Genes 用于判断 LRC 相对 BULK 的转录变化规模；阈值列用于确认所有结果采用一致判定标准。"),
-            ("significant_genes", "该表展示通过阈值的显著 DEG。logFC 表示 LRC 相对 BULK 的方向和效应量；P.Value/adj.P.Val/B 等统计量用于评估差异证据强弱。"),
-            ("all_genes", "该表展示全量基因排序结果。即使某些基因未达到显著阈值，它们仍参与 GSEA ranked-list 计算，因此该表决定通路富集方向和强度。"),
-        ]:
-            csv_path = find_result_csv(deg_dir, stem)
-            if csv_path is not None:
-                table_records.append((analysis, stem, csv_path, note))
-    table_records.sort(key=lambda record: (RESULT_STEM_ORDER.get(record[1], 50), sort_analysis_name(record[0])))
-    for analysis, stem, csv_path, note in table_records:
-        tex = make_preview_table(csv_path)
-        if tex is None:
-            continue
-        lines += table_frame(
-            deg_table_title(analysis, stem),
-            tex,
-            [note, "表格为前 21 行汇报预览；完整 CSV 保存在当前结果目录。"],
-            source_csv=csv_path,
+        lines += text_frame(
+            f"01. {analysis}：LRC vs BULK 差异分析展示顺序",
+            [
+                f"本组展示 {analysis} 分析设计。先看 summary 判断显著 DEG 总量和上下调方向；再看 significant_genes 确认候选基因及统计量。",
+                "随后用传统火山图检查 logFC 与显著性分布，最后用 Top DEG 热图验证这些差异基因能否在样本层面形成 LRC/BULK 分离。",
+                "这种顺序把“统计是否成立”“候选是谁”“方向是否清楚”“样本是否支持”四个问题放在同一分析设计内连续回答。",
+            ],
         )
+
+        summary_csv = find_result_csv(deg_dir, "summary")
+        if summary_csv is not None:
+            tex = make_preview_table(summary_csv)
+            if tex is not None:
+                lines += table_frame(
+                    deg_table_title(analysis, "summary"),
+                    tex,
+                    [
+                        "该 summary 是当前分析设计的质量控制入口。重点核对 Up、Down、Total_Significant_Genes 和阈值列；Total_Significant_Genes 应等于 Up+Down。",
+                        "若显著基因总量过少，说明该模型的 LRC/BULK 差异较弱；若上下调极度不平衡，后续解释要结合火山图和热图确认是否由少数强效基因驱动。",
+                    ],
+                    source_csv=summary_csv,
+                )
+
+        significant_csv = find_result_csv(deg_dir, "significant_genes")
+        if significant_csv is not None:
+            tex = make_preview_table(significant_csv)
+            if tex is not None:
+                lines += table_frame(
+                    deg_table_title(analysis, "significant_genes"),
+                    tex,
+                    [
+                        "该表为通过当前阈值的显著 DEG 前 21 行预览。logFC>0 表示 LRC 方向上调，logFC<0 表示 BULK 方向更高。",
+                        "t、P.Value 和 adj.P.Val 用于评估统计强度；Symbol/Ensembl/Entrez 是后续交集、GSEA leading-edge 回查和 TF 富集输入时最常用的标识。",
+                    ],
+                    source_csv=significant_csv,
+                )
+
+        volcano_fig = PLOT_ROOT / "volcano" / analysis / "png" / "volcano_plot.png"
+        if volcano_fig.exists():
+            lines += figure_frame(
+                image_result_title("01", analysis, "传统火山图"),
+                volcano_fig,
+                [
+                    "该图横坐标为 logFC，纵坐标为显著性指标；红色 Sig_Up 与蓝色 Sig_Down 分别对应 LRC 方向上调和下调显著基因。",
+                    "阅读时先看红蓝点数量和左右分布，再看被标注的候选基因是否位于高显著性、高效应量区域。",
+                    "如果某些细胞系火山图中信号很弱，说明该模型对休眠样差异程序的贡献有限；如果多个模型均出现相似强信号，则更支持跨模型稳定候选。",
+                ],
+            )
+
+        heatmap_fig = PLOT_ROOT / "gene_heatmap" / analysis / "png" / "gene_heatmap.png"
+        if heatmap_fig.exists():
+            lines += figure_frame(
+                image_result_title("01", analysis, "Top DEG表达热图"),
+                heatmap_fig,
+                [
+                    "该图选取当前分析设计中排序靠前的 Top DEG，基于表达矩阵进行行标准化展示；左侧方向条保留 Up/Down 信息，顶部条带显示 Group 与 Cell_Line。",
+                    "阅读重点是 LRC 样本是否在这些基因上形成相对一致的表达模式，并与 BULK 样本分离；这比只看 p 值更能体现候选基因的样本层面可解释性。",
+                    "如果热图中某些基因同时具有清楚分组分离、强 logFC，并出现在 02 号交集或 09 号 TF 证据链中，应优先作为后续验证对象。",
+                ],
+                wide=True,
+            )
     write_text(section_file(section_name), lines)
     return section_name
 
@@ -1005,139 +1014,92 @@ def build_01() -> str:
 def build_02() -> str:
     section_name = f"{DATASET_ID}/02_intersect_significant_genes.tex"
     lines = section_cover(
-        "02. 跨模型稳定基因：从 DEG 中提炼可重复候选",
-        "对多个 LRC/BULK 分析设计的显著基因取交集，并回看每个成员分析的 DEG 证据",
-        "单个细胞系的 DEG 可能包含模型特异噪音；交集分析用于寻找在多个 CRC 背景下反复出现的休眠样候选基因，为后续 TF 富集、通路解释和实验验证提供更稳的基因集合。",
+        "02. 显著 DEG 交集：从多模型中提炼稳定候选基因",
+        "每个交集方案按 summary → gene list → 成员 DEG 结果 → 多组火山图顺序展示",
+        "02 号脚本把多个 LRC/BULK 分析设计中的 significant_genes 取交集，用于降低单一细胞系背景噪音。当前展示逻辑强调：先看交集规模，再看候选基因注释，再回查每个成员 DEG 的统计证据，最后用多组火山图观察组合模型方向。",
     )
     lines += text_frame(
-        "如何阅读交集结果",
+        "交集结果的技术含义与阅读顺序",
         [
-            "每个交集方案对应一组分析设计，例如多个细胞系组合或两个模型之间的稳定候选提取。",
-            "summary 先回答交集规模：有多少共同基因、共同上调、共同下调，以及是否存在方向不一致的 mixed-direction 基因。",
-            "gene_list 只保留 Symbol/Ensembl/Entrez 等注释信息，适合作为后续富集或候选清单输入。",
-            "成员分析下的 deg_results 用于回看这些交集基因在每个原始 DEG 结果中的 logFC、p 值和方向，防止只看交集名单而忽略统计证据。",
+            "summary 回答交集是否足够严格：Total_Intersected_Genes 是交集规模；Common_Up/Common_Down 表示方向一致候选；Mixed_Direction 提示不同模型方向不完全一致。",
+            "gene_list 是只含基因注释的清单，用于后续 TF 富集、人工筛选或实验验证设计；它不展示 p 值和 logFC，因为这些统计证据需要回到成员 DEG 结果中查看。",
+            "每个成员分析的 deg_results 展示交集基因在该 DEG 结果中的统计量。若同一个 Symbol 在多个成员中方向一致且 p 值稳定，可信度高于只在单模型出现的基因。",
+            "多组火山图用于把参与交集的分析设计放在同一图中对比，判断该交集方案的显著基因方向是否具有一致趋势。",
         ],
     )
     for scheme_dir in sorted(dirs(INTERSECT_ROOT), key=lambda path: sort_analysis_name(path.name)):
         scheme = scheme_dir.name
-        for csv_path in sorted(collect_result_csv(scheme_dir, "*.csv"), key=sort_result_csv_by_stem):
+        lines += text_frame(
+            f"02. {scheme}：交集方案展示顺序",
+            [
+                f"本组展示 {scheme} 交集方案。先看 summary 判断交集规模与方向一致性；再看 gene_list 确认候选基因注释。",
+                "随后逐个展示参与交集的 DEG 结果，回查每个交集基因在原始分析中的 logFC 与 p 值；最后展示对应多组火山图，观察不同成员分析的整体方向分布。",
+            ],
+        )
+
+        summary_csv = find_result_csv(scheme_dir, "summary")
+        if summary_csv is not None:
+            tex = make_preview_table(summary_csv)
+            if tex is not None:
+                lines += table_frame(
+                    intersect_table_title(scheme, ("summary.csv",)),
+                    tex,
+                    [
+                        "该 summary 用于判断当前交集方案是否足够严格且仍保留可解释候选。重点看 Total_Intersected_Genes、Common_Up、Common_Down 与 Mixed_Direction。",
+                        "如果 Mixed_Direction 较多，说明候选基因在不同模型间方向不稳定，后续不应仅凭是否进入交集来判断其生物学可靠性。",
+                    ],
+                    source_csv=summary_csv,
+                )
+
+        gene_list_csv = find_result_csv(scheme_dir, "gene_list")
+        if gene_list_csv is not None:
+            tex = make_preview_table(gene_list_csv)
+            if tex is not None:
+                lines += table_frame(
+                    intersect_table_title(scheme, ("gene_list.csv",)),
+                    tex,
+                    [
+                        "该 gene_list 是交集基因注释列表，只保留 Symbol/Ensembl/Entrez 等可追踪标识，适合作为后续 TF 富集、候选验证和文献检索的输入。",
+                        "这里不展示统计量，是为了避免把不同 DEG 结果的 p 值混在一个清单里；统计证据需要在后续成员 DEG 结果页逐个回查。",
+                    ],
+                    source_csv=gene_list_csv,
+                )
+
+        member_deg_files = [
+            csv_path
+            for csv_path in collect_result_csv(scheme_dir, "deg_results.csv")
+            if normalize_result_csv_path(csv_path).name == "deg_results.csv"
+        ]
+        member_deg_files = sorted(member_deg_files, key=lambda path: sort_analysis_name(normalize_result_csv_path(path).parent.name))
+        for csv_path in member_deg_files:
             flat_csv = normalize_result_csv_path(csv_path)
             rel_parts = flat_csv.relative_to(scheme_dir).parts
-            if rel_parts[-1] == "summary.csv":
-                note = "该 summary 用于判断当前交集方案是否足够严格且仍保留可解释候选。Total_Intersected_Genes 是交集基因总数；Common_Up/Common_Down 表示方向一致的候选；Mixed_Direction 提示需要谨慎解释。"
-            elif rel_parts[-1] == "gene_list.csv":
-                note = "该 gene_list 是交集后的候选基因注释表，不包含 p 值和 logFC，适合作为后续通路富集、TF 富集或人工筛选的输入清单。"
-            else:
-                note = "该表把交集基因映射回对应 DEG 结果。logFC 用于看 LRC 相对 BULK 的方向；P.Value/adj.P.Val 用于看统计显著性；多个成员结果方向一致时，候选可信度更高。"
+            member = rel_parts[0] if len(rel_parts) > 1 else scheme
             tex = make_preview_table(csv_path)
             if tex is None:
                 continue
-            lines += table_frame(intersect_table_title(scheme, rel_parts), tex, [note], source_csv=csv_path)
-    write_text(section_file(section_name), lines)
-    return section_name
+            lines += table_frame(
+                intersect_table_title(scheme, rel_parts),
+                tex,
+                [
+                    f"该表展示 {scheme} 交集基因在 {member} 原始 DEG 结果中的统计证据。重点看 Symbol、logFC、t、P.Value 与 adj.P.Val。",
+                    "如果同一基因在多个成员分析中 logFC 方向一致，并且 p 值稳定，则更适合作为跨模型稳定的休眠样候选基因。",
+                ],
+                source_csv=csv_path,
+            )
 
-
-def build_03() -> str:
-    section_name = f"{DATASET_ID}/03_volcano_plot.tex"
-    lines = section_cover(
-        "03. 传统火山图",
-        "单个 DEG 设计的显著性与效应量",
-        "03 号脚本批量读取 DEG all_genes，按 01 号脚本一致阈值绘制传统火山图。",
-    )
-    lines += text_frame(
-        "03 号脚本逻辑",
-        [
-            "横坐标 logFC 左右对称，保证 0 点居中；纵坐标为显著性度量，红色为 Sig_Up，蓝色为 Sig_Down，灰色为 Not_Sig。",
-            "若脚本头部配置指定基因，则标注指定基因；否则自动标注 top 上调和 top 下调基因。",
-            "火山图用于快速判断每套分析中显著基因的数量、方向和效应量分布。",
-        ],
-    )
-    figures = sorted(
-        (PLOT_ROOT / "volcano").rglob("volcano_plot.png"),
-        key=lambda path: sort_analysis_name(first_plot_level("volcano", path)),
-    )
-    for fig in figures:
-        analysis = first_plot_level("volcano", fig)
-        lines += figure_frame(
-            image_result_title("03", analysis, "传统火山图"),
-            fig,
-            [
-                "红蓝点分别表示通过阈值的上调与下调基因，Not_Sig 用灰色展示。",
-                "该图帮助判断 LRC 相对 BULK 的差异幅度是否集中在少数强效基因，或呈现广泛转录重塑。",
-            ],
-        )
-    write_text(section_file(section_name), lines)
-    return section_name
-
-
-def build_04() -> str:
-    section_name = f"{DATASET_ID}/04_multiple_volcano_plot.tex"
-    lines = section_cover(
-        "04. 多模型 DEG 方向总览：哪些模型共享强差异信号",
-        "用多组火山图并列观察不同 LRC/BULK 分析设计的显著上调与下调基因",
-        "传统单图火山图不再纳入本报告；这里保留多组火山图，是因为它更适合比较多个细胞系或组合模型中的 DEG 方向一致性和效应量分布。",
-    )
-    lines += text_frame(
-        "多组火山图在本课题中的用途",
-        [
-            "每个小面板对应一个 DEG 分析设计；红色表示 LRC 上调，蓝色表示 LRC 下调，灰色 NS 点不展示，从而突出真正进入候选空间的显著基因。",
-            "纵坐标保留真实 logFC，因此可比较不同模型中显著基因的效应量大小；横向布局用于快速观察不同模型的显著基因密度。",
-            "该图回答的是“哪些细胞系或组合模型中，休眠样 LRC 的转录改变更强、更集中、更方向一致”。",
-            "后续如果某些 TF 或通路只在某个模型强烈出现，应回到本图判断它是否来自模型特异差异，而不是普遍休眠样程序。",
-        ],
-    )
-    figures = sorted(
-        (PLOT_ROOT / "multiple_volcano").rglob("multiple_volcano_plot.png"),
-        key=lambda path: sort_analysis_name(first_plot_level("multiple_volcano", path)),
-    )
-    for fig in figures:
-        analysis = first_plot_level("multiple_volcano", fig)
-        lines += figure_frame(
-            image_result_title("04", analysis, "多组火山图"),
-            fig,
-            [
-                "红/蓝点分别代表在该分析设计中通过 DEG 阈值的 LRC 上调/下调基因；点的位置保留真实 logFC 信息。",
-                "组名色块用于区分不同模型，目的是把多个 DEG 设计放在同一视觉坐标中比较，而不是单独解读某一个模型。",
-                "若多个模型中显著基因数量、方向或效应量分布相似，说明该转录程序更可能代表共同休眠样状态；若差异很大，则提示细胞系背景可能影响 LRC 程序。",
-            ],
-            wide=True,
-        )
-    write_text(section_file(section_name), lines)
-    return section_name
-
-
-def build_05() -> str:
-    section_name = f"{DATASET_ID}/05_top_deg_gene_heatmap.tex"
-    lines = section_cover(
-        "05. Top DEG 表达热图：候选基因能否分离 LRC 与 BULK",
-        "用 Top50 DEG 的样本表达模式验证差异基因集的状态区分能力",
-        "DEG 表只是统计结果；热图用于回到样本层面检查 Top DEG 是否真正形成 LRC/BULK 的表达分离。如果无法分离，后续通路和 TF 解读都需要降低确信度。",
-    )
-    lines += text_frame(
-        "Top DEG 热图如何帮助解释 DEG",
-        [
-            "每套分析选择 Top50 显著差异基因，按样本的 log2(TPM+1) 表达计算 row z-score，突出同一基因在不同样本间的相对高低。",
-            "实验组统一标记为 LRC，对照组标记为 BULK，并把 LRC 放在左侧、BULK 放在右侧，使读图方向与研究问题一致。",
-            "顶部注释条显示 Group 和 Cell_Line；左侧方向条保留该基因在 DEG 中的 Up/Down 信息。",
-            "如果 Top DEG 能清楚区分 LRC 与 BULK，说明这些候选基因不仅统计显著，也能在样本层面稳定表达分离。",
-        ],
-    )
-    figures = sorted(
-        (PLOT_ROOT / "gene_heatmap").rglob("gene_heatmap.png"),
-        key=lambda path: sort_analysis_name(first_plot_level("gene_heatmap", path)),
-    )
-    for fig in figures:
-        analysis = first_plot_level("gene_heatmap", fig)
-        lines += figure_frame(
-            image_result_title("05", analysis, "Top DEG表达热图"),
-            fig,
-            [
-                "每行是一个 Top DEG，每列是一个样本；颜色代表该基因在所有样本中的标准化表达高低，而不是绝对 TPM。",
-                "如果 LRC 样本在多个 Top DEG 上呈现一致高/低表达，并与 BULK 明显分离，说明该分析设计下的休眠样转录程序较稳定。",
-                "右侧基因名和顶部样本注释可用于挑选后续验证对象，特别是同时出现在 02 号交集、06/07 号 leading-edge 或 09 号 TF 证据链中的基因。",
-            ],
-            wide=True,
-        )
+        multiple_volcano_fig = PLOT_ROOT / "multiple_volcano" / scheme / "png" / "multiple_volcano_plot.png"
+        if multiple_volcano_fig.exists():
+            lines += figure_frame(
+                image_result_title("02", scheme, "多组火山图"),
+                multiple_volcano_fig,
+                [
+                    "该图把当前交集方案中的多个 LRC/BULK 分析设计并列展示，红色 Sig_Up 与蓝色 Sig_Down 对应各模型显著上/下调基因。",
+                    "阅读时先看不同组之间上下调基因分布是否相似，再看中心组名区域两侧是否存在稳定的强效差异基因。",
+                    "若多组火山图中多个成员均显示相似方向与强度，说明该交集方案更可能捕捉到跨模型休眠样转录程序，而不仅是单细胞系噪音。",
+                ],
+                wide=True,
+            )
     write_text(section_file(section_name), lines)
     return section_name
 
@@ -1153,21 +1115,12 @@ def build_06() -> list[str]:
         "GSEA 结果如何服务于休眠复苏假说",
         [
             "GSEA 使用 all_genes 的全量排序，当前 rank metric 为 t statistic；这比只看 significant_genes 更适合捕捉整体通路偏移。",
-            "当前报告只保留 Hallmark、BioCarta、KEGG、Reactome、WikiPathways、TFT、GO、HPO、C6、ImmuneSigDB 等与机制解释相关的 MSigDB 类别。",
-            "06 号表格给出每个 analysis × geneset 的运行规模、正/负 NES 通路数量和单通路图数量；07 号随后对同一设计进行 dotplot 与结果表配对解读。",
+            "06 号脚本负责运算和保存 GSEA 结果，07 号脚本负责绘图；Beamer 中不再展示全部 analysis × gene set 类别的运行清单，避免用流程性 summary 稀释结果展示。",
+            "当前展示只保留已经生成 dotplot 与 gsea_result.csv 的组合，并按同一 GSEA 设计先图后表展示，便于把视觉结论与统计字段逐一对应。",
             "正 NES 通常提示 LRC 方向富集，负 NES 通常提示 BULK 方向富集；这为“休眠维持”或“苏醒启动”相关通路筛选提供方向性。",
+            "阅读时优先关注与炎症反应、组织重塑、免疫调节、细胞周期、代谢重编程、TFT 靶集或肿瘤相关 signature 相关的通路。",
         ],
     )
-    summary_csv = find_result_csv(RESULT_ROOT / "tables" / "GSEA_summary", "summary")
-    alt_summary_csv = find_result_csv(RESULT_ROOT / "GSEA" / "summary", "summary")
-    if summary_csv is not None:
-        summary_tex = make_preview_table(summary_csv)
-        if summary_tex is not None:
-            lines += table_frame("06. GSEA运行摘要 | 全部analysis与基因集类别", summary_tex, ["该 summary 展示每个 analysis × geneset 的 GSEA 运行概况。Ranked_Genes 为进入排序的基因数；GSEA_Terms 为通过当前显著性阈值的通路数；Positive_NES/Negative_NES 表示 LRC/BULK 方向富集数量。"], source_csv=summary_csv)
-    elif alt_summary_csv is not None:
-        summary_tex = make_preview_table(alt_summary_csv)
-        if summary_tex is not None:
-            lines += table_frame("06. GSEA运行摘要 | 全部analysis与基因集类别", summary_tex, ["该 summary 展示每个 analysis × geneset 的 GSEA 运行概况。Ranked_Genes 为进入排序的基因数；GSEA_Terms 为通过当前显著性阈值的通路数；Positive_NES/Negative_NES 表示 LRC/BULK 方向富集数量。"], source_csv=alt_summary_csv)
     write_text(section_file(section_names[0]), lines)
 
     return section_names
@@ -1178,13 +1131,13 @@ def build_07() -> list[str]:
     lines = section_cover(
         "07. GSEA 图表配对解读：先看通路图，再看统计表",
         "每个 analysis/geneset 的 dotplot 与同一结果表连续展示",
-        "本章节把每个 GSEA 设计的图片和表格放在一起阅读。dotplot 用于快速识别 top 通路，紧随其后的表格用于核对 NES、p.adjust、qvalue、rank 和 leading_edge 等统计字段。",
+        "本章节把每个 GSEA 设计的图片和表格放在一起阅读。dotplot 用于快速识别 top 通路，紧随其后的表格用于核对 NES、pvalue、p.adjust 和 qvalue 等核心统计字段。",
     )
     lines += text_frame(
         "GSEA 图表配对的阅读顺序",
         [
             "先看 dotplot：确认哪些通路进入 top10，以及通路名称是否与休眠、炎症、ECM remodeling、代谢重编程、免疫微环境或 TF 靶集相关。",
-            "再看结果表：用 NES 判断富集方向，用 p.adjust/qvalue 判断统计证据，用 leading_edge 定位驱动富集的核心基因。",
+            "再看结果表：本报告只展示 ID、NES、pvalue、p.adjust、qvalue 这些最关键字段；NES 判断富集方向，p.adjust/qvalue 判断多重校正后的统计证据。",
             "07 号 dotplot 的显著性筛选与 06 号 GSEA 运算保持一致：当前统一使用 p.adjust < 0.05。",
             "单通路 GSEA+热图数量较多，暂不纳入逐页汇报；需要深入某一通路时可回到结果目录查看对应单通路图。",
         ],
@@ -1206,7 +1159,7 @@ def build_07() -> list[str]:
         lines = section_cover(
             f"07. GSEA paired results：{analysis}",
             f"{analysis} 的 GSEA 图表配对结果",
-            "每个 MSigDB 类别先展示 dotplot 图，再展示同一 analysis/geneset 对应的 GSEA 结果表。图中 top 通路可直接与下一页 NES、p.adjust、qvalue 和 leading_edge 统计量对应查看。",
+            "每个 MSigDB 类别先展示 dotplot 图，再展示同一 analysis/geneset 对应的 GSEA 结果表。图中 top 通路可直接与下一页 NES、pvalue、p.adjust 和 qvalue 对应查看。",
         )
         csv_files = sorted(csv_files, key=sort_gsea_csv)
         preview_map = make_preview_tables_parallel(csv_files)
@@ -1221,7 +1174,7 @@ def build_07() -> list[str]:
                     [
                         "该 dotplot 展示当前 analysis × MSigDB 类别中通过 p.adjust < 0.05 后的 top10 通路，用于快速定位最强富集主题。",
                         "气泡大小和颜色用于同时表达富集规模和统计显著性；通路名称若与休眠、炎症、免疫、细胞周期、ECM 或 TF 靶集相关，应优先进入后续解释。",
-                        "下一页是同一 GSEA 设计的结果表，请用 NES、p.adjust、qvalue 与 leading_edge 验证图中通路是否具有可靠统计和可追溯核心基因。",
+                        "下一页是同一 GSEA 设计的结果表，请用 NES、p.adjust 与 qvalue 验证图中通路是否具有可靠统计证据和明确富集方向。",
                     ],
                     wide=True,
                 )
@@ -1233,10 +1186,10 @@ def build_07() -> list[str]:
                 gsea_pair_title(analysis, geneset, "GSEA结果表"),
                 compact_tex,
                 [
-                    "ID/Description 为通路编号与名称；setSize 为该通路基因集大小；enrichmentScore 和 NES 分别为原始富集分数与标准化富集分数。",
-                    "本报告与 06 号运算统一采用 p.adjust < 0.05 作为 GSEA 图表展示阈值；qvalue 可作为额外稳健性参考。",
-                    "rank 表示富集峰在 ranked gene list 中的位置；leading_edge 概括贡献最大的核心基因，是后续连接 DEG、TF 和药物重定位的关键字段。",
-                    "正 NES 通常解释为 LRC 方向富集，负 NES 通常解释为 BULK 方向富集。",
+                    "该表是同一 dotplot 对应的 GSEA 统计结果预览；为保证汇报版式，只展示 ID、NES、pvalue、p.adjust、qvalue 等核心判断字段。",
+                    "NES 是标准化富集分数：正值通常解释为 LRC 方向富集，负值通常解释为 BULK 方向富集。",
+                    "p.adjust 是本报告与 06 号运算统一采用的显著性判断字段，当前阈值为 p.adjust < 0.05；qvalue 可作为额外稳健性参考。",
+                    "如果某个通路在 dotplot 中显著且 NES 方向明确，后续可回到完整 CSV 查看被隐藏的 leading_edge、rank、Description 等详细字段。",
                 ],
                 source_csv=csv_path,
             )
@@ -1406,8 +1359,8 @@ def build_09() -> list[str]:
                 candidate_entries.append((scheme, tex, csv_path))
 
         candidate_note = [
-            "Consensus_Rank 为综合排序；TF 为转录因子 symbol；Required_Methods/Source_Methods 显示该候选来自哪些方法组合。",
-            "Source_Method_Count 表示支持该 TF 的方法数；Mean_Selected_Rank 与 Best_Selected_Rank 反映跨方法排序基础；CheA3_Library_Count 表示 ChEA3 多证据库支持数。",
+            "Consensus_Rank 为综合排序；TF 为转录因子 symbol；Source_Methods 显示该候选来自哪些方法组合。",
+            "Source_Method_Count 表示支持该 TF 的方法数；CheA3_Library_Count 表示 ChEA3 多证据库支持数，数量越高通常说明外部证据越丰富。",
             "DoRothEA/ChEA3/VIPER/ENRICHR/TRRUST/CollecTRI 列保留各方法紧凑证据。优先关注多方法支持、ChEA3 library 较多、且在活性方法中方向清楚的 TF。",
         ]
         for i in range(0, len(candidate_entries), 2):
@@ -1465,8 +1418,8 @@ def build_main(section_names: list[str]) -> None:
         r"\newunicodechar{κ}{\ensuremath{\kappa}}",
         r"\setbeamertemplate{navigation symbols}{}",
         r"\setbeamersize{text margin left=1.5mm,text margin right=1.5mm}",
-        r"\newcommand{\ReportBodyFont}{\fontsize{5.65pt}{6.65pt}\selectfont}",
-        r"\setbeamerfont{normal text}{size=\scriptsize}",
+        r"\newcommand{\ReportBodyFont}{\fontsize{6.2pt}{7.55pt}\selectfont}",
+        r"\setbeamerfont{normal text}{size*={6.2pt}{7.55pt}}",
         r"\setbeamerfont{frametitle}{size=\large,series=\bfseries}",
         r"\AtBeginEnvironment{frame}{\ReportBodyFont}",
         r"\hfuzz=80pt",
@@ -1482,23 +1435,22 @@ def build_main(section_names: list[str]) -> None:
         "",
         r"\newcommand{\SectionCover}[3]{%",
         r"  \section{#1}%",
-        r"  \begin{frame}[plain]%",
-        r"    \vfill%",
+        r"  \begin{frame}[plain,t]%",
+        r"    \vspace{1.2mm}%",
         r"    {\Large\bfseries #1}\par\vspace{0.45em}%",
         r"    {\normalsize #2}\par\vspace{0.8em}%",
-        r"    \begin{minipage}{0.88\textwidth}\RaggedRight\scriptsize #3\end{minipage}%",
-        r"    \vfill%",
+        r"    \noindent\begin{minipage}{0.96\textwidth}\RaggedRight\ReportBodyFont #3\end{minipage}%",
         r"  \end{frame}%",
         r"}",
         "",
         r"\newcommand{\TextFrame}[2]{%",
-        r"  \begin{frame}{#1}%",
+        r"  \begin{frame}[t]{#1}%",
         r"    \RaggedRight\ReportBodyFont #2%",
         r"  \end{frame}%",
         r"}",
         "",
         r"\newcommand{\ResultFigureFrame}[3]{%",
-        r"  \begin{frame}[plain]%",
+        r"  \begin{frame}[plain,t]%",
         r"    {\normalsize\bfseries #1}\par\vspace{0.06em}%",
         r"    \IfFileExists{\CRLMROOT/\detokenize{#2}}{%",
         r"      \sbox{\ResultImageBox}{\includegraphics[width=0.69\textwidth,height=0.915\paperheight,keepaspectratio]{\CRLMROOT/\detokenize{#2}}}%",
@@ -1510,7 +1462,7 @@ def build_main(section_names: list[str]) -> None:
         r"}",
         "",
         r"\newcommand{\ResultWideFigureFrame}[3]{%",
-        r"  \begin{frame}[plain]%",
+        r"  \begin{frame}[plain,t]%",
         r"    {\normalsize\bfseries #1}\par\vspace{0.06em}%",
         r"    \IfFileExists{\CRLMROOT/\detokenize{#2}}{%",
         r"      \sbox{\ResultImageBox}{\includegraphics[width=0.735\textwidth,height=0.915\paperheight,keepaspectratio]{\CRLMROOT/\detokenize{#2}}}%",
@@ -1522,13 +1474,13 @@ def build_main(section_names: list[str]) -> None:
         r"}",
         "",
         r"\newcommand{\ResultTableFrame}[4]{%",
-        r"  \begin{frame}[plain]{#1}%",
-        r"    \vspace{-0.55em}%",
+        r"  \begin{frame}[plain,t]{#1}%",
+        r"    \vspace{-0.28em}%",
         r"    \begin{minipage}[t]{\textwidth}\RaggedRight\ReportBodyFont #4\end{minipage}%",
-        r"    \par\vspace{0.08em}%",
+        r"    \par\vspace{0.22em}%",
         r"    \IfFileExists{\CRLMROOT/\detokenize{#3}}{%",
         r"      \begingroup\centering%",
-        r"      \begin{adjustbox}{max width=0.998\textwidth,max totalheight=0.792\textheight,keepaspectratio}%",
+        r"      \begin{adjustbox}{max width=0.968\textwidth,max totalheight=0.765\textheight,keepaspectratio}%",
         r"        \input{\CRLMROOT/\detokenize{#3}}%",
         r"      \end{adjustbox}%",
         r"      \par\endgroup%",
@@ -1537,14 +1489,14 @@ def build_main(section_names: list[str]) -> None:
         r"}",
         "",
         r"\newcommand{\ResultTwoTableFrame}[7]{%",
-        r"  \begin{frame}[plain]{#1}%",
-        r"    \vspace{-0.55em}%",
+        r"  \begin{frame}[plain,t]{#1}%",
+        r"    \vspace{-0.28em}%",
         r"    \noindent\begin{minipage}[t]{0.498\textwidth}\vspace{0pt}%",
         r"      \RaggedRight\ReportBodyFont #4%",
-        r"      \par\vspace{0.08em}%",
+        r"      \par\vspace{0.18em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#3}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.995\linewidth,max totalheight=0.665\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.968\linewidth,max totalheight=0.642\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#3}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
@@ -1553,10 +1505,10 @@ def build_main(section_names: list[str]) -> None:
         r"    \hfill%",
         r"    \begin{minipage}[t]{0.498\textwidth}\vspace{0pt}%",
         r"      \RaggedRight\ReportBodyFont #7%",
-        r"      \par\vspace{0.08em}%",
+        r"      \par\vspace{0.18em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#6}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.995\linewidth,max totalheight=0.665\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.968\linewidth,max totalheight=0.642\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#6}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
@@ -1566,26 +1518,26 @@ def build_main(section_names: list[str]) -> None:
         r"}",
         "",
         r"\newcommand{\ResultStackedTwoTableFrame}[7]{%",
-        r"  \begin{frame}[plain]{#1}%",
-        r"    \vspace{-0.55em}%",
+        r"  \begin{frame}[plain,t]{#1}%",
+        r"    \vspace{-0.28em}%",
         r"    \begin{minipage}[t]{\textwidth}\vspace{0pt}%",
         r"      \RaggedRight\ReportBodyFont #4%",
-        r"      \par\vspace{0.04em}%",
+        r"      \par\vspace{0.16em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#3}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.998\textwidth,max totalheight=0.305\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.968\textwidth,max totalheight=0.292\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#3}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
         r"      }{\MissingBox{#3}}%",
         r"    \end{minipage}%",
-        r"    \par\vspace{0.10em}%",
+        r"    \par\vspace{0.18em}%",
         r"    \begin{minipage}[t]{\textwidth}\vspace{0pt}%",
         r"      \RaggedRight\ReportBodyFont #7%",
-        r"      \par\vspace{0.04em}%",
+        r"      \par\vspace{0.16em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#6}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.998\textwidth,max totalheight=0.305\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.968\textwidth,max totalheight=0.292\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#6}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
@@ -1649,8 +1601,6 @@ def generate_sources() -> list[str]:
     section_names.append(build_00())
     section_names.append(build_01())
     section_names.append(build_02())
-    section_names.append(build_04())
-    section_names.append(build_05())
     section_names.extend(build_06())
     section_names.extend(build_07())
     section_names.extend(build_08())

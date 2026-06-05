@@ -38,7 +38,7 @@ RANK_METRIC_COLUMN <- "t"
 # GSEA显著性阈值配置。
 # GSEA_SIGNIFICANCE_COLUMN用于记录和绘图筛选时采用的p值类型；
 # 目前与clusterProfiler::GSEA的pAdjustMethod="BH"配套，统一采用p.adjust阈值。
-GSEA_SIGNIFICANCE_COLUMN <- "p.adjust"
+GSEA_SIGNIFICANCE_COLUMN <- "pvalue"
 GSEA_SIGNIFICANCE_CUTOFF <- 0.05
 
 # clusterProfiler::GSEA官方运算参数。
