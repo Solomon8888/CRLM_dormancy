@@ -27,8 +27,10 @@ run_with_spinner() {
 
   if [[ ! -t 1 ]]; then
     printf "… %s\n" "$label"
+    set +e
     "$@" >"$log_file" 2>&1
     local exit_status=$?
+    set -e
     local end_time elapsed
     end_time=$(date +%s)
     elapsed=$(( end_time - start_time ))
@@ -63,8 +65,10 @@ run_with_spinner() {
     sleep 0.18
   done
 
+  set +e
   wait "$command_pid"
   local exit_status=$?
+  set -e
   end_time=$(date +%s)
   elapsed=$(( end_time - start_time ))
 

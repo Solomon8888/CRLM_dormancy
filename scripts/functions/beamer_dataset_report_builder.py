@@ -68,7 +68,7 @@ SCRIPT_TITLES = {
     "09": ("TF候选整合与交集", "将多方法 TF 证据压缩为可验证候选"),
 }
 
-# Beamer中每个表格默认展示前21行；过长表格只预览核心列，完整CSV仍保留在结果目录。
+# Beamer中普通表格默认展示前21行；含logFC的DEG类表格展示正反方向各10个候选。
 TABLE_PREVIEW_ROWS = 21
 
 # 生成大量表格预览时使用线程池并行，主要加速CSV读取和tex片段写入。
@@ -557,10 +557,130 @@ def format_table_cell(value: object, max_chars: int = 90) -> str:
     return decimal_text_without_scientific(value)
 
 
-def read_csv_preview(csv_path: Path, columns: list[str], n_rows: int = 21) -> tuple[list[str], list[list[str]]]:
+def parse_float(value: object) -> float | None:
+    """Parse a numeric CSV field for preview sorting without changing display text."""
+    try:
+        value_text = str(value).strip()
+        if value_text == "" or value_text.lower() in {"nan", "na"}:
+            return None
+        return float(value_text)
+    except (TypeError, ValueError):
+        return None
+
+
+def select_numeric_top_bottom_rows(
+    raw_rows: list[dict[str, str]],
+    sort_columns: tuple[str, ...] = ("logFC",),
+    top_n: int = 10,
+) -> list[dict[str, str]]:
+    """Select top and bottom numeric rows for Beamer previews.
+
+    Beamer中的方向性结果表格预览不再机械取CSV前21行，而是从原始完整CSV
+    读取全部行后，按指定方向性数值列排序：
+      1. 先展示该数值列降序Top10，代表正向最强候选；
+      2. 再展示该数值列升序Top10，代表反向最强候选。
+    这样表格总共为“表头1行 + 数据20行”，正好符合汇报页的阅读习惯。
+
+    DEG/交集DEG结果使用logFC；GSEA结果使用NES。
+    不在这里改变任何CSV原始值，只用数值列决定Beamer预览行的抽取顺序。
+    """
+    sort_column = None
+    for candidate_column in sort_columns:
+        if raw_rows and candidate_column in raw_rows[0]:
+            sort_column = candidate_column
+            break
+
+    if sort_column is None:
+        return raw_rows[: top_n * 2]
+
+    sortable_rows: list[tuple[int, float, dict[str, str]]] = []
+    fallback_rows: list[dict[str, str]] = []
+    for row_index, row in enumerate(raw_rows):
+        sort_value = parse_float(row.get(sort_column, ""))
+        if sort_value is None:
+            fallback_rows.append(row)
+            continue
+        sortable_rows.append((row_index, sort_value, row))
+
+    if not sortable_rows:
+        return raw_rows[: top_n * 2]
+
+    descending_rows = sorted(sortable_rows, key=lambda item: (-item[1], item[0]))
+    ascending_rows = sorted(sortable_rows, key=lambda item: (item[1], item[0]))
+
+    selected_rows: list[dict[str, str]] = []
+    selected_indices: set[int] = set()
+    for row_index, _, row in descending_rows[:top_n] + ascending_rows[:top_n]:
+        if row_index in selected_indices:
+            continue
+        selected_rows.append(row)
+        selected_indices.add(row_index)
+
+    # 若总行数不足20或上下Top10有重叠，则用剩余降序结果补齐。
+    for row_index, _, row in descending_rows:
+        if len(selected_rows) >= top_n * 2:
+            break
+        if row_index in selected_indices:
+            continue
+        selected_rows.append(row)
+        selected_indices.add(row_index)
+
+    # 极少数情况下排序列存在但部分行不可解析，最后再用原始顺序补齐。
+    for row in fallback_rows:
+        if len(selected_rows) >= top_n * 2:
+            break
+        selected_rows.append(row)
+
+    return selected_rows[: top_n * 2]
+
+
+def select_logfc_top_bottom_rows(
+    raw_rows: list[dict[str, str]],
+    top_n: int = 10,
+) -> list[dict[str, str]]:
+    """Backward-compatible wrapper for DEG-style logFC previews."""
+    return select_numeric_top_bottom_rows(raw_rows, sort_columns=("logFC",), top_n=top_n)
+
+
+def read_csv_preview(
+    csv_path: Path,
+    columns: list[str],
+    n_rows: int = 21,
+    preview_key: str | None = None,
+) -> tuple[list[str], list[list[str]]]:
     with csv_path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
         available_columns = [column for column in columns if column in (reader.fieldnames or [])]
+        if not available_columns:
+            return available_columns, []
+
+        fieldnames = reader.fieldnames or []
+        if preview_key == "gsea_result" and "NES" in fieldnames:
+            raw_rows = list(reader)
+            selected_raw_rows = select_numeric_top_bottom_rows(
+                raw_rows,
+                sort_columns=("NES",),
+                top_n=10,
+            )
+            rows = [
+                [format_table_cell(row.get(column, ""), max_chars=95) for column in available_columns]
+                for row in selected_raw_rows
+            ]
+            return available_columns, rows
+
+        if "logFC" in fieldnames:
+            raw_rows = list(reader)
+            selected_raw_rows = select_numeric_top_bottom_rows(
+                raw_rows,
+                sort_columns=("logFC",),
+                top_n=10,
+            )
+            rows = [
+                [format_table_cell(row.get(column, ""), max_chars=95) for column in available_columns]
+                for row in selected_raw_rows
+            ]
+            return available_columns, rows
+
         rows: list[list[str]] = []
         for row in reader:
             rows.append([format_table_cell(row.get(column, ""), max_chars=95) for column in available_columns])
@@ -573,7 +693,12 @@ def write_generated_latex_table(csv_path: Path, output_name: str, columns: list[
     csv_path = resolve_result_csv_path(csv_path)
     if not csv_path.exists():
         return None
-    headers, rows = read_csv_preview(csv_path, columns=columns, n_rows=n_rows)
+    headers, rows = read_csv_preview(
+        csv_path,
+        columns=columns,
+        n_rows=n_rows,
+        preview_key=table_preview_key(csv_path),
+    )
     if not headers:
         return None
 
@@ -980,7 +1105,7 @@ def build_01() -> str:
                     deg_table_title(analysis, "significant_genes"),
                     tex,
                     [
-                        "该表为通过当前阈值的显著 DEG 前 21 行预览。logFC>0 表示 LRC 方向上调，logFC<0 表示 BULK 方向更高。",
+                        "该表为通过当前阈值的显著 DEG 预览；含 logFC 的表格按效应量展示：先列出 logFC 降序 Top10，再列出 logFC 升序 Top10。",
                         "t、P.Value 和 adj.P.Val 用于评估统计强度；Symbol/Ensembl/Entrez 是后续交集、GSEA leading-edge 回查和 TF 富集输入时最常用的标识。",
                     ],
                     source_csv=significant_csv,
@@ -1085,7 +1210,7 @@ def build_02() -> str:
                 intersect_table_title(scheme, rel_parts),
                 tex,
                 [
-                    f"该表展示 {scheme} 交集基因在 {member} 原始 DEG 结果中的统计证据。重点看 Symbol、logFC、t、P.Value 与 adj.P.Val。",
+                    f"该表展示 {scheme} 交集基因在 {member} 原始 DEG 结果中的统计证据；含 logFC 的预览按正反方向各取 Top10。重点看 Symbol、logFC、t、P.Value 与 adj.P.Val。",
                     "如果同一基因在多个成员分析中 logFC 方向一致，并且 p 值稳定，则更适合作为跨模型稳定的休眠样候选基因。",
                 ],
                 source_csv=csv_path,
@@ -1479,7 +1604,7 @@ def append_deg_frames(lines: list[str], analysis: str) -> None:
                 f"{analysis} | 显著差异基因表",
                 tex,
                 [
-                    "该表展示通过阈值筛选后的显著 DEG 前 21 行。Symbol/Ensembl/Entrez 用于后续交集、GSEA leading-edge 回查和 TF 富集。",
+                    "该表展示通过阈值筛选后的显著 DEG 预览；按 logFC 先展示 LRC 方向效应量最强的 Top10，再展示反方向效应量最强的 Top10。Symbol/Ensembl/Entrez 用于后续交集、GSEA leading-edge 回查和 TF 富集。",
                     "logFC 为 LRC 相对 BULK 的效应量；正值表示 LRC 方向上调，负值表示 BULK 方向更高。t、P.Value、adj.P.Val 用于判断统计强度。",
                     "阅读时优先关注效应量大、校正后 p 值稳定，并且在多个模型或交集方案中反复出现的候选基因。",
                 ],
@@ -1570,7 +1695,7 @@ def append_intersection_frames(lines: list[str], scheme: str) -> None:
             f"{scheme} | {member}中的交集基因DEG结果",
             tex,
             [
-                f"该表回查 {scheme} 交集基因在 {member} 原始 DEG 结果中的 logFC、t、P.Value 和 adj.P.Val。",
+                f"该表回查 {scheme} 交集基因在 {member} 原始 DEG 结果中的 logFC、t、P.Value 和 adj.P.Val；含 logFC 的预览按正反方向各取 Top10。",
                 "如果同一 Symbol 在不同成员分析中 logFC 方向一致，并且显著性稳定，说明它更可能代表跨模型休眠样转录程序，而不是单一细胞系背景噪音。",
             ],
             source_csv=csv_path,
@@ -1632,7 +1757,8 @@ def append_gsea_frames(lines: list[str], analysis: str) -> None:
             f"{analysis} | GSEA结果表 | {gsea_display_label(geneset)}",
             compact_tex,
             [
-                "该表是上一页 dotplot 对应的 GSEA 统计结果预览。ID 为通路条目；NES 判断富集方向；pvalue、p.adjust 和 qvalue 判断统计证据。",
+                "该表是上一页 dotplot 对应的 GSEA 统计结果预览。构建器从完整原始CSV读取全部通路，若存在logFC则按logFC取正反向Top10；当前GSEA官方表没有logFC，因此按NES取正向Top10和反向Top10。",
+                "ID 为通路条目；NES 判断富集方向；pvalue、p.adjust 和 qvalue 判断统计证据。",
                 "本报告展示核心列以便汇报阅读；完整 CSV 中仍保留 clusterProfiler 官方输出的其他字段，可用于回查 leading-edge 基因和通路细节。",
                 "当某通路同时具有明确 NES 方向和稳定校正显著性时，可作为休眠维持或休眠细胞苏醒机制的后续重点。",
             ],
