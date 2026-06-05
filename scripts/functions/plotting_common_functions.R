@@ -258,7 +258,9 @@ prepare_sample_correlation <- function(
 }
 
 get_deg_file_info <- function(table_root, deg_dir_name = "DEG") {
-  # 查找01号差异分析脚本输出的tables/<analysis_name>/DEG/all_genes.csv。
+  # 查找01号差异分析脚本输出的all_genes.csv。
+  # 兼容旧结构tables/<analysis_name>/DEG/all_genes.csv
+  # 和新结构tables/<analysis_name>/DEG/csv/all_genes.csv。
   all_gene_files <- list.files(
     table_root,
     pattern = "^all_genes[.]csv$",
@@ -267,13 +269,29 @@ get_deg_file_info <- function(table_root, deg_dir_name = "DEG") {
   )
 
   all_gene_files <- all_gene_files[
-    basename(dirname(all_gene_files)) == deg_dir_name
+    basename(dirname(all_gene_files)) == deg_dir_name |
+      (
+        basename(dirname(all_gene_files)) == "csv" &
+          basename(dirname(dirname(all_gene_files))) == deg_dir_name
+      )
   ]
+
+  get_analysis_name <- function(file_name) {
+    if (basename(dirname(file_name)) == "csv") {
+      return(basename(dirname(dirname(dirname(file_name)))))
+    }
+
+    basename(dirname(dirname(file_name)))
+  }
+
+  if (exists("prefer_report_csv_files", mode = "function")) {
+    all_gene_files <- prefer_report_csv_files(all_gene_files, get_analysis_name)
+  }
 
   stopifnot(length(all_gene_files) > 0)
 
   file_info <- data.frame(
-    Analysis_Name = basename(dirname(dirname(all_gene_files))),
+    Analysis_Name = vapply(all_gene_files, get_analysis_name, character(1)),
     All_Genes_File = all_gene_files,
     stringsAsFactors = FALSE
   )
@@ -322,7 +340,11 @@ read_deg_result <- function(file_info, analysis_name) {
   }
 
   read.csv(
-    file_info$All_Genes_File[file_index],
+    if (exists("resolve_report_csv_file", mode = "function")) {
+      resolve_report_csv_file(file_info$All_Genes_File[file_index])
+    } else {
+      file_info$All_Genes_File[file_index]
+    },
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
@@ -655,17 +677,37 @@ count_status <- function(status_counts, status_name) {
   as.integer(value)
 }
 
+get_plot_output_paths <- function(plot_file) {
+  # 接受旧式 output_dir/name.pdf，也接受已经位于pdf/png目录中的路径。
+  # 实际保存时统一放到 output_dir/pdf/name.pdf 与 output_dir/png/name.png。
+  plot_file <- as.character(plot_file)
+  plot_root <- dirname(plot_file)
+  plot_format_dir <- basename(plot_root)
+
+  if (plot_format_dir %in% c("pdf", "png")) {
+    plot_root <- dirname(plot_root)
+  }
+
+  file_stem <- tools::file_path_sans_ext(basename(plot_file))
+  list(
+    root = plot_root,
+    pdf = file.path(plot_root, "pdf", paste0(file_stem, ".pdf")),
+    png = file.path(plot_root, "png", paste0(file_stem, ".png"))
+  )
+}
+
 get_png_file_from_pdf <- function(pdf_file) {
-  sub("[.]pdf$", ".png", pdf_file)
+  get_plot_output_paths(pdf_file)$png
 }
 
 save_grid_pdf_png <- function(pdf_file, width, height, draw_fun, png_dpi = PNG_DPI) {
   # 使用同一套绘图函数分别输出矢量PDF和高清PNG。
-  dir.create(dirname(pdf_file), recursive = TRUE, showWarnings = FALSE)
-  png_file <- get_png_file_from_pdf(pdf_file)
+  plot_paths <- get_plot_output_paths(pdf_file)
+  dir.create(dirname(plot_paths$pdf), recursive = TRUE, showWarnings = FALSE)
+  dir.create(dirname(plot_paths$png), recursive = TRUE, showWarnings = FALSE)
 
   Cairo::CairoPDF(
-    file = pdf_file,
+    file = plot_paths$pdf,
     width = width,
     height = height,
     bg = "white"
@@ -674,7 +716,7 @@ save_grid_pdf_png <- function(pdf_file, width, height, draw_fun, png_dpi = PNG_D
   invisible(dev.off())
 
   Cairo::Cairo(
-    file = png_file,
+    file = plot_paths$png,
     type = "png",
     width = width,
     height = height,
@@ -686,10 +728,10 @@ save_grid_pdf_png <- function(pdf_file, width, height, draw_fun, png_dpi = PNG_D
   draw_fun()
   invisible(dev.off())
 
-  stopifnot(file.exists(pdf_file))
-  stopifnot(file.exists(png_file))
+  stopifnot(file.exists(plot_paths$pdf))
+  stopifnot(file.exists(plot_paths$png))
 
-  invisible(list(pdf_file = pdf_file, png_file = png_file))
+  invisible(list(pdf_file = plot_paths$pdf, png_file = plot_paths$png))
 }
 
 save_ggplot_pdf_png <- function(plot, pdf_file, width, height, png_dpi = PNG_DPI) {

@@ -25,75 +25,11 @@ get_runtime_vector <- function(env_name, default_value) {
   trimws(strsplit(env_value, ",", fixed = TRUE)[[1]])
 }
 
-is_tf_cache_fresh <- function(cache_file, max_age_days = 7) {
-  # 网络资源与远程API结果默认缓存7天；超过有效期则重新获取。
-  if (!file.exists(cache_file)) {
-    return(FALSE)
-  }
-
-  cache_age_days <- as.numeric(
-    difftime(Sys.time(), file.info(cache_file)$mtime, units = "days")
-  )
-  !is.na(cache_age_days) && cache_age_days <= max_age_days
-}
-
-make_tf_gene_cache_metadata <- function(method, input, genes, extra = list()) {
-  # 缓存不仅按分析名区分，也按实际基因集合与关键参数校验，避免参数改变后误用旧缓存。
-  list(
-    method = method,
-    input_type = input$input_type,
-    input_name = input$input_name,
-    genes_key = paste(sort(unique(as.character(genes))), collapse = "\t"),
-    extra = extra
-  )
-}
-
-make_tf_resource_cache_metadata <- function(resource_name, species, extra = list()) {
-  list(
-    resource = resource_name,
-    species = tolower(as.character(species)),
-    extra = extra
-  )
-}
-
-read_tf_cache <- function(
-    cache_file,
-    expected_metadata,
-    max_age_days = 7,
-    use_cache = TRUE) {
-  if (!use_cache || !is_tf_cache_fresh(cache_file, max_age_days = max_age_days)) {
-    return(list(found = FALSE, result = NULL))
-  }
-
-  cache_object <- tryCatch(
-    readRDS(cache_file),
-    error = function(e) NULL
-  )
-  if (
-    is.null(cache_object) ||
-      !is.list(cache_object) ||
-      !all(c("metadata", "result") %in% names(cache_object))
-  ) {
-    return(list(found = FALSE, result = NULL))
-  }
-
-  if (!identical(cache_object$metadata, expected_metadata)) {
-    return(list(found = FALSE, result = NULL))
-  }
-
-  list(found = TRUE, result = cache_object$result)
-}
-
-write_tf_cache <- function(cache_file, metadata, result) {
-  dir.create(dirname(cache_file), recursive = TRUE, showWarnings = FALSE)
-  saveRDS(
-    object = list(metadata = metadata, result = result),
-    file = cache_file
-  )
-  invisible(cache_file)
-}
-
 read_result_table <- function(file_name) {
+  if (exists("resolve_report_csv_file", mode = "function")) {
+    file_name <- resolve_report_csv_file(file_name)
+  }
+
   read.csv(
     file_name,
     stringsAsFactors = FALSE,
@@ -102,7 +38,12 @@ read_result_table <- function(file_name) {
 }
 
 get_analysis_name_from_significant_file <- function(file_name) {
-  # significant_genes.csv位于tables/<analysis_name>/DEG/。
+  # 兼容旧结构tables/<analysis_name>/DEG/significant_genes.csv
+  # 和新结构tables/<analysis_name>/DEG/csv/significant_genes.csv。
+  if (basename(dirname(file_name)) == "csv") {
+    return(basename(dirname(dirname(dirname(file_name)))))
+  }
+
   basename(dirname(dirname(file_name)))
 }
 
@@ -115,8 +56,18 @@ get_tf_deg_inputs <- function(table_root, analyses_to_run = "all") {
   )
 
   significant_files <- significant_files[
-    basename(dirname(significant_files)) == "DEG"
+    basename(dirname(significant_files)) == "DEG" |
+      (
+        basename(dirname(significant_files)) == "csv" &
+          basename(dirname(dirname(significant_files))) == "DEG"
+      )
   ]
+  if (exists("prefer_report_csv_files", mode = "function")) {
+    significant_files <- prefer_report_csv_files(
+      significant_files,
+      get_analysis_name_from_significant_file
+    )
+  }
 
   all_genes_files <- list.files(
     table_root,
@@ -125,8 +76,18 @@ get_tf_deg_inputs <- function(table_root, analyses_to_run = "all") {
     full.names = TRUE
   )
   all_genes_files <- all_genes_files[
-    basename(dirname(all_genes_files)) == "DEG"
+    basename(dirname(all_genes_files)) == "DEG" |
+      (
+        basename(dirname(all_genes_files)) == "csv" &
+          basename(dirname(dirname(all_genes_files))) == "DEG"
+      )
   ]
+  if (exists("prefer_report_csv_files", mode = "function")) {
+    all_genes_files <- prefer_report_csv_files(
+      all_genes_files,
+      get_analysis_name_from_significant_file
+    )
+  }
   all_genes_names <- vapply(
     all_genes_files,
     get_analysis_name_from_significant_file,
@@ -191,14 +152,20 @@ get_tf_intersection_inputs <- function(
   )
 
   gene_list_files <- gene_list_files[
-    basename(dirname(gene_list_files)) != "DEG"
+    basename(dirname(gene_list_files)) != "DEG" &
+      basename(dirname(gene_list_files)) != "md" &
+      basename(dirname(gene_list_files)) != "tex"
   ]
 
   if (length(gene_list_files) == 0L) {
     return(list())
   }
 
-  scheme_names <- basename(dirname(gene_list_files))
+  scheme_names <- ifelse(
+    basename(dirname(gene_list_files)) == "csv",
+    basename(dirname(dirname(gene_list_files))),
+    basename(dirname(gene_list_files))
+  )
 
   keep <- rep(TRUE, length(gene_list_files))
   if (!is_all_keyword(schemes_to_run)) {
@@ -209,7 +176,11 @@ get_tf_intersection_inputs <- function(
   scheme_names <- scheme_names[keep]
 
   inputs <- Map(function(scheme_name, gene_file) {
-    scheme_dir <- dirname(gene_file)
+    scheme_dir <- if (basename(dirname(gene_file)) == "csv") {
+      dirname(dirname(gene_file))
+    } else {
+      dirname(gene_file)
+    }
     rank_files <- list.files(
       scheme_dir,
       pattern = "deg_results[.]csv$",
@@ -217,7 +188,11 @@ get_tf_intersection_inputs <- function(
       full.names = TRUE
     )
 
-    rank_names <- basename(dirname(rank_files))
+    rank_names <- ifelse(
+      basename(dirname(rank_files)) == "csv",
+      basename(dirname(dirname(rank_files))),
+      basename(dirname(rank_files))
+    )
     if (length(rank_files) > 0L) {
       rank_files <- setNames(rank_files, rank_names)
     }
@@ -230,8 +205,12 @@ get_tf_intersection_inputs <- function(
         table_root,
         rank_names,
         "DEG",
+        "csv",
         "all_genes.csv"
       )
+      old_full_rank_files <- file.path(table_root, rank_names, "DEG", "all_genes.csv")
+      missing_new_rank_files <- !file.exists(full_rank_files) & file.exists(old_full_rank_files)
+      full_rank_files[missing_new_rank_files] <- old_full_rank_files[missing_new_rank_files]
       usable_full_rank_files <- file.exists(full_rank_files)
       if (any(usable_full_rank_files)) {
         fallback_rank_files <- rank_files
@@ -838,6 +817,23 @@ run_enrichr_enrichment <- function(
   )
 }
 
+add_enrichr_tf_column <- function(result_list) {
+  # Enrichr的Term常见格式如“CEBPB myocyte mm9”。
+  # 这里提取第一个空格前的字符串作为TF symbol，方便后续快速筛选TF分子。
+  if (length(result_list) == 0L) {
+    return(result_list)
+  }
+
+  lapply(result_list, function(dat) {
+    dat <- as.data.frame(dat, stringsAsFactors = FALSE, check.names = FALSE)
+    if ("Term" %in% colnames(dat) && !"TF" %in% colnames(dat)) {
+      dat$TF <- sub("\\s.*$", "", trimws(as.character(dat$Term)))
+      dat <- dat[, c("TF", setdiff(colnames(dat), "TF")), drop = FALSE]
+    }
+    dat
+  })
+}
+
 run_enrichr_enrichment_cached <- function(
     input,
     databases,
@@ -882,7 +878,7 @@ run_enrichr_enrichment_cached <- function(
     use_cache = use_cache
   )
   if (cached$found) {
-    return(cached$result)
+    return(add_enrichr_tf_column(cached$result))
   }
 
   result <- run_enrichr_enrichment(
@@ -895,6 +891,7 @@ run_enrichr_enrichment_cached <- function(
     sleep_time = sleep_time,
     enrichr_site = enrichr_site
   )
+  result <- add_enrichr_tf_column(result)
   write_tf_cache(cache_file = cache_file, metadata = metadata, result = result)
   result
 }
@@ -971,7 +968,7 @@ save_tf_table <- function(dat, output_dir, file_stem, preview_rows = 21) {
   }
 
   csv_file <- file.path(output_dir, paste0(file_stem, ".csv"))
-  write_csv_with_report_previews(
+  csv_file <- write_csv_with_report_previews(
     dat = dat,
     csv_file = csv_file,
     n_rows = preview_rows

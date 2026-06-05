@@ -329,7 +329,9 @@ task_table <- expand.grid(
 )
 total_tasks <- nrow(task_table)
 
-compute_summary_file <- file.path(OUTPUT_ROOT, "tables", "GSEA_summary", "summary.csv")
+compute_summary_file <- resolve_report_csv_file(
+  file.path(OUTPUT_ROOT, "tables", "GSEA_summary", "summary.csv")
+)
 compute_summary_table <- if (file.exists(compute_summary_file)) {
   read.csv(compute_summary_file, stringsAsFactors = FALSE, check.names = FALSE)
 } else {
@@ -371,6 +373,7 @@ run_gsea_plot_task <- function(task_id) {
   dir.create(plot_output_dir, recursive = TRUE, showWarnings = FALSE)
 
   csv_file <- file.path(table_output_dir, "gsea_result.csv")
+  csv_file <- resolve_report_csv_file(csv_file)
   if (!file.exists(csv_file)) {
     stop("GSEA result table was not found. Please run 06_gsea_analysis.R first: ", csv_file)
   }
@@ -484,7 +487,15 @@ rownames(summary_table) <- NULL
 
 summary_output_dir <- file.path(OUTPUT_ROOT, "tables", "GSEA_summary")
 dir.create(summary_output_dir, recursive = TRUE, showWarnings = FALSE)
-write_csv_with_report_previews(
+unlink(
+  list.files(
+    summary_output_dir,
+    pattern = "[.](csv|md|tex)$",
+    full.names = TRUE
+  ),
+  force = TRUE
+)
+summary_csv_file <- write_csv_with_report_previews(
   summary_table,
   file.path(summary_output_dir, "summary.csv"),
   n_rows = 21
@@ -505,7 +516,7 @@ print(
 
 cat("\nOutput summary:\n")
 cat("GSEA plot directory:  ", file.path(PLOT_ROOT, "<analysis_name>"), "\n", sep = "")
-cat("GSEA summary table:   ", file.path(summary_output_dir, "summary.csv"), "\n", sep = "")
+cat("GSEA summary table:   ", summary_csv_file, "\n", sep = "")
 cat("PDF/PNG dotplots: ", nrow(summary_table), " each\n", sep = "")
 cat("Single-pathway GSEA PDF/PNG plots: ", sum(summary_table$Single_Pathway_Plots), " each\n", sep = "")
 print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")

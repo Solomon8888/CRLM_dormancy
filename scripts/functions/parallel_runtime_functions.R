@@ -285,7 +285,8 @@ run_parallel_tasks_with_progress <- function(
     task_ids,
     task_function,
     workers,
-    suppress_task_output = TRUE) {
+    suppress_task_output = TRUE,
+    progress_label = "Progress") {
   # 主进程维护进度条，子进程负责实际批量任务。
   # 与parallel::mclapply相比，这里可以实时回收已完成任务并刷新终端进度。
   total_task_count <- length(task_ids)
@@ -296,7 +297,7 @@ run_parallel_tasks_with_progress <- function(
   progress_start_time <- Sys.time()
   reset_progress_state()
   render_progress_line(
-    make_progress_line(0L, total_task_count, progress_start_time),
+    make_progress_line(0L, total_task_count, progress_start_time, label = progress_label),
     force = TRUE
   )
   progress_finished <- FALSE
@@ -318,7 +319,12 @@ run_parallel_tasks_with_progress <- function(
         suppress_output = suppress_task_output
       )
       render_progress_line(
-        make_progress_line(task_position, total_task_count, progress_start_time),
+        make_progress_line(
+          task_position,
+          total_task_count,
+          progress_start_time,
+          label = progress_label
+        ),
         force = task_position >= total_task_count
       )
     }
@@ -377,7 +383,12 @@ run_parallel_tasks_with_progress <- function(
       active_task_by_pid[[pid]] <- NULL
       completed_tasks <- completed_tasks + 1L
       render_progress_line(
-        make_progress_line(completed_tasks, total_task_count, progress_start_time),
+        make_progress_line(
+          completed_tasks,
+          total_task_count,
+          progress_start_time,
+          label = progress_label
+        ),
         force = completed_tasks >= total_task_count
       )
 
@@ -399,13 +410,15 @@ run_indexed_tasks_with_progress <- function(
     total_tasks,
     task_function,
     workers,
-    suppress_task_output = TRUE) {
+    suppress_task_output = TRUE,
+    progress_label = "Progress") {
   # 适合大多数批量脚本：任务天然按1:n编号。
   run_parallel_tasks_with_progress(
     task_ids = seq_len(total_tasks),
     task_function = task_function,
     workers = workers,
-    suppress_task_output = suppress_task_output
+    suppress_task_output = suppress_task_output,
+    progress_label = progress_label
   )
 }
 

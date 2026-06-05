@@ -260,6 +260,7 @@ run_one_limma_analysis <- function(i) {
       pattern = "[.](csv|tex|md)$",
       full.names = TRUE
     ))
+    unlink(file.path(analysis_output_dir, c("csv", "md", "tex")), recursive = TRUE, force = TRUE)
   }
 
   all_results_file <- file.path(analysis_output_dir, "all_genes.csv")
@@ -284,9 +285,9 @@ run_one_limma_analysis <- function(i) {
     stringsAsFactors = FALSE
   )
 
-  write_csv_with_report_previews(diff_results_output, all_results_file)
-  write_csv_with_report_previews(significant_results_output, significant_results_file)
-  write_csv_with_report_previews(summary_table, summary_file)
+  all_results_file <- write_csv_with_report_previews(diff_results_output, all_results_file)
+  significant_results_file <- write_csv_with_report_previews(significant_results_output, significant_results_file)
+  summary_file <- write_csv_with_report_previews(summary_table, summary_file)
 
   stopifnot(file.exists(all_results_file))
   stopifnot(file.exists(significant_results_file))

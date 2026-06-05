@@ -206,9 +206,18 @@ clean_previous_gsea_outputs <- function(selected_analyses) {
 
   table_dirs <- file.path(TABLE_OUTPUT_ROOT, selected_analyses, "GSEA")
   plot_dirs <- file.path(PLOT_ROOT, sanitize_file_name(selected_analyses))
+  summary_dir <- file.path(OUTPUT_ROOT, "tables", "GSEA_summary")
 
   unlink(table_dirs, recursive = TRUE, force = TRUE)
   unlink(plot_dirs, recursive = TRUE, force = TRUE)
+  unlink(
+    list.files(
+      summary_dir,
+      pattern = "[.](csv|md|tex)$",
+      full.names = TRUE
+    ),
+    force = TRUE
+  )
 
   # 若当前运行覆盖全部分析，则直接清理GSEA图片根目录下的陈旧散落文件/目录。
   if (identical(ANALYSES_TO_RUN, "all") && dir.exists(PLOT_ROOT)) {
@@ -666,9 +675,13 @@ get_gsea_result_table <- function(gsea_result) {
 
 write_gsea_result_tables <- function(gsea_result, csv_file) {
   result_table <- get_gsea_result_table(gsea_result)
-  write.csv(result_table, csv_file, row.names = FALSE, na = "NA")
-  write_gsea_markdown_table(result_table, sub("[.]csv$", ".md", csv_file))
-  write_gsea_latex_table(result_table, sub("[.]csv$", ".tex", csv_file))
+  if (exists("write_csv_with_report_previews", mode = "function")) {
+    write_csv_with_report_previews(result_table, csv_file, n_rows = 21, na = "NA")
+  } else {
+    write.csv(result_table, csv_file, row.names = FALSE, na = "NA")
+    write_gsea_markdown_table(result_table, sub("[.]csv$", ".md", csv_file))
+    write_gsea_latex_table(result_table, sub("[.]csv$", ".tex", csv_file))
+  }
   result_table
 }
 

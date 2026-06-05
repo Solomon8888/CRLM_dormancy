@@ -162,12 +162,29 @@ get_significant_file_info <- function(table_root, deg_dir_name = "DEG") {
   )
 
   significant_files <- significant_files[
-    basename(dirname(significant_files)) == deg_dir_name
+    basename(dirname(significant_files)) == deg_dir_name |
+      (
+        basename(dirname(significant_files)) == "csv" &
+          basename(dirname(dirname(significant_files))) == deg_dir_name
+      )
   ]
+
+  get_analysis_name <- function(file_name) {
+    if (basename(dirname(file_name)) == "csv") {
+      return(basename(dirname(dirname(dirname(file_name)))))
+    }
+
+    basename(dirname(dirname(file_name)))
+  }
+
+  if (exists("prefer_report_csv_files", mode = "function")) {
+    significant_files <- prefer_report_csv_files(significant_files, get_analysis_name)
+  }
+
   stopifnot(length(significant_files) > 0)
 
   file_info <- data.frame(
-    Analysis_Name = basename(dirname(dirname(significant_files))),
+    Analysis_Name = vapply(significant_files, get_analysis_name, character(1)),
     Significant_File = significant_files,
     stringsAsFactors = FALSE
   )
@@ -195,7 +212,11 @@ read_significant_result <- function(file_info, analysis_name) {
   }
 
   read.csv(
-    file_info$Significant_File[file_index],
+    if (exists("resolve_report_csv_file", mode = "function")) {
+      resolve_report_csv_file(file_info$Significant_File[file_index])
+    } else {
+      file_info$Significant_File[file_index]
+    },
     stringsAsFactors = FALSE,
     check.names = FALSE
   )

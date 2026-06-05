@@ -85,7 +85,11 @@ get_direction <- function(logfc) {
 }
 
 get_analysis_name_from_deg_file <- function(file_name) {
-  # DEG文件位于tables/<analysis_name>/DEG/，因此向上两级就是分析名称。
+  # 兼容tables/<analysis_name>/DEG/*.csv和tables/<analysis_name>/DEG/csv/*.csv。
+  if (basename(dirname(file_name)) == "csv") {
+    return(basename(dirname(dirname(dirname(file_name)))))
+  }
+
   basename(dirname(dirname(file_name)))
 }
 
@@ -105,11 +109,28 @@ get_deg_file_info <- function(table_root) {
   )
 
   significant_files <- significant_files[
-    basename(dirname(significant_files)) == DEG_DIR_NAME
+    basename(dirname(significant_files)) == DEG_DIR_NAME |
+      (
+        basename(dirname(significant_files)) == "csv" &
+          basename(dirname(dirname(significant_files))) == DEG_DIR_NAME
+      )
   ]
   all_genes_files <- all_genes_files[
-    basename(dirname(all_genes_files)) == DEG_DIR_NAME
+    basename(dirname(all_genes_files)) == DEG_DIR_NAME |
+      (
+        basename(dirname(all_genes_files)) == "csv" &
+          basename(dirname(dirname(all_genes_files))) == DEG_DIR_NAME
+      )
   ]
+
+  significant_files <- prefer_report_csv_files(
+    significant_files,
+    get_analysis_name_from_deg_file
+  )
+  all_genes_files <- prefer_report_csv_files(
+    all_genes_files,
+    get_analysis_name_from_deg_file
+  )
 
   significant_files <- significant_files[
     !grepl("_intersect_", basename(significant_files))
@@ -175,6 +196,7 @@ get_deg_file_info <- function(table_root) {
 }
 
 read_deg_table <- function(gene_file) {
+  gene_file <- resolve_report_csv_file(gene_file)
   dat <- read.csv(
     gene_file,
     stringsAsFactors = FALSE,
@@ -393,7 +415,7 @@ run_one_intersection_scheme <- function(scheme_index) {
     "gene_list.csv"
   )
 
-  write_csv_with_report_previews(gene_annotation_table, gene_list_file)
+  gene_list_file <- write_csv_with_report_previews(gene_annotation_table, gene_list_file)
 
   saved_gene_annotation_table <- read.csv(
     gene_list_file,
@@ -433,7 +455,7 @@ run_one_intersection_scheme <- function(scheme_index) {
       "deg_results.csv"
     )
 
-    write_csv_with_report_previews(intersect_deg, deg_output_file)
+    deg_output_file <- write_csv_with_report_previews(intersect_deg, deg_output_file)
 
     saved_intersect_deg <- read.csv(
       deg_output_file,
@@ -450,7 +472,7 @@ run_one_intersection_scheme <- function(scheme_index) {
     "summary.csv"
   )
 
-  write_csv_with_report_previews(scheme_summary, scheme_summary_file)
+  scheme_summary_file <- write_csv_with_report_previews(scheme_summary, scheme_summary_file)
 
   saved_scheme_summary <- read.csv(
     scheme_summary_file,
