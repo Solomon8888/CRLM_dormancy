@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Build modular Beamer report sources for dataset-level CRLM analyses.
+"""为CRLM休眠课题自动构建模块化Beamer汇报源码。
 
-This script currently scans the analysis outputs under results/ngs/GSE114012
-and regenerates a modular Beamer source tree:
+脚本职责：
+  1. 扫描当前数据集的结果目录，自动发现已有图片和CSV结果；
+  2. 在temporary/beamer/generated_tables中生成Beamer专用表格预览；
+  3. 在scripts/beamer/sections下生成分节tex文件；
+  4. 生成scripts/beamer/beamer_report.tex主文件；
+  5. 可选调用latexmk编译，并把最终PDF复制到results/reports/beamer。
 
-  scripts/beamer/beamer_report.tex
-  scripts/beamer/sections/*.tex
-
-When called with --compile, it also compiles the deck with latexmk using:
-
-  temporary/beamer            for intermediate build files
-  results/reports/beamer      for the final PDF
-
-The text blocks are intentionally stable and dataset-specific. Figures and
-tables are discovered from the current result paths, so rerunning the analysis
-scripts followed by this builder refreshes the report. The constants near the
-top can be extended later for additional datasets with the same output layout.
+设计原则：
+  - 分析脚本负责产生真实结果，Beamer构建器只负责展示和排版；
+  - 表格展示只做列筛选和预览，不改变原始CSV；
+  - 图片引用优先使用PNG，避免在Beamer中插入大量矢量PDF导致编译过慢；
+  - 展示顺序按“分析方案/交集方案”组织，便于汇报时沿同一证据链阅读。
 """
 
 from __future__ import annotations
@@ -32,7 +29,10 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 
+# 项目根目录由当前脚本位置反推，避免在不同终端工作目录下运行时路径漂移。
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+# 当前构建的数据集。后续如果扩展到新数据集，只需抽象这两个常量和结果路径。
 DATASET_ID = "GSE114012"
 DATA_TYPE = "ngs"
 
@@ -68,7 +68,10 @@ SCRIPT_TITLES = {
     "09": ("TF候选整合与交集", "将多方法 TF 证据压缩为可验证候选"),
 }
 
+# Beamer中每个表格默认展示前21行；过长表格只预览核心列，完整CSV仍保留在结果目录。
 TABLE_PREVIEW_ROWS = 21
+
+# 生成大量表格预览时使用线程池并行，主要加速CSV读取和tex片段写入。
 TABLE_PREVIEW_WORKERS = max(2, min((os.cpu_count() or 4), 12))
 GENERATED_PREVIEW_TABLES: set[Path] = set()
 
@@ -579,13 +582,13 @@ def write_generated_latex_table(csv_path: Path, output_name: str, columns: list[
     col_spec = "|" + "|".join(["c"] * len(headers)) + "|"
     lines = [
         r"\begingroup",
-        r"\fontsize{5.25pt}{6.7pt}\selectfont",
-        r"\setlength{\tabcolsep}{2.8pt}",
-        r"\renewcommand{\arraystretch}{1.58}",
-        r"\setlength{\arrayrulewidth}{0.35pt}",
+        r"\fontsize{5.85pt}{7.65pt}\selectfont",
+        r"\setlength{\tabcolsep}{3.35pt}",
+        r"\renewcommand{\arraystretch}{1.82}",
+        r"\setlength{\arrayrulewidth}{0.42pt}",
         rf"\begin{{tabular}}{{@{{}}{col_spec}@{{}}}}",
         r"\hline",
-        " & ".join(r"\textbf{" + tex_escape(header) + "}" for header in headers) + r" \\",
+        " & ".join(r"\textbf{\textcolor{black}{" + tex_escape(header) + "}}" for header in headers) + r" \\",
         r"\hline",
     ]
     for row in rows:
@@ -1391,6 +1394,435 @@ def build_09() -> list[str]:
     return section_names
 
 
+def existing_tf_summary_dir(input_type: str, analysis: str) -> Path | None:
+    """Find a TF_summary directory while tolerating DEG/deg naming variants."""
+    for candidate_type in (input_type, input_type.lower(), input_type.upper()):
+        candidate = TF_SUMMARY_ROOT / candidate_type / analysis
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def collect_tf_summary_csv(input_type: str, analysis: str) -> list[Path]:
+    """Collect generated 09号TF整合结果 for one DEG/intersect input scheme."""
+    summary_dir = existing_tf_summary_dir(input_type, analysis)
+    if summary_dir is None:
+        return []
+    return collect_result_csv(summary_dir, "*.csv")
+
+
+def collect_analysis_names() -> list[str]:
+    """Discover all DEG/GSEA/TF analysis names that should become report blocks."""
+    names: set[str] = set()
+    for analysis_dir in dirs(TABLE_ROOT):
+        if analysis_dir.name == "GSEA_summary":
+            continue
+        if (analysis_dir / "DEG").exists() or (analysis_dir / "GSEA").exists():
+            names.add(analysis_dir.name)
+    for type_dir_name in ("DEG", "deg"):
+        type_dir = TF_SUMMARY_ROOT / type_dir_name
+        if type_dir.exists():
+            names.update(path.name for path in dirs(type_dir))
+    return sorted(names, key=sort_analysis_name)
+
+
+def collect_intersection_names() -> list[str]:
+    """Discover all intersect schemes from 02号、GSEA and 09号TF整合 outputs."""
+    names: set[str] = set()
+    if INTERSECT_ROOT.exists():
+        names.update(path.name for path in dirs(INTERSECT_ROOT))
+    for type_dir_name in ("intersect", "INTERSECT"):
+        type_dir = TF_SUMMARY_ROOT / type_dir_name
+        if type_dir.exists():
+            names.update(path.name for path in dirs(type_dir))
+    for analysis_dir in dirs(TABLE_ROOT):
+        if "_" in analysis_dir.name and (analysis_dir / "GSEA").exists():
+            names.add(analysis_dir.name)
+    return sorted(names, key=sort_analysis_name)
+
+
+def append_deg_frames(lines: list[str], analysis: str) -> None:
+    """Append 01号差异分析 result pages for one analysis design."""
+    deg_dir = TABLE_ROOT / analysis / "DEG"
+    if not deg_dir.exists():
+        return
+
+    lines += text_frame(
+        f"{analysis}：差异表达分析阅读顺序",
+        [
+            f"本组以 {analysis} 为一个完整分析单元，连续展示 summary、显著差异基因表、传统火山图和 Top DEG 表达热图。",
+            "summary 用于确认显著基因总量、上下调方向和阈值；显著基因表用于定位具体候选；火山图查看 logFC 与显著性分布；Top DEG 热图回到样本表达层面验证分组分离。",
+            "这四页共同回答：该分析设计中 LRC 相对 BULK 是否形成稳定、可解释、可被后续富集承接的休眠样转录改变。",
+        ],
+    )
+
+    summary_csv = find_result_csv(deg_dir, "summary")
+    if summary_csv is not None:
+        tex = make_preview_table(summary_csv)
+        if tex is not None:
+            lines += table_frame(
+                f"{analysis} | DEG统计摘要",
+                tex,
+                [
+                    "该 summary 是当前 LRC/BULK 比较的入口页。重点核对 Up、Down 与 Total_Significant_Genes，三者应满足 Total=Up+Down。",
+                    "P_Value_Column、P_Value_Cutoff 与 LogFC_Cutoff 说明当前脚本采用的显著性判定标准；这些阈值也会被火山图和后续富集输入沿用。",
+                    "Samples_Used 帮助判断样本量是否足够支撑该比较；如果显著基因数很少或方向严重失衡，需要结合后续图形谨慎解释。",
+                ],
+                source_csv=summary_csv,
+            )
+
+    significant_csv = find_result_csv(deg_dir, "significant_genes")
+    if significant_csv is not None:
+        tex = make_preview_table(significant_csv)
+        if tex is not None:
+            lines += table_frame(
+                f"{analysis} | 显著差异基因表",
+                tex,
+                [
+                    "该表展示通过阈值筛选后的显著 DEG 前 21 行。Symbol/Ensembl/Entrez 用于后续交集、GSEA leading-edge 回查和 TF 富集。",
+                    "logFC 为 LRC 相对 BULK 的效应量；正值表示 LRC 方向上调，负值表示 BULK 方向更高。t、P.Value、adj.P.Val 用于判断统计强度。",
+                    "阅读时优先关注效应量大、校正后 p 值稳定，并且在多个模型或交集方案中反复出现的候选基因。",
+                ],
+                source_csv=significant_csv,
+            )
+
+    volcano_fig = PLOT_ROOT / "volcano" / analysis / "png" / "volcano_plot.png"
+    if volcano_fig.exists():
+        lines += figure_frame(
+            f"{analysis} | 传统火山图",
+            volcano_fig,
+            [
+                "火山图横坐标为 logFC，纵坐标为显著性指标；红色 Sig_Up 与蓝色 Sig_Down 分别表示 LRC 方向上调和下调显著基因。",
+                "该页用于快速判断当前分析的显著基因是否呈现清晰方向结构：红蓝点数量、左右分布和标注基因的位置都可提示该模型的差异强度。",
+                "若被标注基因位于高显著性、高效应量区域，并且在交集、GSEA 或 TF 整合中反复出现，应优先进入后续机制验证。",
+            ],
+        )
+
+    heatmap_fig = PLOT_ROOT / "gene_heatmap" / analysis / "png" / "gene_heatmap.png"
+    if heatmap_fig.exists():
+        lines += figure_frame(
+            f"{analysis} | Top DEG表达热图",
+            heatmap_fig,
+            [
+                "Top DEG 热图将统计结果重新投射到样本表达矩阵上，检查这些候选基因是否能把 LRC 与 BULK 样本分开。",
+                "顶部条带标记 Group 与 Cell_Line，左侧方向条保留 Up/Down 信息。若 LRC 样本在热图中形成一致表达块，说明 DEG 不只是统计显著，也具有样本层面的状态区分能力。",
+                "该图是连接 DEG 与后续机制分析的重要质量控制：分离越清晰，后续用这些基因做交集、TF 富集或候选验证越有解释力。",
+            ],
+            wide=True,
+        )
+
+
+def append_intersection_frames(lines: list[str], scheme: str) -> None:
+    """Append 02号显著基因交集 result pages for one intersect scheme."""
+    scheme_dir = INTERSECT_ROOT / scheme
+    if not scheme_dir.exists():
+        return
+
+    lines += text_frame(
+        f"{scheme}：交集方案阅读顺序",
+        [
+            f"本组以 {scheme} 为一个完整交集单元，先展示交集统计摘要，再展示交集基因注释列表，随后回查参与交集的各 DEG 结果，最后展示多组火山图。",
+            "交集策略的目的不是取最大基因数，而是从多个 LRC/BULK 模型中筛出方向更稳定、可重复性更强的候选基因。",
+            "阅读时要同时看交集规模、方向一致性和成员 DEG 统计量；只有在多个成员分析中方向和显著性都较稳定的基因，才更适合进入后续机制解释。",
+        ],
+    )
+
+    summary_csv = find_result_csv(scheme_dir, "summary")
+    if summary_csv is not None:
+        tex = make_preview_table(summary_csv)
+        if tex is not None:
+            lines += table_frame(
+                f"{scheme} | 交集统计摘要",
+                tex,
+                [
+                    "该 summary 用于判断当前交集方案的严格程度。Total_Intersected_Genes 是交集基因数量；Common_Up/Common_Down 表示方向一致候选；Mixed_Direction 提示成员分析间方向不完全一致。",
+                    "如果交集基因很少但方向一致，说明该组合更严格、更偏向稳定候选；如果 Mixed_Direction 较多，则需要回到成员 DEG 表逐个判断是否值得保留。",
+                ],
+                source_csv=summary_csv,
+            )
+
+    gene_list_csv = find_result_csv(scheme_dir, "gene_list")
+    if gene_list_csv is not None:
+        tex = make_preview_table(gene_list_csv)
+        if tex is not None:
+            lines += table_frame(
+                f"{scheme} | 交集基因注释列表",
+                tex,
+                [
+                    "该 gene_list 只保留交集基因的可追踪注释信息，适合作为后续 TF 富集、人工筛选、文献检索和实验验证的输入。",
+                    "这里不混合展示 p 值和 logFC，是为了避免不同 DEG 设计的统计量被误读；统计证据会在后续成员 DEG 结果中分别回查。",
+                ],
+                source_csv=gene_list_csv,
+            )
+
+    member_deg_files = sorted(
+        collect_result_csv(scheme_dir, "deg_results.csv"),
+        key=lambda path: sort_analysis_name(normalize_result_csv_path(path).parent.name),
+    )
+    for csv_path in member_deg_files:
+        flat_csv = normalize_result_csv_path(csv_path)
+        rel_parts = flat_csv.relative_to(scheme_dir).parts
+        member = rel_parts[0] if len(rel_parts) > 1 else scheme
+        tex = make_preview_table(csv_path)
+        if tex is None:
+            continue
+        lines += table_frame(
+            f"{scheme} | {member}中的交集基因DEG结果",
+            tex,
+            [
+                f"该表回查 {scheme} 交集基因在 {member} 原始 DEG 结果中的 logFC、t、P.Value 和 adj.P.Val。",
+                "如果同一 Symbol 在不同成员分析中 logFC 方向一致，并且显著性稳定，说明它更可能代表跨模型休眠样转录程序，而不是单一细胞系背景噪音。",
+            ],
+            source_csv=csv_path,
+        )
+
+    multiple_volcano_fig = PLOT_ROOT / "multiple_volcano" / scheme / "png" / "multiple_volcano_plot.png"
+    if multiple_volcano_fig.exists():
+        lines += figure_frame(
+            f"{scheme} | 多组火山图",
+            multiple_volcano_fig,
+            [
+                "多组火山图把参与该交集方案的多个 LRC/BULK 分析并列展示，红色 Sig_Up 与蓝色 Sig_Down 对应各模型显著上/下调基因。",
+                "该图用于判断不同模型中的显著 DEG 是否具有相似方向结构。若多个成员均显示相近的红蓝分布和强效候选，说明该交集方案更可能提炼到稳定生物信号。",
+                "中心组名与每组坐标轴帮助快速定位参与比较的模型，后续 GSEA 和 TF 整合可继续沿用该交集方案进行机制解释。",
+            ],
+            wide=True,
+        )
+
+
+def append_gsea_frames(lines: list[str], analysis: str) -> None:
+    """Append paired 06/07号GSEA dotplot and result-table pages for one scheme."""
+    gsea_dir = TABLE_ROOT / analysis / "GSEA"
+    if not gsea_dir.exists():
+        return
+
+    csv_files = sorted(collect_result_csv(gsea_dir, "gsea_result.csv"), key=sort_gsea_csv)
+    if not csv_files:
+        return
+
+    lines += text_frame(
+        f"{analysis}：GSEA通路富集阅读顺序",
+        [
+            "GSEA 使用全量 ranked genes，而不是只使用显著基因列表；rank metric 由 06 号脚本统一定义，当前用于判断 LRC/BULK 状态的整体通路偏移。",
+            "每个 MSigDB 类别先展示 dotplot，再展示同一结果表。dotplot 用于快速看 top10 通路主题，结果表用于核对 NES、pvalue、p.adjust 和 qvalue。",
+            "NES 为正通常表示 LRC 方向富集，NES 为负通常表示 BULK 方向富集。优先关注与炎症、免疫微环境、ECM remodeling、细胞周期、代谢重编程和 TF 靶集相关的通路。",
+        ],
+    )
+
+    preview_map = make_preview_tables_parallel(csv_files)
+    for csv_path in csv_files:
+        flat_csv = normalize_result_csv_path(csv_path)
+        geneset = flat_csv.relative_to(TABLE_ROOT / analysis / "GSEA").parts[0]
+        fig = PLOT_ROOT / "GSEA" / analysis / geneset / "png" / "dotplot.png"
+        if fig.exists():
+            lines += figure_frame(
+                f"{analysis} | GSEA dotplot | {gsea_display_label(geneset)}",
+                fig,
+                [
+                    "该 dotplot 展示当前 analysis × MSigDB 类别中通过统一阈值后的 top10 通路，用于快速定位最强富集主题。",
+                    "气泡大小和颜色同时表达富集规模和统计显著性；通路名称若与休眠、苏醒、免疫、炎症、ECM、细胞周期或 TF 靶集相关，应优先进入后续解释。",
+                    "下一页为同一 GSEA 设计的统计表，可用 NES、p.adjust 与 qvalue 对图中通路进行定量核对。",
+                ],
+                wide=True,
+            )
+        compact_tex = preview_map.get(resolve_result_csv_path(csv_path))
+        if compact_tex is None:
+            continue
+        lines += table_frame(
+            f"{analysis} | GSEA结果表 | {gsea_display_label(geneset)}",
+            compact_tex,
+            [
+                "该表是上一页 dotplot 对应的 GSEA 统计结果预览。ID 为通路条目；NES 判断富集方向；pvalue、p.adjust 和 qvalue 判断统计证据。",
+                "本报告展示核心列以便汇报阅读；完整 CSV 中仍保留 clusterProfiler 官方输出的其他字段，可用于回查 leading-edge 基因和通路细节。",
+                "当某通路同时具有明确 NES 方向和稳定校正显著性时，可作为休眠维持或休眠细胞苏醒机制的后续重点。",
+            ],
+            source_csv=csv_path,
+        )
+
+
+def append_tf_summary_frames(lines: list[str], input_type: str, analysis: str) -> None:
+    """Append 09号TF整合 pages for one DEG/intersect input scheme."""
+    csv_files = collect_tf_summary_csv(input_type, analysis)
+    if not csv_files:
+        return
+
+    input_label = "DEG" if input_type.lower() == "deg" else "intersect"
+    lines += text_frame(
+        f"{analysis}：TF整合结果阅读顺序",
+        [
+            f"本组 TF 结果来自 {input_label}/{analysis} 输入方案。09 号脚本将六种 TF 方法的原始输出整理为 method_final 排名，并进一步计算多方法交集。",
+            "先看 TF 交集方案摘要，判断不同方法组合的候选数量；再看六种单方法 final 排名，理解每种方法的独立证据；最后看 Top10 交集候选，筛选更稳健的上游调控因子。",
+            "Source_Method_Count 越高、CheA3_Library_Count 越大，通常说明跨方法和外部 library 支持更充分；VIPER/CollecTRI 的方向信息可辅助判断 TF 活性倾向。",
+        ],
+    )
+
+    summary_dir = existing_tf_summary_dir(input_type, analysis)
+    if summary_dir is None:
+        return
+    csv_files = sorted(csv_files, key=sort_tf_csv)
+    preview_map = make_preview_tables_parallel(csv_files)
+
+    method_summary: Path | None = None
+    method_results: list[Path] = []
+    intersection_summary: Path | None = None
+    scheme_candidates: dict[str, Path] = {}
+
+    for csv_path in csv_files:
+        flat_csv = normalize_result_csv_path(csv_path)
+        parts = flat_csv.relative_to(summary_dir).parts
+        if parts == ("method_final", "summary", "method_final_summary.csv"):
+            method_summary = csv_path
+        elif len(parts) >= 3 and parts[0] == "method_final" and parts[1] != "summary":
+            method_results.append(csv_path)
+        elif parts == ("intersections", "summary", "intersection_summary.csv"):
+            intersection_summary = csv_path
+        elif len(parts) >= 4 and parts[0] == "intersections" and parts[2] == "candidates":
+            scheme_candidates[parts[1]] = csv_path
+
+    if intersection_summary is not None:
+        tex = preview_map.get(resolve_result_csv_path(intersection_summary))
+        if tex is not None:
+            lines += table_frame(
+                f"{analysis} | TF交集方案摘要",
+                tex,
+                [
+                    "该表汇总当前输入方案下全部 TF 交集组合。Intersection_Name 表示组合名；Number_Of_Methods 为参与方法数量；Intersected_TF_Count 为全量交集 TF 数。",
+                    "该页用于判断哪些组合更严格、哪些组合保留候选更多。严格组合若仍有候选，通常更适合优先验证；宽松组合则适合提供补充线索。",
+                ],
+                source_csv=intersection_summary,
+            )
+
+    if method_summary is not None:
+        tex = preview_map.get(resolve_result_csv_path(method_summary))
+        if tex is not None:
+            lines += table_frame(
+                f"{analysis} | 六方法final结果摘要",
+                tex,
+                [
+                    "该表展示六种 TF 富集/活性推断方法最终进入排序和交集分析的 TF 数量。",
+                    "如果某方法 Final_TF_Count 很低，说明该方法在当前输入基因集或 ranked signature 上覆盖有限；解释交集结果时要考虑方法覆盖度。",
+                ],
+                source_csv=method_summary,
+            )
+
+    for csv_path in sorted(method_results, key=sort_tf_csv):
+        flat_csv = normalize_result_csv_path(csv_path)
+        method = flat_csv.parent.name
+        tex = preview_map.get(resolve_result_csv_path(csv_path))
+        if tex is None:
+            continue
+        lines += table_frame(
+            f"{analysis} | 单方法TF final排序 | {tf_method_label(method)}",
+            tex,
+            [
+                f"该表展示 {tf_method_label(method)} 方法整理后的 final TF 排名。不同方法的 Score、P_Value、NES 或 Direction 含义不同，应结合方法类型理解。",
+                "Rank/TF 是最直接的候选定位字段；CheA3_Library_Count 与 CheA3_Integrated_TopRank 用于补充跨数据库可靠性判断。",
+                "单方法排名用于保留方法特异线索，最终候选优先结合后续多方法交集表判断。",
+            ],
+            source_csv=csv_path,
+        )
+
+    ordered_schemes = sorted(
+        set(scheme_candidates),
+        key=lambda scheme: (TF_INTERSECTION_ORDER.get(scheme, 99), scheme),
+    )
+    candidate_entries: list[tuple[str, Path, Path]] = []
+    for scheme in ordered_schemes:
+        csv_path = scheme_candidates.get(scheme)
+        if csv_path is None:
+            continue
+        tex = preview_map.get(resolve_result_csv_path(csv_path))
+        if tex is not None:
+            candidate_entries.append((scheme, tex, csv_path))
+
+    candidate_note = [
+        "Consensus_Rank 为综合排序；TF 为转录因子 symbol；Source_Method_Count 表示支持该 TF 的方法数。",
+        "Source_Methods 显示来自哪些方法；CheA3_Library_Count 表示 ChEA3 多 library 支持数量，越高通常说明外部证据越丰富。",
+        "优先关注多方法支持、ChEA3 library 较多，并且在 VIPER/CollecTRI 等活性方法中方向较清楚的 TF。",
+    ]
+    for i in range(0, len(candidate_entries), 2):
+        first = candidate_entries[i]
+        second = candidate_entries[i + 1] if i + 1 < len(candidate_entries) else None
+        first_title = tf_intersection_label(first[0])
+        first_items = [f"上表：{first_title}。"] + candidate_note
+        if second is None:
+            lines += table_frame(
+                f"{analysis} | TF交集Top10候选 | {first_title}",
+                first[1],
+                first_items,
+                source_csv=first[2],
+            )
+            continue
+        second_title = tf_intersection_label(second[0])
+        second_items = [f"下表：{second_title}。"] + candidate_note
+        lines += stacked_two_table_frame(
+            f"{analysis} | TF交集Top10候选 | {first_title} / {second_title}",
+            first[1],
+            first[2],
+            first_items,
+            second[1],
+            second[2],
+            second_items,
+        )
+
+
+def build_result_overview() -> str:
+    """Build one compact page explaining the new analysis-centric report logic."""
+    section_name = f"{DATASET_ID}/00_report_logic_overview.tex"
+    lines = section_cover(
+        "结果展示逻辑：按分析方案串联证据链",
+        "从单个 DEG 方案或交集方案出发，连续查看 DEG、图形、GSEA 和 TF 证据",
+        "本版报告不再严格按脚本编号线性展示，而是把每个差异分析方案、每个交集方案作为一个独立证据单元。这样更接近汇报时的阅读方式：先定义一个模型/交集，再连续判断它的基因、通路和上游调控因子。",
+    )
+    lines += text_frame(
+        "本报告的主线结构",
+        [
+            "第一部分仍保留研究设计与 00 号样本结构质控，用于说明课题逻辑和数据基础。",
+            "随后进入 DEG 分析方案主线：每个 analysis 依次展示 DEG summary、显著基因、传统火山图、Top DEG 热图、GSEA 图表和 TF 整合结果。",
+            "再进入 intersect 交集方案主线：每个交集方案依次展示交集 summary、交集基因注释、成员 DEG 结果、多组火山图、GSEA 图表和 TF 整合结果。",
+            "这种结构有助于在同一方案内完整追踪证据：从差异基因到通路，再到可能驱动休眠维持或苏醒的 TF。",
+        ],
+    )
+    write_text(section_file(section_name), lines)
+    return section_name
+
+
+def build_analysis_scheme_sections() -> list[str]:
+    """Build Beamer sections using DEG analysis names as the primary order."""
+    section_names: list[str] = []
+    for analysis in collect_analysis_names():
+        section_name = f"{DATASET_ID}/10_analysis_scheme_{sanitize_name(analysis)}.tex"
+        section_names.append(section_name)
+        lines = section_cover(
+            f"分析方案：{analysis}",
+            "DEG → 火山图/热图 → GSEA → TF整合 的连续证据链",
+            f"本节围绕 {analysis} 这一差异分析方案展开。先确认 LRC/BULK 差异基因是否稳定，再查看通路层面的方向性富集，最后整合多方法 TF 结果寻找可能驱动休眠样状态的上游调控因子。",
+        )
+        append_deg_frames(lines, analysis)
+        append_gsea_frames(lines, analysis)
+        append_tf_summary_frames(lines, "DEG", analysis)
+        write_text(section_file(section_name), lines)
+    return section_names
+
+
+def build_intersection_scheme_sections() -> list[str]:
+    """Build Beamer sections using intersect schemes as the primary order."""
+    section_names: list[str] = []
+    for scheme in collect_intersection_names():
+        section_name = f"{DATASET_ID}/20_intersection_scheme_{sanitize_name(scheme)}.tex"
+        section_names.append(section_name)
+        lines = section_cover(
+            f"交集方案：{scheme}",
+            "交集基因 → 多组火山图 → GSEA → TF整合 的跨模型证据链",
+            f"本节围绕 {scheme} 这一交集方案展开。它的核心目的，是从多个 LRC/BULK 模型中提炼方向更稳定、可重复性更高的候选基因，并进一步追踪这些候选对应的通路和 TF 证据。",
+        )
+        append_intersection_frames(lines, scheme)
+        append_gsea_frames(lines, scheme)
+        append_tf_summary_frames(lines, "intersect", scheme)
+        write_text(section_file(section_name), lines)
+    return section_names
+
+
 def build_main(section_names: list[str]) -> None:
     theme_path = THEME_DIR.as_posix()
     lines = [
@@ -1418,9 +1850,9 @@ def build_main(section_names: list[str]) -> None:
         r"\newunicodechar{κ}{\ensuremath{\kappa}}",
         r"\setbeamertemplate{navigation symbols}{}",
         r"\setbeamersize{text margin left=1.5mm,text margin right=1.5mm}",
-        r"\newcommand{\ReportBodyFont}{\fontsize{6.2pt}{7.55pt}\selectfont}",
-        r"\setbeamerfont{normal text}{size*={6.2pt}{7.55pt}}",
-        r"\setbeamerfont{frametitle}{size=\large,series=\bfseries}",
+        r"\newcommand{\ReportBodyFont}{\fontsize{6.55pt}{8.15pt}\selectfont}",
+        r"\setbeamerfont{normal text}{size*={6.55pt}{8.15pt}}",
+        r"\setbeamerfont{frametitle}{size=\Large,series=\bfseries}",
         r"\AtBeginEnvironment{frame}{\ReportBodyFont}",
         r"\hfuzz=80pt",
         r"\vfuzz=80pt",
@@ -1480,7 +1912,7 @@ def build_main(section_names: list[str]) -> None:
         r"    \par\vspace{0.22em}%",
         r"    \IfFileExists{\CRLMROOT/\detokenize{#3}}{%",
         r"      \begingroup\centering%",
-        r"      \begin{adjustbox}{max width=0.968\textwidth,max totalheight=0.765\textheight,keepaspectratio}%",
+        r"      \begin{adjustbox}{max width=0.948\textwidth,max totalheight=0.755\textheight,keepaspectratio}%",
         r"        \input{\CRLMROOT/\detokenize{#3}}%",
         r"      \end{adjustbox}%",
         r"      \par\endgroup%",
@@ -1496,7 +1928,7 @@ def build_main(section_names: list[str]) -> None:
         r"      \par\vspace{0.18em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#3}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.968\linewidth,max totalheight=0.642\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.955\linewidth,max totalheight=0.632\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#3}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
@@ -1508,7 +1940,7 @@ def build_main(section_names: list[str]) -> None:
         r"      \par\vspace{0.18em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#6}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.968\linewidth,max totalheight=0.642\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.955\linewidth,max totalheight=0.632\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#6}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
@@ -1525,7 +1957,7 @@ def build_main(section_names: list[str]) -> None:
         r"      \par\vspace{0.16em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#3}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.968\textwidth,max totalheight=0.292\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.948\textwidth,max totalheight=0.302\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#3}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
@@ -1537,7 +1969,7 @@ def build_main(section_names: list[str]) -> None:
         r"      \par\vspace{0.16em}%",
         r"      \IfFileExists{\CRLMROOT/\detokenize{#6}}{%",
         r"        \begingroup\centering%",
-        r"        \begin{adjustbox}{max width=0.968\textwidth,max totalheight=0.292\textheight,keepaspectratio}%",
+        r"        \begin{adjustbox}{max width=0.948\textwidth,max totalheight=0.302\textheight,keepaspectratio}%",
         r"          \input{\CRLMROOT/\detokenize{#6}}%",
         r"        \end{adjustbox}%",
         r"        \par\endgroup%",
@@ -1599,12 +2031,9 @@ def generate_sources() -> list[str]:
     section_names: list[str] = []
     section_names.append(build_project_design())
     section_names.append(build_00())
-    section_names.append(build_01())
-    section_names.append(build_02())
-    section_names.extend(build_06())
-    section_names.extend(build_07())
-    section_names.extend(build_08())
-    section_names.extend(build_09())
+    section_names.append(build_result_overview())
+    section_names.extend(build_analysis_scheme_sections())
+    section_names.extend(build_intersection_scheme_sections())
     build_main(section_names)
     remove_stale_generated_files(section_names)
     return section_names
