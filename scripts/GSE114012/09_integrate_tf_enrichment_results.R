@@ -82,7 +82,7 @@ CHEA3_EVIDENCE_LIBRARIES <- c(
   "Enrichr--Queries"
 )
 
-# 表格预览行数。CSV保存完整结果；md/tex默认预览前若干行。
+# 兼容历史参数名；当前R脚本只保存完整CSV。
 TABLE_PREVIEW_ROWS <- 21
 
 options(width = 200)
@@ -126,6 +126,10 @@ read_tf_csv <- function(file_name) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+}
+
+resolve_tf_result_file <- function(file_name) {
+  resolve_report_csv_file(file_name)
 }
 
 clean_output_dirs <- function() {
@@ -185,16 +189,27 @@ get_tf_input_dirs <- function(tf_root, input_types) {
 }
 
 get_method_csv_files <- function(input_dir, method_name) {
-  method_dir <- file.path(input_dir, method_name, "csv")
+  method_dir <- file.path(input_dir, method_name)
   if (!dir.exists(method_dir)) {
     return(character(0))
   }
 
-  list.files(
+  current_files <- list.files(
     method_dir,
     pattern = "[.]csv$",
-    full.names = TRUE
+    full.names = TRUE,
+    recursive = FALSE
   )
+
+  legacy_dir <- file.path(method_dir, "csv")
+  legacy_files <- if (dir.exists(legacy_dir)) {
+    list.files(legacy_dir, pattern = "[.]csv$", full.names = TRUE)
+  } else {
+    character(0)
+  }
+
+  out <- c(current_files, legacy_files)
+  prefer_report_csv_files(out, function(x) basename(normalize_report_csv_path(x)))
 }
 
 get_library_name_from_file <- function(file_name, method_name, prefix) {
@@ -369,12 +384,11 @@ add_chea3_evidence_columns <- function(dat, evidence) {
 # 4. 单方法最终结果整理 --------------------------------------------------------
 
 make_chea3_final <- function(input_dir, prefix, evidence) {
-  target_file <- file.path(
+  target_file <- resolve_tf_result_file(file.path(
     input_dir,
     "chea3",
-    "csv",
     paste0("chea3_", prefix, "_Integrated--topRank.csv")
-  )
+  ))
   if (!file.exists(target_file)) {
     return(data.frame())
   }
@@ -516,12 +530,11 @@ make_enrichr_final <- function(input_dir, prefix, evidence) {
 }
 
 make_ora_final <- function(input_dir, method_name, prefix, evidence) {
-  target_file <- file.path(
+  target_file <- resolve_tf_result_file(file.path(
     input_dir,
     method_name,
-    "csv",
     paste0(method_name, "_", prefix, "_tf_enrichment.csv")
-  )
+  ))
   if (!file.exists(target_file)) {
     return(data.frame())
   }
@@ -548,12 +561,11 @@ make_ora_final <- function(input_dir, method_name, prefix, evidence) {
 }
 
 make_viper_final <- function(input_dir, prefix, evidence) {
-  target_file <- file.path(
+  target_file <- resolve_tf_result_file(file.path(
     input_dir,
     "viper",
-    "csv",
     paste0("viper_", prefix, "_tf_activity.csv")
-  )
+  ))
   if (!file.exists(target_file)) {
     return(data.frame())
   }
@@ -584,12 +596,11 @@ make_viper_final <- function(input_dir, prefix, evidence) {
 }
 
 make_collectri_final <- function(input_dir, prefix, evidence) {
-  target_file <- file.path(
+  target_file <- resolve_tf_result_file(file.path(
     input_dir,
     "collectri",
-    "csv",
     paste0("collectri_", prefix, "_tf_activity.csv")
-  )
+  ))
   if (!file.exists(target_file)) {
     return(data.frame())
   }

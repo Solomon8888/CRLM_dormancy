@@ -85,7 +85,7 @@ get_direction <- function(logfc) {
 }
 
 get_analysis_name_from_deg_file <- function(file_name) {
-  # 兼容tables/<analysis_name>/DEG/*.csv和tables/<analysis_name>/DEG/csv/*.csv。
+  # 当前结构为tables/<analysis_name>/DEG/*.csv；同时兼容历史DEG/csv/*.csv。
   if (basename(dirname(file_name)) == "csv") {
     return(basename(dirname(dirname(dirname(file_name)))))
   }

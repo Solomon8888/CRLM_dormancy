@@ -459,78 +459,6 @@ count_nes_direction <- function(result_table, direction = c("positive", "negativ
   sum(nes < 0, na.rm = TRUE)
 }
 
-prepare_gsea_table_for_text_output <- function(dat) {
-  # md/tex属于同一官方结果表的不同文本格式；NA按R输出习惯保留为"NA"。
-  dat <- as.data.frame(dat, stringsAsFactors = FALSE, check.names = FALSE)
-  dat <- data.frame(
-    lapply(dat, function(column) {
-      column <- as.character(column)
-      column[is.na(column)] <- "NA"
-      column
-    }),
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
-  dat
-}
-
-write_gsea_markdown_table <- function(dat, md_file) {
-  dat <- prepare_gsea_table_for_text_output(dat)
-
-  header <- paste(escape_markdown_vector(colnames(dat)), collapse = " | ")
-  separator <- paste(rep("---", ncol(dat)), collapse = " | ")
-  rows <- if (nrow(dat) > 0) {
-    apply(dat, 1, function(row) {
-      paste(escape_markdown_vector(row), collapse = " | ")
-    })
-  } else {
-    character(0)
-  }
-
-  writeLines(
-    c(
-      paste0("| ", header, " |"),
-      paste0("| ", separator, " |"),
-      paste0("| ", rows, " |")
-    ),
-    md_file,
-    useBytes = TRUE
-  )
-}
-
-write_gsea_latex_table <- function(dat, tex_file) {
-  dat <- prepare_gsea_table_for_text_output(dat)
-
-  col_spec <- paste(rep("l", ncol(dat)), collapse = "")
-  header <- paste(escape_latex_vector(colnames(dat)), collapse = " & ")
-  rows <- if (nrow(dat) > 0) {
-    apply(dat, 1, function(row) {
-      paste(escape_latex_vector(row), collapse = " & ")
-    })
-  } else {
-    character(0)
-  }
-
-  writeLines(
-    c(
-      "\\begingroup",
-      "\\tiny",
-      "\\setlength{\\tabcolsep}{2pt}",
-      "\\renewcommand{\\arraystretch}{1.18}",
-      sprintf("\\begin{tabular}{@{}%s@{}}", col_spec),
-      "\\toprule",
-      paste0(header, " \\\\"),
-      "\\midrule",
-      if (length(rows) > 0) paste0(rows, " \\\\"),
-      "\\bottomrule",
-      "\\end{tabular}",
-      "\\endgroup"
-    ),
-    tex_file,
-    useBytes = TRUE
-  )
-}
-
 prepare_gene_list <- function(deg_table, gene_id_type, rank_metric_column) {
   # 从all_genes.csv构建GSEA排序向量：names为基因ID，values为排序统计量。
   gene_column <- GENE_ID_COLUMN_BY_TYPE[[gene_id_type]]
@@ -678,9 +606,8 @@ write_gsea_result_tables <- function(gsea_result, csv_file) {
   if (exists("write_csv_with_report_previews", mode = "function")) {
     write_csv_with_report_previews(result_table, csv_file, n_rows = 21, na = "NA")
   } else {
+    dir.create(dirname(csv_file), recursive = TRUE, showWarnings = FALSE)
     write.csv(result_table, csv_file, row.names = FALSE, na = "NA")
-    write_gsea_markdown_table(result_table, sub("[.]csv$", ".md", csv_file))
-    write_gsea_latex_table(result_table, sub("[.]csv$", ".tex", csv_file))
   }
   result_table
 }

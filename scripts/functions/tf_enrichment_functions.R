@@ -38,8 +38,8 @@ read_result_table <- function(file_name) {
 }
 
 get_analysis_name_from_significant_file <- function(file_name) {
-  # 兼容旧结构tables/<analysis_name>/DEG/significant_genes.csv
-  # 和新结构tables/<analysis_name>/DEG/csv/significant_genes.csv。
+  # 当前结构为tables/<analysis_name>/DEG/significant_genes.csv；
+  # 同时兼容历史tables/<analysis_name>/DEG/csv/significant_genes.csv。
   if (basename(dirname(file_name)) == "csv") {
     return(basename(dirname(dirname(dirname(file_name)))))
   }
@@ -205,10 +205,9 @@ get_tf_intersection_inputs <- function(
         table_root,
         rank_names,
         "DEG",
-        "csv",
         "all_genes.csv"
       )
-      old_full_rank_files <- file.path(table_root, rank_names, "DEG", "all_genes.csv")
+      old_full_rank_files <- file.path(table_root, rank_names, "DEG", "csv", "all_genes.csv")
       missing_new_rank_files <- !file.exists(full_rank_files) & file.exists(old_full_rank_files)
       full_rank_files[missing_new_rank_files] <- old_full_rank_files[missing_new_rank_files]
       usable_full_rank_files <- file.exists(full_rank_files)

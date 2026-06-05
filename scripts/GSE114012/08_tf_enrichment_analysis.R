@@ -38,7 +38,7 @@
 # 输出：
 # results/ngs/GSE114012/TF/DEG/<analysis_name>/<method>/
 # results/ngs/GSE114012/TF/intersect/<intersection_scheme>/<method>/
-# 同步保存csv、md、tex三种表格格式。
+# 表格结果仅保存CSV；Beamer或Markdown展示需要的预览由对应构建脚本统一生成。
 # 文件名也带方法前缀，例如dorothea_deg_tf_enrichment.csv、
 # chea3_deg_Integrated--meanRank.csv、collectri_intersect_tf_activity.csv。
 
@@ -164,7 +164,7 @@ ENRICHR_SLEEP_TIME <- 1
 # DoRothEA/VIPER/TRRUST/CollecTRI均为本地统计运算，继续使用parallel函数全速并行。
 REMOTE_API_METHODS <- c("chea3", "enrichr")
 
-# 表格预览行数。CSV保存完整结果；md/tex预览前若干行。
+# 兼容历史参数名；当前R脚本只保存完整CSV。
 TABLE_PREVIEW_ROWS <- 21
 
 # 重跑时清空本次方法对应的旧结果，避免新旧表格混合。

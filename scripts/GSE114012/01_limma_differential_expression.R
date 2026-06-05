@@ -249,7 +249,7 @@ run_one_limma_analysis <- function(i) {
   stopifnot(nrow(significant_results) == de_summary$Total_Significant_Genes)
   stopifnot(de_summary$Total_Significant_Genes == de_summary$Up + de_summary$Down)
 
-  # 5.6 保存当前设计的结果文件
+  # 5.6 保存当前设计的CSV结果
   # 数据集编号、分析名和DEG类型已经由目录表达，文件名只保留结果类型。
   analysis_output_dir <- file.path(OUTPUT_ROOT, analysis_name, "DEG")
   dir.create(analysis_output_dir, recursive = TRUE, showWarnings = FALSE)

@@ -35,12 +35,18 @@ SPECIES <- "human"
 GENE_ID_TYPE <- "ENTREZ"  # 可选："ENTREZ", "SYMBOL", "ENSEMBL"
 RANK_METRIC_COLUMN <- "t"
 
+# GSEA显著性阈值配置。
+# GSEA_SIGNIFICANCE_COLUMN用于记录和绘图筛选时采用的p值类型；
+# 目前与clusterProfiler::GSEA的pAdjustMethod="BH"配套，统一采用p.adjust阈值。
+GSEA_SIGNIFICANCE_COLUMN <- "p.adjust"
+GSEA_SIGNIFICANCE_CUTOFF <- 0.05
+
 # clusterProfiler::GSEA官方运算参数。
 GSEA_PARAMS <- list(
   exponent = 1,
   minGSSize = 5,
   maxGSSize = 500,
-  pvalueCutoff = 0.05,
+  pvalueCutoff = GSEA_SIGNIFICANCE_CUTOFF,
   pAdjustMethod = "BH",
   verbose = TRUE,
   nPerm = 1000,
@@ -52,9 +58,27 @@ GSEA_PARAMS <- list(
 )
 
 # 当前批量运行哪些MSigDB基因集。
+# 键名格式来自msigdbr::msigdbr_collections()中的gs_collection与gs_subcollection。
+# 例如Hallmark为"H"；BioCarta为"C2:CP:BIOCARTA"；
+# GO Biological Process为"C5:GO:BP"；TFT Legacy为"C3:TFT:TFT_LEGACY"。
 # 设为"all"时，会自动运行msigdbr当前数据库里全部可用基因集类别。
-GSEA_GENESETS_TO_RUN <- "all"
-# GSEA_GENESETS_TO_RUN <- c("H", "C5:GO:BP", "C6")
+GSEA_GENESETS_TO_RUN <- c(
+  "H",
+  "C2:CP:BIOCARTA",
+  "C2:CP:KEGG_MEDICUS",
+  "C2:CP:KEGG_LEGACY",
+  "C2:CP:REACTOME",
+  "C2:CP:WIKIPATHWAYS",
+  "C3:TFT:TFT_LEGACY",
+  "C3:TFT:GTRD",
+  "C5:GO:BP",
+  "C5:GO:CC",
+  "C5:GO:MF",
+  "C5:HPO",
+  "C6",
+  "C7:IMMUNESIGDB"
+)
+# GSEA_GENESETS_TO_RUN <- "all"
 
 options(width = 200)
 options(lifecycle_verbosity = "quiet")

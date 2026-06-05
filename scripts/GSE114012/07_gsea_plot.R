@@ -34,11 +34,16 @@ SPECIES <- "human"
 GENE_ID_TYPE <- "ENTREZ"  # 可选："ENTREZ", "SYMBOL", "ENSEMBL"
 RANK_METRIC_COLUMN <- "t"
 
+# GSEA显著性阈值配置。必须与06_gsea_analysis.R保持一致。
+# 若后续改成pvalue或qvalue，请同步修改06号脚本和这里的绘图筛选变量。
+GSEA_SIGNIFICANCE_COLUMN <- "p.adjust"
+GSEA_SIGNIFICANCE_CUTOFF <- 0.05
+
 GSEA_PARAMS <- list(
   exponent = 1,
   minGSSize = 5,
   maxGSSize = 500,
-  pvalueCutoff = 0.05,
+  pvalueCutoff = GSEA_SIGNIFICANCE_CUTOFF,
   pAdjustMethod = "BH",
   verbose = TRUE,
   nPerm = 1000,
@@ -49,8 +54,25 @@ GSEA_PARAMS <- list(
   pvalThreshold = 0.1
 )
 
-GSEA_GENESETS_TO_RUN <- "all"
-# GSEA_GENESETS_TO_RUN <- c("H", "C5:GO:BP", "C6")
+# 需要绘图的MSigDB类别必须与06号运算脚本保持一致。
+# 键名格式来自msigdbr::msigdbr_collections()中的gs_collection与gs_subcollection。
+GSEA_GENESETS_TO_RUN <- c(
+  "H",
+  "C2:CP:BIOCARTA",
+  "C2:CP:KEGG_MEDICUS",
+  "C2:CP:KEGG_LEGACY",
+  "C2:CP:REACTOME",
+  "C2:CP:WIKIPATHWAYS",
+  "C3:TFT:TFT_LEGACY",
+  "C3:TFT:GTRD",
+  "C5:GO:BP",
+  "C5:GO:CC",
+  "C5:GO:MF",
+  "C5:HPO",
+  "C6",
+  "C7:IMMUNESIGDB"
+)
+# GSEA_GENESETS_TO_RUN <- "all"
 
 # 重跑07号脚本时清空旧GSEA图片，避免新旧图片混在一起。
 CLEAN_GSEA_PLOT_OUTPUT_DIR <- TRUE
@@ -60,9 +82,9 @@ SIMPLIFY_PATHWAY_PREFIX_IN_PLOT <- TRUE
 REPLACE_UNDERSCORE_WITH_SPACE_IN_PLOT <- TRUE
 
 GSEAVIS_DOTPLOT_PARAMS <- list(
-  topn = 20,
-  pval = NULL,
-  pajust = 0.05,
+  topn = 10,
+  pval = if (GSEA_SIGNIFICANCE_COLUMN == "pvalue") GSEA_SIGNIFICANCE_CUTOFF else NULL,
+  pajust = if (GSEA_SIGNIFICANCE_COLUMN == "p.adjust") GSEA_SIGNIFICANCE_CUTOFF else NULL,
   order.by = "GeneRatio",
   str.width = 45,
   base_size = 10,
@@ -87,13 +109,13 @@ DOTPLOT_LABEL_MAX_WIDTH <- 6.2
 DOTPLOT_LEGEND_WIDTH <- 1.4
 DOTPLOT_VERTICAL_PADDING <- 0.45
 
-# 单通路GSEA图配置。默认绘制每套GSEA结果的Top20通路。
+# 单通路GSEA图配置。默认绘制每套GSEA结果的Top10通路，与dotplot保持一致。
 DRAW_SINGLE_PATHWAY_GSEA <- TRUE
 SINGLE_PATHWAY_TOP_N <- GSEAVIS_DOTPLOT_PARAMS$topn
 SINGLE_PATHWAY_KEYWORDS <- character(0)
 SINGLE_PATHWAY_MAX_KEYWORD_TERMS <- 20
-SINGLE_PATHWAY_PVALUE_COLUMN <- "p.adjust"
-SINGLE_PATHWAY_PVALUE_CUTOFF <- 0.05
+SINGLE_PATHWAY_PVALUE_COLUMN <- GSEA_SIGNIFICANCE_COLUMN
+SINGLE_PATHWAY_PVALUE_CUTOFF <- GSEA_SIGNIFICANCE_CUTOFF
 
 TPM_ASSAY_NAME <- "tpm"
 SINGLE_PATHWAY_SAMPLE_LABEL_COLUMN <- "Title"

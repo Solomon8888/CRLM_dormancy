@@ -259,8 +259,8 @@ prepare_sample_correlation <- function(
 
 get_deg_file_info <- function(table_root, deg_dir_name = "DEG") {
   # 查找01号差异分析脚本输出的all_genes.csv。
-  # 兼容旧结构tables/<analysis_name>/DEG/all_genes.csv
-  # 和新结构tables/<analysis_name>/DEG/csv/all_genes.csv。
+  # 当前结构为tables/<analysis_name>/DEG/all_genes.csv；
+  # 同时兼容历史tables/<analysis_name>/DEG/csv/all_genes.csv。
   all_gene_files <- list.files(
     table_root,
     pattern = "^all_genes[.]csv$",
