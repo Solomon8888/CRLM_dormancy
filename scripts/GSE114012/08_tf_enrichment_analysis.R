@@ -68,6 +68,11 @@ TF_REFERENCE_ROOT <- file.path("data", "reference", "TF")
 TF_REFERENCE_MAX_AGE_DAYS <- 7
 USE_TF_REFERENCE_CACHE <- TRUE
 
+# OmnipathR/TRRUST/CollecTRI相关缓存与日志。
+# 网络资源缓存属于参考数据，放在data/reference；运行日志属于中间文件，放在temporary。
+OMNIPATHR_CACHE_DIR <- file.path(TF_REFERENCE_ROOT, "omnipathr_cache")
+OMNIPATHR_LOG_DIR <- file.path("temporary", DATA_TYPE, DATASET_ID, "omnipathr-log")
+
 # 需要运行的转录因子富集方法。
 # 可选："dorothea"、"chea3"、"viper"、"enrichr"、"trrust"、"collectri"。
 METHODS_TO_RUN <- c("dorothea", "chea3", "viper", "enrichr", "trrust", "collectri")
@@ -175,6 +180,14 @@ AUTO_INSTALL_MISSING_PACKAGES <- TRUE
 
 options(width = 200)
 options(lifecycle_verbosity = "quiet")
+dir.create(OMNIPATHR_CACHE_DIR, recursive = TRUE, showWarnings = FALSE)
+dir.create(OMNIPATHR_LOG_DIR, recursive = TRUE, showWarnings = FALSE)
+options(
+  omnipathr.cachedir = OMNIPATHR_CACHE_DIR,
+  omnipathr.logdir = OMNIPATHR_LOG_DIR,
+  omnipathr.console_loglevel = "WARN",
+  omnipathr.loglevel = "INFO"
+)
 
 
 # 1. 安装/加载依赖与公共函数 --------------------------------------------------
@@ -246,6 +259,13 @@ source(NETWORK_CACHE_FUNCTION_FILE)
 source(TF_FUNCTION_FILE)
 
 SCRIPT_START_TIME <- start_runtime_timer()
+
+configure_omnipathr_runtime(
+  cache_dir = OMNIPATHR_CACHE_DIR,
+  log_dir = OMNIPATHR_LOG_DIR,
+  console_loglevel = "WARN",
+  loglevel = "INFO"
+)
 
 run_quietly <- function(expr) {
   # 缓存命中或常规资源加载时不刷屏；真实错误仍会正常抛出。

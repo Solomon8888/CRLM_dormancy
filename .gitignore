@@ -73,6 +73,9 @@ scripts/beamer/generated_tables/
 # reproducible from the analysis/build scripts.
 results/**
 temporary/**
+omnipathr-log/
+omipathr-log/
+manuscripts/
 
 # ----------------------------------------------------------------------
 # Keep explicit placeholder files if they are ever needed for empty folders

@@ -77,3 +77,33 @@ make_tf_gene_cache_metadata <- make_gene_cache_metadata
 make_tf_resource_cache_metadata <- make_resource_cache_metadata
 read_tf_cache <- read_reference_cache
 write_tf_cache <- write_reference_cache
+
+configure_omnipathr_runtime <- function(
+    cache_dir,
+    log_dir,
+    console_loglevel = "WARN",
+    loglevel = "INFO") {
+  # OmnipathR默认会在当前工作目录生成omnipathr-log。
+  # 这里显式指定缓存和日志目录，确保项目根目录只保留代码、数据和正式结果。
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(log_dir, recursive = TRUE, showWarnings = FALSE)
+
+  options(
+    omnipathr.cachedir = cache_dir,
+    omnipathr.logdir = log_dir,
+    omnipathr.console_loglevel = console_loglevel,
+    omnipathr.loglevel = loglevel
+  )
+
+  if (requireNamespace("OmnipathR", quietly = TRUE)) {
+    init_log <- tryCatch(
+      get("omnipath_init_log", envir = asNamespace("OmnipathR")),
+      error = function(error) NULL
+    )
+    if (is.function(init_log)) {
+      try(init_log(), silent = TRUE)
+    }
+  }
+
+  invisible(list(cache_dir = cache_dir, log_dir = log_dir))
+}

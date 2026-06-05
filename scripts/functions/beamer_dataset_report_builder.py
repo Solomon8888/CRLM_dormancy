@@ -1427,7 +1427,7 @@ def collect_analysis_names() -> list[str]:
 
 
 def collect_intersection_names() -> list[str]:
-    """Discover all intersect schemes from 02号、GSEA and 09号TF整合 outputs."""
+    """Discover all intersect schemes from 02号交集 and 09号TF整合 outputs."""
     names: set[str] = set()
     if INTERSECT_ROOT.exists():
         names.update(path.name for path in dirs(INTERSECT_ROOT))
@@ -1584,7 +1584,7 @@ def append_intersection_frames(lines: list[str], scheme: str) -> None:
             [
                 "多组火山图把参与该交集方案的多个 LRC/BULK 分析并列展示，红色 Sig_Up 与蓝色 Sig_Down 对应各模型显著上/下调基因。",
                 "该图用于判断不同模型中的显著 DEG 是否具有相似方向结构。若多个成员均显示相近的红蓝分布和强效候选，说明该交集方案更可能提炼到稳定生物信号。",
-                "中心组名与每组坐标轴帮助快速定位参与比较的模型，后续 GSEA 和 TF 整合可继续沿用该交集方案进行机制解释。",
+                "中心组名与每组坐标轴帮助快速定位参与比较的模型；后续 TF 整合会继续沿用该交集基因列表进行上游调控因子筛选。",
             ],
             wide=True,
         )
@@ -1771,7 +1771,7 @@ def build_result_overview() -> str:
     section_name = f"{DATASET_ID}/00_report_logic_overview.tex"
     lines = section_cover(
         "结果展示逻辑：按分析方案串联证据链",
-        "从单个 DEG 方案或交集方案出发，连续查看 DEG、图形、GSEA 和 TF 证据",
+        "从单个 DEG 方案或交集方案出发，连续查看基因、图形、通路和TF证据",
         "本版报告不再严格按脚本编号线性展示，而是把每个差异分析方案、每个交集方案作为一个独立证据单元。这样更接近汇报时的阅读方式：先定义一个模型/交集，再连续判断它的基因、通路和上游调控因子。",
     )
     lines += text_frame(
@@ -1779,7 +1779,7 @@ def build_result_overview() -> str:
         [
             "第一部分仍保留研究设计与 00 号样本结构质控，用于说明课题逻辑和数据基础。",
             "随后进入 DEG 分析方案主线：每个 analysis 依次展示 DEG summary、显著基因、传统火山图、Top DEG 热图、GSEA 图表和 TF 整合结果。",
-            "再进入 intersect 交集方案主线：每个交集方案依次展示交集 summary、交集基因注释、成员 DEG 结果、多组火山图、GSEA 图表和 TF 整合结果。",
+            "再进入 intersect 交集方案主线：每个交集方案依次展示交集 summary、交集基因注释、成员 DEG 结果、多组火山图和 TF 整合结果。",
             "这种结构有助于在同一方案内完整追踪证据：从差异基因到通路，再到可能驱动休眠维持或苏醒的 TF。",
         ],
     )
@@ -1813,11 +1813,10 @@ def build_intersection_scheme_sections() -> list[str]:
         section_names.append(section_name)
         lines = section_cover(
             f"交集方案：{scheme}",
-            "交集基因 → 多组火山图 → GSEA → TF整合 的跨模型证据链",
+            "交集基因 → 多组火山图 → TF整合 的跨模型证据链",
             f"本节围绕 {scheme} 这一交集方案展开。它的核心目的，是从多个 LRC/BULK 模型中提炼方向更稳定、可重复性更高的候选基因，并进一步追踪这些候选对应的通路和 TF 证据。",
         )
         append_intersection_frames(lines, scheme)
-        append_gsea_frames(lines, scheme)
         append_tf_summary_frames(lines, "intersect", scheme)
         write_text(section_file(section_name), lines)
     return section_names
@@ -2064,7 +2063,21 @@ def compile_report() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build GSE114012 Beamer sources.")
     parser.add_argument("--compile", action="store_true", help="Compile the generated Beamer report.")
+    parser.add_argument(
+        "--compile-only",
+        action="store_true",
+        help="Compile existing Beamer sources without regenerating tex files.",
+    )
     args = parser.parse_args()
+
+    if args.compile_only:
+        if not MAIN_TEX.exists():
+            raise FileNotFoundError(
+                f"Main Beamer source does not exist. Build it first: {MAIN_TEX}"
+            )
+        compile_report()
+        print(f"Compiled PDF: {rel(FINAL_PDF)}")
+        return
 
     sections = generate_sources()
     print(f"Generated main tex: {rel(MAIN_TEX)}")

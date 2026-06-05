@@ -13,7 +13,10 @@ rm -rf \
   "${RESULT_ROOT}/intersect" \
   "${RESULT_ROOT}/TF" \
   "${RESULT_ROOT}/TF_summary" \
-  "${GSEA_QS2_CACHE_ROOT}"
+  "${GSEA_QS2_CACHE_ROOT}" \
+  omnipathr-log \
+  omipathr-log \
+  manuscripts
 mkdir -p "$RESULT_ROOT"
 
 Rscript scripts/GSE114012/00_sample_clustering_heatmap.R
