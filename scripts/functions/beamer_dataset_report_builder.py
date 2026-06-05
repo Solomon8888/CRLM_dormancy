@@ -1757,10 +1757,9 @@ def append_gsea_frames(lines: list[str], analysis: str) -> None:
             f"{analysis} | GSEA结果表 | {gsea_display_label(geneset)}",
             compact_tex,
             [
-                "该表是上一页 dotplot 对应的 GSEA 统计结果预览。构建器从完整原始CSV读取全部通路，若存在logFC则按logFC取正反向Top10；当前GSEA官方表没有logFC，因此按NES取正向Top10和反向Top10。",
+                "该表是GSEA统计结果预览，按NES取正反向Top10。",
                 "ID 为通路条目；NES 判断富集方向；pvalue、p.adjust 和 qvalue 判断统计证据。",
                 "本报告展示核心列以便汇报阅读；完整 CSV 中仍保留 clusterProfiler 官方输出的其他字段，可用于回查 leading-edge 基因和通路细节。",
-                "当某通路同时具有明确 NES 方向和稳定校正显著性时，可作为休眠维持或休眠细胞苏醒机制的后续重点。",
             ],
             source_csv=csv_path,
         )
