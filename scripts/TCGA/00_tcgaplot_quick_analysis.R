@@ -138,6 +138,13 @@ HEATMAP_CLUSTER_ROW <- TRUE
 HEATMAP_CLUSTER_COL <- TRUE
 HEATMAP_LEGEND <- TRUE
 
+# pan_forest的原包adjust=TRUE只校正age。
+# 这里按TCGAplot内置meta的全部可用临床协变量逐一扩展：age、gender、stage。
+PAN_FOREST_ADJUST_VARIABLES <- parse_env_vector(
+  "TCGAPLOT_PAN_FOREST_ADJUST_VARIABLES",
+  c("age", "gender", "stage")
+)
+
 # 输出目录。这里统一使用绝对路径，避免TCGAplot在任务临时目录运行时写错位置。
 PROJECT_ROOT <- normalizePath(".", winslash = "/", mustWork = TRUE)
 DATASET_ID <- "tcga"
@@ -201,7 +208,15 @@ required_packages <- c(
 )
 
 missing_packages <- required_packages[
-  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+  !vapply(
+    required_packages,
+    function(package) {
+      suppressPackageStartupMessages(
+        suppressWarnings(requireNamespace(package, quietly = TRUE))
+      )
+    },
+    logical(1)
+  )
 ]
 if (length(missing_packages) > 0) {
   stop(
@@ -211,7 +226,7 @@ if (length(missing_packages) > 0) {
 }
 
 suppressPackageStartupMessages({
-  library(TCGAplot)
+  suppressWarnings(library(TCGAplot))
   library(SummarizedExperiment)
 })
 
@@ -267,6 +282,10 @@ format_task_timestamp <- function(time) {
 }
 
 get_tcgaplot_function <- function(function_name) {
+  if (exists(function_name, envir = .GlobalEnv, mode = "function")) {
+    return(get(function_name, envir = .GlobalEnv, mode = "function"))
+  }
+
   if (!exists(function_name, envir = asNamespace("TCGAplot"), mode = "function")) {
     stop("TCGAplot function is unavailable: ", function_name)
   }
@@ -274,40 +293,91 @@ get_tcgaplot_function <- function(function_name) {
   get(function_name, envir = asNamespace("TCGAplot"), mode = "function")
 }
 
-render_tcgaplot_output <- function(result) {
+add_title_to_ggplot_if_needed <- function(plot, title) {
+  if (is.null(title) || !nzchar(title)) {
+    return(plot)
+  }
+
+  if (inherits(plot, "patchwork") && requireNamespace("patchwork", quietly = TRUE)) {
+    return(plot + patchwork::plot_annotation(title = title))
+  }
+
+  if (!inherits(plot, "ggplot")) {
+    return(plot)
+  }
+
+  plot + ggplot2::ggtitle(title) +
+    ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5))
+}
+
+draw_outer_title <- function(title) {
+  if (is.null(title) || !nzchar(title)) {
+    return(invisible(FALSE))
+  }
+
+  grid::grid.text(
+    label = title,
+    x = grid::unit(0.5, "npc"),
+    y = grid::unit(0.985, "npc"),
+    gp = grid::gpar(fontface = "bold", fontsize = 13)
+  )
+  invisible(TRUE)
+}
+
+render_tcgaplot_output <- function(result, title = NULL, add_outer_title = FALSE) {
   # TCGAplot不同函数返回值类型不完全一致：
   # 有的直接返回ggplot，有的返回survminer对象，有的返回ComplexHeatmap或grob。
   # 这里集中做一次类型分派，后续保存图片时只需要调用这一层即可。
   if (is.null(result)) {
+    if (add_outer_title) {
+      draw_outer_title(title)
+    }
     return(invisible(NULL))
   }
 
   if (inherits(result, "ggplot") || inherits(result, "patchwork")) {
-    print(result)
+    print(add_title_to_ggplot_if_needed(result, title))
     return(invisible(NULL))
   }
 
   if (inherits(result, "ggsurvplot")) {
+    if (!is.null(title) && nzchar(title) && inherits(result$plot, "ggplot")) {
+      result$plot <- add_title_to_ggplot_if_needed(result$plot, title)
+    }
     print(result)
     return(invisible(NULL))
   }
 
   if (inherits(result, "Heatmap") && requireNamespace("ComplexHeatmap", quietly = TRUE)) {
     ComplexHeatmap::draw(result)
+    if (add_outer_title) {
+      draw_outer_title(title)
+    }
+    return(invisible(NULL))
+  }
+
+  if (inherits(result, "gforge_forestplot")) {
+    print(result)
     return(invisible(NULL))
   }
 
   if (inherits(result, "grob") || inherits(result, "gTree") || inherits(result, "gtable")) {
     grid::grid.draw(result)
+    if (add_outer_title) {
+      draw_outer_title(title)
+    }
     return(invisible(NULL))
   }
 
   if (is.list(result) && "plot" %in% names(result)) {
-    render_tcgaplot_output(result$plot)
+    render_tcgaplot_output(result$plot, title = title, add_outer_title = add_outer_title)
     return(invisible(NULL))
   }
 
   try(print(result), silent = TRUE)
+  if (add_outer_title) {
+    draw_outer_title(title)
+  }
   invisible(NULL)
 }
 
@@ -629,6 +699,135 @@ write_tcgaplot_task_cache <- function(task, manifest) {
     result = manifest
   )
   invisible(TRUE)
+}
+
+get_tcgaplot_data_object <- function(name) {
+  get(name, envir = asNamespace("TCGAplot"), inherits = FALSE)
+}
+
+make_pan_forest_exprset <- function(cancer, gene) {
+  tpm_dat <- get_tcgaplot_data_object("tpm")
+  meta_dat <- get_tcgaplot_data_object("meta")
+
+  expr_set <- subset(tpm_dat, Group == "Tumor" & Cancer == cancer) %>%
+    tibble::add_column(ID = stringr::str_sub(rownames(.), 1, 12), .before = "Cancer") %>%
+    dplyr::filter(!duplicated(ID)) %>%
+    tibble::remove_rownames(.) %>%
+    tibble::column_to_rownames("ID") %>%
+    dplyr::filter(rownames(.) %in% rownames(subset(meta_dat, Cancer == cancer)))
+
+  expr_set <- expr_set[, -(1:2), drop = FALSE]
+  as.matrix(t(expr_set))
+}
+
+fit_symbol_cox_for_forest <- function(cancer, gene, adjust_variable = NULL) {
+  meta_dat <- get_tcgaplot_data_object("meta")
+  expr_set <- make_pan_forest_exprset(cancer, gene)
+  cl <- meta_dat[colnames(expr_set), , drop = FALSE]
+  cl$symbol <- expr_set[gene, ]
+
+  formula_text <- if (is.null(adjust_variable) || !nzchar(adjust_variable)) {
+    "survival::Surv(time, event) ~ symbol"
+  } else {
+    paste0("survival::Surv(time, event) ~ symbol + ", adjust_variable)
+  }
+
+  cl <- cl[, unique(c("time", "event", "symbol", adjust_variable)), drop = FALSE]
+  cl <- stats::na.omit(cl)
+  if (nrow(cl) < 10L || length(unique(cl$event)) < 2L) {
+    stop("Insufficient survival records after omitting missing clinical values")
+  }
+
+  if (!is.null(adjust_variable) && !is.numeric(cl[[adjust_variable]])) {
+    cl[[adjust_variable]] <- as.factor(cl[[adjust_variable]])
+    if (nlevels(cl[[adjust_variable]]) < 2L) {
+      stop("Clinical covariate has fewer than 2 levels")
+    }
+  }
+
+  model <- survival::coxph(stats::as.formula(formula_text), data = cl)
+  beta <- coef(model)
+  se <- sqrt(diag(vcov(model)))
+  hr <- exp(beta)
+  hrse <- hr * se
+  tmp <- round(cbind(
+    coef = beta,
+    se = se,
+    z = beta / se,
+    p = 1 - stats::pchisq((beta / se)^2, 1),
+    HR = hr,
+    HRse = hrse,
+    HRz = (hr - 1) / hrse,
+    HRp = 1 - stats::pchisq(((hr - 1) / hrse)^2, 1),
+    HRCILL = exp(beta - stats::qnorm(0.975, 0, 1) * se),
+    HRCIUL = exp(beta + stats::qnorm(0.975, 0, 1) * se)
+  ), 3)
+
+  tmp["symbol", ]
+}
+
+pan_forest_clinical_adjusted <- function(gene, adjust_variable) {
+  cancers <- get_tcgaplot_data_object("cancers")
+  cox_results <- list()
+  failed <- character(0)
+
+  for (cancer in cancers) {
+    fit <- tryCatch(
+      fit_symbol_cox_for_forest(
+        cancer = cancer,
+        gene = gene,
+        adjust_variable = adjust_variable
+      ),
+      error = function(error) {
+        failed[[cancer]] <<- conditionMessage(error)
+        NULL
+      }
+    )
+    if (!is.null(fit)) {
+      cox_results[[cancer]] <- fit
+    }
+  }
+
+  if (length(cox_results) == 0L) {
+    stop("No cancer type could be fitted for ", gene, " adjusted by ", adjust_variable)
+  }
+
+  cox_results <- do.call(rbind, cox_results)
+  cox_results <- as.data.frame(cox_results[, c(5, 9:10, 4), drop = FALSE])
+  np <- paste0(cox_results$HR, " (", cox_results$HRCILL, "-", cox_results$HRCIUL, ")")
+  tabletext <- cbind(
+    c("Cancer", rownames(cox_results)),
+    c("HR (95%CI)", np),
+    c("P Value", cox_results$p)
+  )
+
+  hrzl_line_last <- nrow(cox_results) + 2L
+  hrzl_lines <- list(
+    grid::gpar(lwd = 2, col = "black"),
+    grid::gpar(lwd = 2, col = "black"),
+    grid::gpar(lwd = 2, col = "black")
+  )
+  names(hrzl_lines) <- as.character(c(1L, 2L, hrzl_line_last))
+
+  forestplot::forestplot(
+    labeltext = tabletext,
+    graph.pos = 3,
+    mean = c(NA, cox_results$HR),
+    lower = c(NA, cox_results$HRCILL),
+    upper = c(NA, cox_results$HRCIUL),
+    title = paste0("Hazard Ratio Plot of ", gene, " adjusted by ", adjust_variable),
+    hrzl_lines = hrzl_lines,
+    is.summary = c(TRUE, rep(FALSE, nrow(cox_results))),
+    col = forestplot::fpColors(box = "#1c61b6", lines = "#1c61b6", zero = "gray50"),
+    zero = 1,
+    cex = 0.9,
+    lineheight = "auto",
+    colgap = grid::unit(8, "mm"),
+    txt_gp = forestplot::fpTxtGp(ticks = grid::gpar(cex = 1)),
+    boxsize = 0.5,
+    ci.vertices = TRUE,
+    ci.vertices.height = 0.3
+  )
 }
 
 
@@ -1161,7 +1360,8 @@ make_task <- function(
     context,
     renderer = "grid",
     width = 7,
-    height = 6) {
+    height = 6,
+    title = NULL) {
   list(
     analysis = analysis,
     function_name = function_name,
@@ -1170,7 +1370,21 @@ make_task <- function(
     context = context,
     renderer = renderer,
     width = width,
-    height = height
+    height = height,
+    title = title
+  )
+}
+
+make_default_task_title <- function(task) {
+  if (!is.null(task$title) && nzchar(task$title)) {
+    return(task$title)
+  }
+
+  paste(
+    gsub("_", " ", task$analysis, fixed = TRUE),
+    task$target,
+    task$context,
+    sep = " | "
   )
 }
 
@@ -1239,13 +1453,28 @@ build_tcgaplot_tasks <- function(selected_analyses) {
       add_task(make_task(
         "pan_forest", "pan_forest",
         list(gene = gene, adjust = FALSE),
-        gene, "pan_cancer_unadjusted", width = 8.5, height = 10
+        gene, "pan_cancer_unadjusted", width = 8.5, height = 10,
+        title = paste0("Hazard Ratio Plot of ", gene)
       ))
-      add_task(make_task(
-        "pan_forest", "pan_forest",
-        list(gene = gene, adjust = TRUE),
-        gene, "pan_cancer_age_adjusted", width = 8.5, height = 10
-      ))
+      for (adjust_variable in PAN_FOREST_ADJUST_VARIABLES) {
+        if (adjust_variable == "age") {
+          add_task(make_task(
+            "pan_forest", "pan_forest",
+            list(gene = gene, adjust = TRUE),
+            gene, "pan_cancer_age_adjusted", width = 8.5, height = 10,
+            title = paste0("Hazard Ratio Plot of ", gene, " adjusted by age")
+          ))
+        } else {
+          add_task(make_task(
+            "pan_forest", "pan_forest_clinical_adjusted",
+            list(gene = gene, adjust_variable = adjust_variable),
+            gene, paste0("pan_cancer_", adjust_variable, "_adjusted"),
+            width = 8.5,
+            height = 10,
+            title = paste0("Hazard Ratio Plot of ", gene, " adjusted by ", adjust_variable)
+          ))
+        }
+      }
     }
     if ("gene_TMB_radar" %in% selected_analyses) {
       add_task(make_task(
@@ -1674,6 +1903,7 @@ run_one_tcgaplot_task <- function(task) {
   }
 
   task_stem <- task_file_stem(task)
+  task_title <- make_default_task_title(task)
 
   task_call <- function() {
     fn <- get_tcgaplot_function(task$function_name)
@@ -1694,7 +1924,7 @@ run_one_tcgaplot_task <- function(task) {
         width = task$width,
         height = task$height,
         draw_fun = function() {
-          render_tcgaplot_output(result)
+          render_tcgaplot_output(result, title = task_title, add_outer_title = TRUE)
         }
       )
       generated_files <- copy_generated_files(task)
@@ -1710,7 +1940,7 @@ run_one_tcgaplot_task <- function(task) {
       height = task$height,
       draw_fun = function() {
         result <- do.call(fn, task$args)
-        render_tcgaplot_output(result)
+        render_tcgaplot_output(result, title = task_title, add_outer_title = TRUE)
       }
     )
     generated_files <- copy_generated_files(task)
@@ -1742,7 +1972,7 @@ run_one_tcgaplot_task <- function(task) {
         width = task$width,
         height = task$height,
         draw_fun = function() {
-          render_tcgaplot_output(result)
+          render_tcgaplot_output(result, title = task_title, add_outer_title = TRUE)
         }
       )
       direct_stage$value <- "copy_generated_files"
