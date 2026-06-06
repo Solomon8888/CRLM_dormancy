@@ -147,6 +147,7 @@ PAN_FOREST_ADJUST_VARIABLES <- parse_env_vector(
 
 # 输出目录。这里统一使用绝对路径，避免TCGAplot在任务临时目录运行时写错位置。
 PROJECT_ROOT <- normalizePath(".", winslash = "/", mustWork = TRUE)
+SCRIPT_FILE <- file.path(PROJECT_ROOT, "scripts", "TCGA", "00_tcgaplot_quick_analysis.R")
 DATASET_ID <- "tcga"
 DATA_TYPE <- "ngs"
 RESULT_ROOT <- file.path(PROJECT_ROOT, "results", DATA_TYPE, DATASET_ID)
@@ -189,6 +190,15 @@ MAX_PARALLEL_WORKERS <- parse_env_integer("TCGAPLOT_PARALLEL_WORKERS", NA_intege
 # 同一参数重复运行且结果文件仍存在时可直接复用，避免重复跑耗时网络/富集图。
 USE_TCGAPLOT_TASK_CACHE <- parse_env_logical("TCGAPLOT_USE_TASK_CACHE", TRUE)
 TCGAPLOT_TASK_CACHE_MAX_AGE_DAYS <- parse_env_integer("TCGAPLOT_TASK_CACHE_MAX_AGE_DAYS", 30L)
+
+# gene_gsea_kegg会经由clusterProfiler访问KEGG REST。
+# 在macOS fork并行子进程中，KEGG下载偶尔会触发R进程级segfault；
+# 这类任务默认放入独立Rscript进程运行，即使底层包崩溃也不会带崩主会话。
+PROCESS_ISOLATED_ANALYSES <- parse_env_vector(
+  "TCGAPLOT_PROCESS_ISOLATED_ANALYSES",
+  c("gene_gsea_kegg")
+)
+DISABLE_PROCESS_ISOLATION <- parse_env_logical("TCGAPLOT_DISABLE_PROCESS_ISOLATION", FALSE)
 
 options(width = 200)
 options(bitmapType = "cairo")
@@ -324,6 +334,29 @@ draw_outer_title <- function(title) {
   invisible(TRUE)
 }
 
+draw_in_title_viewport <- function(title, draw_fun) {
+  if (is.null(title) || !nzchar(title)) {
+    draw_fun()
+    return(invisible(NULL))
+  }
+
+  grid::grid.newpage()
+  grid::pushViewport(grid::viewport(
+    x = grid::unit(0.5, "npc"),
+    y = grid::unit(0.0, "npc"),
+    width = grid::unit(1, "npc"),
+    height = grid::unit(0.92, "npc"),
+    just = c("center", "bottom")
+  ))
+  on.exit({
+    try(grid::popViewport(), silent = TRUE)
+  }, add = TRUE)
+  draw_fun()
+  grid::popViewport()
+  draw_outer_title(title)
+  invisible(NULL)
+}
+
 render_tcgaplot_output <- function(result, title = NULL, add_outer_title = FALSE) {
   # TCGAplot不同函数返回值类型不完全一致：
   # 有的直接返回ggplot，有的返回survminer对象，有的返回ComplexHeatmap或grob。
@@ -349,9 +382,12 @@ render_tcgaplot_output <- function(result, title = NULL, add_outer_title = FALSE
   }
 
   if (inherits(result, "Heatmap") && requireNamespace("ComplexHeatmap", quietly = TRUE)) {
-    ComplexHeatmap::draw(result)
     if (add_outer_title) {
-      draw_outer_title(title)
+      draw_in_title_viewport(title, function() {
+        ComplexHeatmap::draw(result, newpage = FALSE)
+      })
+    } else {
+      ComplexHeatmap::draw(result)
     }
     return(invisible(NULL))
   }
@@ -362,9 +398,12 @@ render_tcgaplot_output <- function(result, title = NULL, add_outer_title = FALSE
   }
 
   if (inherits(result, "grob") || inherits(result, "gTree") || inherits(result, "gtable")) {
-    grid::grid.draw(result)
     if (add_outer_title) {
-      draw_outer_title(title)
+      draw_in_title_viewport(title, function() {
+        grid::grid.draw(result)
+      })
+    } else {
+      grid::grid.draw(result)
     }
     return(invisible(NULL))
   }
@@ -381,42 +420,243 @@ render_tcgaplot_output <- function(result, title = NULL, add_outer_title = FALSE
   invisible(NULL)
 }
 
-render_pdf_preview_png <- function(pdf_file, png_file, dpi = PNG_DPI) {
-  # TCGAplot少数函数只在当前目录直接写PDF，不返回可重绘对象。
-  # 优先用pdftools/png；macOS环境缺pdftools时，用系统sips做轻量兜底。
-  if (!file.exists(pdf_file)) {
-    return(FALSE)
+get_pdf_page_count <- function(pdf_file) {
+  if (!file.exists(pdf_file) || is.na(file.info(pdf_file)$size) || file.info(pdf_file)$size <= 0) {
+    return(NA_integer_)
   }
+
+  if (requireNamespace("pdftools", quietly = TRUE)) {
+    page_count <- tryCatch(pdftools::pdf_info(pdf_file)$pages, error = function(error) NA_integer_)
+    if (!is.na(page_count)) {
+      return(as.integer(page_count))
+    }
+  }
+
+  pdfinfo <- Sys.which("pdfinfo")
+  if (!nzchar(pdfinfo)) {
+    return(NA_integer_)
+  }
+
+  info <- tryCatch(
+    suppressWarnings(system2(pdfinfo, args = pdf_file, stdout = TRUE, stderr = TRUE)),
+    error = function(error) character(0)
+  )
+  page_line <- grep("^Pages:", info, value = TRUE)
+  if (length(page_line) == 0L) {
+    return(NA_integer_)
+  }
+
+  suppressWarnings(as.integer(trimws(sub("^Pages:", "", page_line[1]))))
+}
+
+get_png_nonwhite_fraction <- function(png_file, white_tolerance = 0.02) {
+  if (!file.exists(png_file) || !requireNamespace("png", quietly = TRUE)) {
+    return(NA_real_)
+  }
+
+  img <- tryCatch(png::readPNG(png_file), error = function(error) NULL)
+  if (is.null(img)) {
+    return(NA_real_)
+  }
+
+  dims <- dim(img)
+  if (length(dims) == 2L) {
+    return(mean(abs(img - 1) > white_tolerance))
+  }
+
+  channels <- min(3L, dims[3])
+  nonwhite <- matrix(FALSE, nrow = dims[1], ncol = dims[2])
+  for (channel in seq_len(channels)) {
+    nonwhite <- nonwhite | abs(img[, , channel] - 1) > white_tolerance
+  }
+  if (dims[3] >= 4L) {
+    nonwhite <- nonwhite & img[, , 4] > 0.01
+  }
+
+  mean(nonwhite)
+}
+
+is_png_blank <- function(png_file, nonwhite_fraction_cutoff = 0.001) {
+  nonwhite_fraction <- get_png_nonwhite_fraction(png_file)
+  is.na(nonwhite_fraction) || nonwhite_fraction < nonwhite_fraction_cutoff
+}
+
+render_one_pdf_page_png <- function(pdf_file, page, png_file, dpi = PNG_DPI) {
+  dir.create(dirname(png_file), recursive = TRUE, showWarnings = FALSE)
+  unlink(png_file, force = TRUE)
 
   if (requireNamespace("pdftools", quietly = TRUE) && requireNamespace("png", quietly = TRUE)) {
     converted <- tryCatch(
       {
-        bitmap <- pdftools::pdf_render_page(pdf_file, page = 1, dpi = dpi)
-        dir.create(dirname(png_file), recursive = TRUE, showWarnings = FALSE)
+        bitmap <- pdftools::pdf_render_page(pdf_file, page = page, dpi = dpi)
         png::writePNG(bitmap, target = png_file)
         file.exists(png_file)
       },
       error = function(error) FALSE
     )
     if (converted) {
-      return(TRUE)
+      return(png_file)
+    }
+  }
+
+  pdftoppm <- Sys.which("pdftoppm")
+  if (nzchar(pdftoppm)) {
+    tmp_dir <- tempfile("tcgaplot_pdftoppm_")
+    dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+    on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+    tmp_prefix <- file.path(tmp_dir, "page")
+    status <- tryCatch(
+      suppressWarnings(system2(
+        pdftoppm,
+        args = c("-png", "-r", as.character(dpi), "-f", as.character(page), "-l", as.character(page), pdf_file, tmp_prefix),
+        stdout = TRUE,
+        stderr = TRUE
+      )),
+      error = function(error) structure(character(0), status = 1L)
+    )
+    rendered <- sort(list.files(tmp_dir, pattern = "^page-.*[.]png$", full.names = TRUE))
+    if (length(rendered) > 0L && is.null(attr(status, "status"))) {
+      file.copy(rendered[1], png_file, overwrite = TRUE)
+      return(png_file)
     }
   }
 
   sips <- Sys.which("sips")
-  if (!nzchar(sips)) {
-    return(FALSE)
+  if (nzchar(sips) && identical(as.integer(page), 1L)) {
+    status <- tryCatch(
+      suppressWarnings(system2(
+        sips,
+        args = c("-s", "format", "png", pdf_file, "--out", png_file),
+        stdout = TRUE,
+        stderr = TRUE
+      )),
+      error = function(error) structure(character(0), status = 1L)
+    )
+    if (file.exists(png_file) && is.null(attr(status, "status"))) {
+      return(png_file)
+    }
   }
 
-  dir.create(dirname(png_file), recursive = TRUE, showWarnings = FALSE)
-  status <- suppressWarnings(system2(
-    sips,
-    args = c("-s", "format", "png", pdf_file, "--out", png_file),
-    stdout = TRUE,
-    stderr = TRUE
-  ))
+  character(0)
+}
 
-  file.exists(png_file) && !inherits(status, "try-error")
+detect_nonblank_pdf_pages <- function(pdf_file, page_count = get_pdf_page_count(pdf_file)) {
+  if (is.na(page_count) || page_count < 1L) {
+    return(integer(0))
+  }
+
+  nonblank_pages <- integer(0)
+  tmp_dir <- tempfile("tcgaplot_pdf_page_check_")
+  dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+  on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  for (page in seq_len(page_count)) {
+    page_png <- file.path(tmp_dir, sprintf("page_%03d.png", page))
+    rendered <- render_one_pdf_page_png(pdf_file, page = page, png_file = page_png, dpi = 72)
+    if (length(rendered) > 0L && !is_png_blank(page_png)) {
+      nonblank_pages <- c(nonblank_pages, page)
+    }
+  }
+
+  nonblank_pages
+}
+
+remove_blank_pdf_pages <- function(pdf_file) {
+  page_count <- get_pdf_page_count(pdf_file)
+  if (is.na(page_count)) {
+    stop("PDF is missing, empty, or unreadable: ", pdf_file)
+  }
+  if (page_count <= 1L) {
+    return(invisible(page_count))
+  }
+
+  nonblank_pages <- detect_nonblank_pdf_pages(pdf_file, page_count)
+  if (length(nonblank_pages) == 0L) {
+    stop("All PDF pages appear blank: ", pdf_file)
+  }
+  if (identical(nonblank_pages, seq_len(page_count))) {
+    return(invisible(page_count))
+  }
+
+  pdfseparate <- Sys.which("pdfseparate")
+  pdfunite <- Sys.which("pdfunite")
+  if (!nzchar(pdfseparate) || !nzchar(pdfunite)) {
+    warning("pdfseparate/pdfunite are unavailable; blank PDF pages cannot be removed: ", pdf_file)
+    return(invisible(page_count))
+  }
+
+  tmp_dir <- tempfile("tcgaplot_pdf_clean_")
+  dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+  on.exit(unlink(tmp_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  page_pattern <- file.path(tmp_dir, "page_%03d.pdf")
+  split_status <- tryCatch(
+    suppressWarnings(system2(pdfseparate, args = c(pdf_file, page_pattern), stdout = TRUE, stderr = TRUE)),
+    error = function(error) structure(character(0), status = 1L)
+  )
+  if (!is.null(attr(split_status, "status"))) {
+    warning("Failed to split PDF for blank-page cleanup: ", pdf_file)
+    return(invisible(page_count))
+  }
+
+  split_files <- file.path(tmp_dir, sprintf("page_%03d.pdf", nonblank_pages))
+  clean_pdf <- file.path(tmp_dir, "clean.pdf")
+  unite_status <- tryCatch(
+    suppressWarnings(system2(pdfunite, args = c(split_files, clean_pdf), stdout = TRUE, stderr = TRUE)),
+    error = function(error) structure(character(0), status = 1L)
+  )
+  if (!is.null(attr(unite_status, "status")) || !file.exists(clean_pdf) || file.info(clean_pdf)$size <= 0) {
+    warning("Failed to rebuild PDF without blank pages: ", pdf_file)
+    return(invisible(page_count))
+  }
+
+  file.copy(clean_pdf, pdf_file, overwrite = TRUE)
+  invisible(length(nonblank_pages))
+}
+
+convert_pdf_to_png_outputs <- function(pdf_file, png_file, dpi = PNG_DPI) {
+  remove_blank_pdf_pages(pdf_file)
+  page_count <- get_pdf_page_count(pdf_file)
+  if (is.na(page_count) || page_count < 1L) {
+    stop("PDF is missing, empty, or unreadable after cleanup: ", pdf_file)
+  }
+
+  output_stem <- tools::file_path_sans_ext(basename(png_file))
+  if (page_count == 1L) {
+    rendered <- render_one_pdf_page_png(pdf_file, page = 1L, png_file = png_file, dpi = dpi)
+    if (length(rendered) == 0L || is_png_blank(png_file)) {
+      stop("PNG preview is blank or could not be rendered: ", png_file)
+    }
+    return(png_file)
+  }
+
+  output_dir <- file.path(dirname(png_file), output_stem)
+  unlink(output_dir, recursive = TRUE, force = TRUE)
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  png_files <- character(0)
+  for (page in seq_len(page_count)) {
+    page_png <- file.path(output_dir, sprintf("%s_page_%03d.png", output_stem, page))
+    rendered <- render_one_pdf_page_png(pdf_file, page = page, png_file = page_png, dpi = dpi)
+    if (length(rendered) == 0L || is_png_blank(page_png)) {
+      stop("Rendered PDF page is blank or unavailable: ", pdf_file, " page ", page)
+    }
+    png_files <- c(png_files, page_png)
+  }
+
+  png_files
+}
+
+render_pdf_preview_png <- function(pdf_file, png_file, dpi = PNG_DPI) {
+  # TCGAplot少数函数只在当前目录直接写PDF，不返回可重绘对象。
+  # 这里统一清理空白页并转PNG；多页PDF会拆成同名子目录中的page_001/page_002...
+  tryCatch(
+    convert_pdf_to_png_outputs(pdf_file = pdf_file, png_file = png_file, dpi = dpi),
+    error = function(error) {
+      warning(conditionMessage(error))
+      character(0)
+    }
+  )
 }
 
 with_task_workspace <- function(task, expr) {
@@ -483,13 +723,101 @@ copy_generated_files <- function(task) {
 
     if (extension == "pdf") {
       png_file <- file.path(PLOT_PNG_DIR, paste0(output_stem, ".png"))
-      if (render_pdf_preview_png(destination_file, png_file)) {
-        copied_files <- c(copied_files, png_file)
+      rendered_png_files <- render_pdf_preview_png(destination_file, png_file)
+      if (length(rendered_png_files) > 0L) {
+        copied_files <- c(copied_files, rendered_png_files)
       }
     }
   }
 
   copied_files
+}
+
+save_tcgaplot_pdf_png <- function(pdf_file, width, height, draw_fun, png_dpi = PNG_DPI) {
+  # TCGAplot的部分函数绘图时有副作用，甚至会联网下载数据。
+  # 因此这里只绘制一次PDF，再由PDF生成PNG，避免同一个分析重复运行两遍。
+  plot_paths <- get_plot_output_paths(pdf_file)
+  dir.create(dirname(plot_paths$pdf), recursive = TRUE, showWarnings = FALSE)
+  dir.create(dirname(plot_paths$png), recursive = TRUE, showWarnings = FALSE)
+  unlink(c(plot_paths$pdf, plot_paths$png), force = TRUE)
+  unlink(file.path(dirname(plot_paths$png), tools::file_path_sans_ext(basename(plot_paths$png))), recursive = TRUE, force = TRUE)
+
+  device_opened <- FALSE
+  Cairo::CairoPDF(
+    file = plot_paths$pdf,
+    width = width,
+    height = height,
+    bg = "white"
+  )
+  device_opened <- TRUE
+  on.exit({
+    if (device_opened && grDevices::dev.cur() > 1L) {
+      try(grDevices::dev.off(), silent = TRUE)
+    }
+  }, add = TRUE)
+
+  draw_fun()
+  invisible(grDevices::dev.off())
+  device_opened <- FALSE
+
+  if (!file.exists(plot_paths$pdf) || is.na(file.info(plot_paths$pdf)$size) || file.info(plot_paths$pdf)$size <= 0) {
+    stop("PDF output is missing or empty: ", plot_paths$pdf)
+  }
+
+  png_files <- convert_pdf_to_png_outputs(
+    pdf_file = plot_paths$pdf,
+    png_file = plot_paths$png,
+    dpi = png_dpi
+  )
+
+  invisible(list(pdf_file = plot_paths$pdf, png_file = png_files))
+}
+
+validate_plot_output_files <- function(files) {
+  files <- unique(files[nzchar(files)])
+  if (length(files) == 0L) {
+    return(invisible(TRUE))
+  }
+
+  invalid <- character(0)
+  for (file in files) {
+    if (!file.exists(file) || is.na(file.info(file)$size) || file.info(file)$size <= 0) {
+      invalid <- c(invalid, paste0(file, " [missing_or_empty]"))
+      next
+    }
+
+    extension <- tolower(tools::file_ext(file))
+    if (extension == "pdf" && is.na(get_pdf_page_count(file))) {
+      invalid <- c(invalid, paste0(file, " [unreadable_pdf]"))
+    }
+    if (extension == "png" && is_png_blank(file)) {
+      invalid <- c(invalid, paste0(file, " [blank_png]"))
+    }
+  }
+
+  if (length(invalid) > 0L) {
+    stop("Invalid plot output detected: ", paste(invalid, collapse = "; "))
+  }
+
+  invisible(TRUE)
+}
+
+cleanup_task_output_files <- function(task) {
+  output_stem <- task_file_stem(task)
+  cleanup_dir <- function(directory) {
+    if (!dir.exists(directory)) {
+      return(invisible(FALSE))
+    }
+    entries <- list.files(directory, all.files = FALSE, full.names = TRUE, recursive = FALSE)
+    entries <- entries[startsWith(basename(entries), output_stem)]
+    unlink(entries, recursive = TRUE, force = TRUE)
+    invisible(TRUE)
+  }
+
+  cleanup_dir(PLOT_PDF_DIR)
+  cleanup_dir(PLOT_PNG_DIR)
+  cleanup_dir(TABLE_ROOT)
+  invisible(TRUE)
 }
 
 capture_task <- function(expr) {
@@ -1388,6 +1716,46 @@ make_default_task_title <- function(task) {
   )
 }
 
+estimate_title_extra_height <- function(title) {
+  if (is.null(title) || !nzchar(title)) {
+    return(0)
+  }
+  line_count <- max(1L, ceiling(nchar(title, type = "width") / 70))
+  0.35 + 0.18 * (line_count - 1L)
+}
+
+adjust_task_plot_size <- function(task) {
+  title <- make_default_task_title(task)
+  task$height <- task$height + estimate_title_extra_height(title)
+
+  if (task$analysis %in% c("pan_boxplot", "pan_paired_boxplot", "pan_tumor_boxplot")) {
+    task$width <- max(task$width, 12.5)
+    task$height <- max(task$height, 6.4)
+  }
+
+  if (task$analysis == "pan_forest") {
+    task$width <- max(task$width, 9.2)
+    task$height <- max(task$height, 10.8)
+  }
+
+  if (grepl("heatmap", task$analysis, fixed = TRUE)) {
+    task$width <- max(task$width, 7.8)
+    task$height <- task$height + 0.25
+  }
+
+  if (task$analysis %in% c("gene_gsea_go", "gene_gsea_kegg")) {
+    task$width <- max(task$width, 8.8)
+    task$height <- max(task$height, 7.2)
+  }
+
+  if (task$analysis %in% c("tcga_kmplot", "methy_kmplot")) {
+    task$width <- max(task$width, 7.8)
+    task$height <- max(task$height, 6.6)
+  }
+
+  task
+}
+
 assign_task_indices <- function(tasks) {
   if (length(tasks) == 0L) {
     return(tasks)
@@ -1395,6 +1763,7 @@ assign_task_indices <- function(tasks) {
 
   for (i in seq_along(tasks)) {
     tasks[[i]]$task_id <- i
+    tasks[[i]] <- adjust_task_plot_size(tasks[[i]])
   }
 
   tasks
@@ -1863,6 +2232,111 @@ validate_tcgaplot_tasks <- function(tasks) {
 
 # 7. TCGAplot任务执行器 --------------------------------------------------------
 
+should_run_task_in_subprocess <- function(task) {
+  !DISABLE_PROCESS_ISOLATION && task$analysis %in% PROCESS_ISOLATED_ANALYSES
+}
+
+read_log_excerpt <- function(log_file, max_lines = 80L) {
+  if (!file.exists(log_file) || file.info(log_file)$size <= 0) {
+    return(character(0))
+  }
+  lines <- readLines(log_file, warn = FALSE)
+  if (length(lines) > max_lines) {
+    lines <- c(lines[seq_len(max_lines)], "... log truncated ...")
+  }
+  lines
+}
+
+run_tcgaplot_task_in_subprocess <- function(task, task_start_time, cache_file = "") {
+  worker_root <- file.path(TEMP_ROOT, "process-isolated", task_file_stem(task))
+  unlink(worker_root, recursive = TRUE, force = TRUE)
+  dir.create(worker_root, recursive = TRUE, showWarnings = FALSE)
+
+  task_file <- file.path(worker_root, "task.rds")
+  result_file <- file.path(worker_root, "result.rds")
+  stdout_log <- file.path(worker_root, "stdout.log")
+  stderr_log <- file.path(worker_root, "stderr.log")
+  worker_script <- file.path(worker_root, "worker.R")
+
+  saveRDS(task, task_file)
+  writeLines(c(
+    "args <- commandArgs(trailingOnly = TRUE)",
+    "project_root <- args[[1]]",
+    "script_file <- args[[2]]",
+    "task_file <- args[[3]]",
+    "result_file <- args[[4]]",
+    "setwd(project_root)",
+    "Sys.setenv(TCGAPLOT_DISABLE_PROCESS_ISOLATION = '1')",
+    "Sys.setenv(TCGAPLOT_CLEAR_PREVIOUS_OUTPUTS = '0')",
+    "Sys.setenv(TCGAPLOT_PARALLEL_WORKERS = '1')",
+    "expr <- parse(script_file)",
+    "labels <- vapply(expr, function(e) paste(deparse(e, nlines = 1L), collapse = ' '), character(1))",
+    "stop_at <- which(grepl('^clear_previous_tcgaplot_run_outputs <-', labels))[1]",
+    "if (is.na(stop_at)) stop('Could not find TCGAplot main-run boundary')",
+    "for (i in seq_len(stop_at)) eval(expr[[i]], envir = .GlobalEnv)",
+    "task <- readRDS(task_file)",
+    "manifest <- run_one_tcgaplot_task(task)",
+    "saveRDS(manifest, result_file)"
+  ), worker_script)
+
+  rscript <- file.path(R.home("bin"), "Rscript")
+  status <- tryCatch(
+    suppressWarnings(system2(
+      rscript,
+      args = c("--vanilla", worker_script, PROJECT_ROOT, SCRIPT_FILE, task_file, result_file),
+      stdout = stdout_log,
+      stderr = stderr_log
+    )),
+    error = function(error) structure(character(0), status = 1L)
+  )
+  status_code <- attr(status, "status")
+  if (is.null(status_code)) {
+    status_code <- 0L
+  }
+
+  if (status_code != 0L || !file.exists(result_file)) {
+    cleanup_task_output_files(task)
+    log_excerpt <- c(read_log_excerpt(stderr_log), read_log_excerpt(stdout_log))
+    return(make_task_result(
+      task = task,
+      status = "failed",
+      messages = paste0("Process-isolated worker logs: ", stderr_log, "; ", stdout_log),
+      error = paste(
+        paste0("Process-isolated worker exited with status ", status_code),
+        paste(log_excerpt, collapse = "\n"),
+        sep = "\n"
+      ),
+      start_time = task_start_time,
+      cache_file = cache_file
+    ))
+  }
+
+  manifest <- readRDS(result_file)
+  validation_error <- tryCatch(
+    {
+      validate_plot_output_files(c(
+        split_manifest_files(manifest$Output_Files[1]),
+        split_manifest_files(manifest$Generated_Files[1])
+      ))
+      NULL
+    },
+    error = function(error) error
+  )
+  if (inherits(validation_error, "error")) {
+    cleanup_task_output_files(task)
+    return(make_task_result(
+      task = task,
+      status = "failed",
+      messages = paste0("Process-isolated worker logs: ", stderr_log, "; ", stdout_log),
+      error = conditionMessage(validation_error),
+      start_time = task_start_time,
+      cache_file = cache_file
+    ))
+  }
+
+  manifest
+}
+
 run_one_tcgaplot_task <- function(task) {
   # 每个TCGAplot函数被抽象成一个task：
   # analysis：脚本任务名；function_name：TCGAplot原始函数名；
@@ -1902,6 +2376,14 @@ run_one_tcgaplot_task <- function(task) {
     ))
   }
 
+  if (should_run_task_in_subprocess(task)) {
+    return(run_tcgaplot_task_in_subprocess(
+      task = task,
+      task_start_time = task_start_time,
+      cache_file = cache_file
+    ))
+  }
+
   task_stem <- task_file_stem(task)
   task_title <- make_default_task_title(task)
 
@@ -1919,7 +2401,7 @@ run_one_tcgaplot_task <- function(task) {
     if (task$renderer == "once") {
       # 部分对象需要先在内存中生成，再打开设备保存，避免重复运行函数。
       result <- do.call(fn, task$args)
-      output_files <- save_grid_pdf_png(
+      output_files <- save_tcgaplot_pdf_png(
         pdf_file = file.path(PLOT_ROOT, paste0(task_stem, ".pdf")),
         width = task$width,
         height = task$height,
@@ -1934,7 +2416,7 @@ run_one_tcgaplot_task <- function(task) {
       ))
     }
 
-    output_files <- save_grid_pdf_png(
+    output_files <- save_tcgaplot_pdf_png(
       pdf_file = file.path(PLOT_ROOT, paste0(task_stem, ".pdf")),
       width = task$width,
       height = task$height,
@@ -1967,7 +2449,7 @@ run_one_tcgaplot_task <- function(task) {
         do.call(fn, task$args)
       }
       direct_stage$value <- "save_plot"
-      output_files <- save_grid_pdf_png(
+      output_files <- save_tcgaplot_pdf_png(
         pdf_file = file.path(PLOT_ROOT, paste0(task_stem, ".pdf")),
         width = task$width,
         height = task$height,
@@ -1987,6 +2469,7 @@ run_one_tcgaplot_task <- function(task) {
     })))
 
     if (inherits(direct_captured$result, "error")) {
+      cleanup_task_output_files(task)
       return(make_task_result(
         task = task,
         status = "failed",
@@ -1997,6 +2480,26 @@ run_one_tcgaplot_task <- function(task) {
           conditionMessage(direct_captured$result),
           sep = "\n"
         ),
+        start_time = task_start_time,
+        cache_file = cache_file
+      ))
+    }
+
+    direct_validation_error <- tryCatch(
+      {
+        validate_plot_output_files(c(direct_captured$result$output_files, direct_captured$result$generated_files))
+        NULL
+      },
+      error = function(error) error
+    )
+    if (inherits(direct_validation_error, "error")) {
+      cleanup_task_output_files(task)
+      return(make_task_result(
+        task = task,
+        status = "failed",
+        warnings = direct_captured$warnings,
+        messages = direct_captured$messages,
+        error = conditionMessage(direct_validation_error),
         start_time = task_start_time,
         cache_file = cache_file
       ))
@@ -2019,12 +2522,33 @@ run_one_tcgaplot_task <- function(task) {
   captured <- with_task_workspace(task, capture_task(task_call()))
 
   if (inherits(captured$result, "error")) {
+    cleanup_task_output_files(task)
     return(make_task_result(
       task = task,
       status = "failed",
       warnings = captured$warnings,
       messages = captured$messages,
       error = conditionMessage(captured$result),
+      start_time = task_start_time,
+      cache_file = cache_file
+    ))
+  }
+
+  validation_error <- tryCatch(
+    {
+      validate_plot_output_files(c(captured$result$output_files, captured$result$generated_files))
+      NULL
+    },
+    error = function(error) error
+  )
+  if (inherits(validation_error, "error")) {
+    cleanup_task_output_files(task)
+    return(make_task_result(
+      task = task,
+      status = "failed",
+      warnings = captured$warnings,
+      messages = captured$messages,
+      error = conditionMessage(validation_error),
       start_time = task_start_time,
       cache_file = cache_file
     ))
