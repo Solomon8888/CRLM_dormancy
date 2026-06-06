@@ -35,6 +35,20 @@ parse_env_logical <- function(name, default) {
   value %in% c("1", "true", "t", "yes", "y")
 }
 
+parse_env_integer <- function(name, default) {
+  value <- Sys.getenv(name, unset = "")
+  if (!nzchar(value)) {
+    return(default)
+  }
+
+  parsed <- suppressWarnings(as.integer(value))
+  if (is.na(parsed)) {
+    return(default)
+  }
+
+  parsed
+}
+
 
 # 1. 分析设计区：日常主要修改这里 ---------------------------------------------
 
@@ -73,6 +87,10 @@ GENE_PAIR_DESIGNS <- data.frame(
 
 # GO/KEGG网络富集可以输入一个基因或一组基因。默认用TARGET_GENES，也就是ATF3。
 NETWORK_GENES <- TARGET_GENES
+
+# gene_network_go/gene_network_kegg本质是富集网络图，单个基因通常没有可用富集条目。
+# 默认至少2个基因才运行；ATF3单基因分析中这两个任务会记录为skipped而不是failed。
+NETWORK_MIN_GENES <- parse_env_integer("TCGAPLOT_NETWORK_MIN_GENES", 2L)
 
 # 基因集分析配置。TCGAplot的gs_*函数需要一个MSigDB基因集名或用户自定义基因向量，
 # 同时需要geneset_alias作为图中展示名称。默认不跑基因集分析。
@@ -130,6 +148,10 @@ TABLE_ROOT <- file.path(RESULT_ROOT, "tables", "TCGAplot")
 SUMMARY_ROOT <- file.path(TABLE_ROOT, "run_summary")
 DATA_ROOT <- file.path(PROJECT_ROOT, "data", "tcgaplot")
 TEMP_ROOT <- file.path(PROJECT_ROOT, "temporary", "tcgaplot")
+TCGAPLOT_REFERENCE_CACHE_ROOT <- file.path(DATA_ROOT, "reference_cache")
+TCGAPLOT_TASK_CACHE_ROOT <- file.path(TCGAPLOT_REFERENCE_CACHE_ROOT, "task_manifest")
+OMNIPATHR_CACHE_DIR <- file.path(TCGAPLOT_REFERENCE_CACHE_ROOT, "omnipathr_cache")
+OMNIPATHR_LOG_DIR <- file.path(TEMP_ROOT, "omnipathr-log")
 
 # 是否把TCGAplot内置大矩阵额外提取保存到data/tcgaplot。
 # 默认FALSE，因为get_all_tpm/get_all_promoter_methy等对象较大；
@@ -142,6 +164,17 @@ SAVE_BUILTIN_DATA_EXTRACTS <- parse_env_logical(
 
 # 重跑时清理当前任务自己的旧输出，避免旧文件混入新结果。
 CLEAN_TASK_OUTPUT_DIR <- parse_env_logical("TCGAPLOT_CLEAN_OUTPUT", TRUE)
+
+# 并行配置。默认使用parallel_runtime_functions.R自动识别的可用核心数；
+# 如需限制CPU占用，可在终端设置：
+# TCGAPLOT_PARALLEL_WORKERS=4 Rscript scripts/TCGA/00_tcgaplot_quick_analysis.R
+MAX_PARALLEL_WORKERS <- parse_env_integer("TCGAPLOT_PARALLEL_WORKERS", NA_integer_)
+
+# 对网络/富集类TCGAplot任务启用任务输出缓存。
+# 这不会改变正式结果目录，只是在data/tcgaplot/reference_cache下保存输出manifest，
+# 同一参数重复运行且结果文件仍存在时可直接复用，避免重复跑耗时网络/富集图。
+USE_TCGAPLOT_TASK_CACHE <- parse_env_logical("TCGAPLOT_USE_TASK_CACHE", TRUE)
+TCGAPLOT_TASK_CACHE_MAX_AGE_DAYS <- parse_env_integer("TCGAPLOT_TASK_CACHE_MAX_AGE_DAYS", 30L)
 
 options(width = 200)
 options(bitmapType = "cairo")
@@ -178,12 +211,37 @@ suppressPackageStartupMessages({
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 TABLE_IO_FUNCTION_FILE <- "scripts/functions/result_table_io_functions.R"
 PARALLEL_FUNCTION_FILE <- "scripts/functions/parallel_runtime_functions.R"
+NETWORK_CACHE_FUNCTION_FILE <- "scripts/functions/network_cache_functions.R"
 
 source(PLOTTING_FUNCTION_FILE)
 source(TABLE_IO_FUNCTION_FILE)
 source(PARALLEL_FUNCTION_FILE)
+source(NETWORK_CACHE_FUNCTION_FILE)
 
 SCRIPT_START_TIME <- start_runtime_timer()
+
+PARALLEL_WORKERS <- if (is.na(MAX_PARALLEL_WORKERS)) {
+  get_available_worker_count()
+} else {
+  max(1L, MAX_PARALLEL_WORKERS)
+}
+
+# 尽量沿用项目统一绘图风格。TCGAplot函数内部若显式设置theme，则以内置设置为准；
+# 未显式设置的ggplot图层会继承这里的字体、黑色粗体文本和经典背景。
+ggplot2::theme_set(ggplot2::theme_classic(
+  base_family = TEXT_FONT_FAMILY,
+  base_size = BASE_FONT_SIZE
+))
+ggplot2::theme_update(
+  text = ggplot2::element_text(
+    family = TEXT_FONT_FAMILY,
+    face = TEXT_FONT_FACE,
+    color = TEXT_COLOR
+  ),
+  axis.line = ggplot2::element_line(linewidth = AXIS_LINE_WIDTH, color = TEXT_COLOR),
+  axis.text = ggplot2::element_text(color = TEXT_COLOR),
+  axis.title = ggplot2::element_text(color = TEXT_COLOR)
+)
 
 
 # 3. 通用工具函数 --------------------------------------------------------------
@@ -208,6 +266,14 @@ write_table <- function(dat, output_dir, file_stem) {
     csv_file = file.path(output_dir, paste0(file_stem, ".csv")),
     na = "NA"
   )
+}
+
+format_task_timestamp <- function(time) {
+  if (is.null(time) || is.na(time)) {
+    return("")
+  }
+
+  format(time, "%Y-%m-%d %H:%M:%S")
 }
 
 get_tcgaplot_function <- function(function_name) {
@@ -253,6 +319,44 @@ render_tcgaplot_output <- function(result) {
 
   try(print(result), silent = TRUE)
   invisible(NULL)
+}
+
+render_pdf_preview_png <- function(pdf_file, png_file, dpi = PNG_DPI) {
+  # TCGAplot少数函数只在当前目录直接写PDF，不返回可重绘对象。
+  # 优先用pdftools/png；macOS环境缺pdftools时，用系统sips做轻量兜底。
+  if (!file.exists(pdf_file)) {
+    return(FALSE)
+  }
+
+  if (requireNamespace("pdftools", quietly = TRUE) && requireNamespace("png", quietly = TRUE)) {
+    converted <- tryCatch(
+      {
+        bitmap <- pdftools::pdf_render_page(pdf_file, page = 1, dpi = dpi)
+        dir.create(dirname(png_file), recursive = TRUE, showWarnings = FALSE)
+        png::writePNG(bitmap, target = png_file)
+        file.exists(png_file)
+      },
+      error = function(error) FALSE
+    )
+    if (converted) {
+      return(TRUE)
+    }
+  }
+
+  sips <- Sys.which("sips")
+  if (!nzchar(sips)) {
+    return(FALSE)
+  }
+
+  dir.create(dirname(png_file), recursive = TRUE, showWarnings = FALSE)
+  status <- suppressWarnings(system2(
+    sips,
+    args = c("-s", "format", "png", pdf_file, "--out", png_file),
+    stdout = TRUE,
+    stderr = TRUE
+  ))
+
+  file.exists(png_file) && !inherits(status, "try-error")
 }
 
 with_task_workspace <- function(task, expr) {
@@ -316,6 +420,13 @@ copy_generated_files <- function(task, table_dir, plot_dir) {
     dir.create(destination_dir, recursive = TRUE, showWarnings = FALSE)
     file.copy(source_file, destination_file, overwrite = TRUE)
     copied_files <- c(copied_files, destination_file)
+
+    if (extension == "pdf") {
+      png_file <- file.path(plot_dir, "png", paste0(output_stem, ".png"))
+      if (render_pdf_preview_png(destination_file, png_file)) {
+        copied_files <- c(copied_files, png_file)
+      }
+    }
   }
 
   copied_files
@@ -355,20 +466,177 @@ make_task_result <- function(
     generated_files = character(0),
     warnings = character(0),
     messages = character(0),
-    error = "") {
+    error = "",
+    start_time = NULL,
+    end_time = Sys.time(),
+    cache_file = "") {
+  runtime_seconds <- if (is.null(start_time)) {
+    NA_real_
+  } else {
+    as.numeric(difftime(end_time, start_time, units = "secs"))
+  }
+
   data.frame(
     Analysis = task$analysis,
     Function = task$function_name,
     Target = task$target,
     Context = task$context,
     Status = status,
+    Start_Time = format_task_timestamp(start_time),
+    End_Time = format_task_timestamp(end_time),
+    Runtime_Seconds = runtime_seconds,
+    Runtime = ifelse(is.na(runtime_seconds), "", format_runtime_seconds(runtime_seconds)),
     Output_Files = paste(output_files, collapse = ";"),
     Generated_Files = paste(generated_files, collapse = ";"),
+    Cache_File = cache_file,
     Warning = paste(warnings, collapse = " | "),
     Message = paste(messages, collapse = " | "),
     Error = error,
     stringsAsFactors = FALSE
   )
+}
+
+make_special_task_result <- function(
+    task_name,
+    status,
+    output_files = character(0),
+    rows = NA_integer_,
+    warnings = character(0),
+    messages = character(0),
+    error = "",
+    start_time = NULL,
+    end_time = Sys.time()) {
+  runtime_seconds <- if (is.null(start_time)) {
+    NA_real_
+  } else {
+    as.numeric(difftime(end_time, start_time, units = "secs"))
+  }
+
+  data.frame(
+    Analysis = task_name,
+    Status = status,
+    Start_Time = format_task_timestamp(start_time),
+    End_Time = format_task_timestamp(end_time),
+    Runtime_Seconds = runtime_seconds,
+    Runtime = ifelse(is.na(runtime_seconds), "", format_runtime_seconds(runtime_seconds)),
+    Rows = rows,
+    Output_Files = paste(output_files, collapse = ";"),
+    Warning = paste(warnings, collapse = " | "),
+    Message = paste(messages, collapse = " | "),
+    Error = error,
+    stringsAsFactors = FALSE
+  )
+}
+
+CACHEABLE_TCGAPLOT_ANALYSES <- c(
+  "gene_network_go",
+  "gene_network_kegg",
+  "gene_gsea_go",
+  "gene_gsea_kegg",
+  "gene_coexp_heatmap"
+)
+
+split_manifest_files <- function(x) {
+  x <- unlist(strsplit(as.character(x), ";", fixed = TRUE), use.names = FALSE)
+  x <- trimws(x)
+  x[nzchar(x)]
+}
+
+manifest_files_exist <- function(manifest) {
+  if (!is.data.frame(manifest) || nrow(manifest) == 0L) {
+    return(FALSE)
+  }
+
+  output_files <- split_manifest_files(manifest$Output_Files[1])
+  generated_files <- split_manifest_files(manifest$Generated_Files[1])
+  files <- unique(c(output_files, generated_files))
+  length(files) > 0L && all(file.exists(files))
+}
+
+is_cacheable_tcgaplot_task <- function(task) {
+  USE_TCGAPLOT_TASK_CACHE && task$analysis %in% CACHEABLE_TCGAPLOT_ANALYSES
+}
+
+get_tcgaplot_task_skip_reason <- function(task) {
+  if (
+    task$analysis %in% c("gene_network_go", "gene_network_kegg") &&
+      length(unique(task$args$gene)) < NETWORK_MIN_GENES
+  ) {
+    return(paste0(
+      "Skipped because ",
+      task$analysis,
+      " requires at least ",
+      NETWORK_MIN_GENES,
+      " genes for a stable enrichment network; current NETWORK_GENES=",
+      paste(task$args$gene, collapse = ",")
+    ))
+  }
+
+  ""
+}
+
+get_tcgaplot_task_cache_file <- function(task) {
+  file.path(
+    TCGAPLOT_TASK_CACHE_ROOT,
+    safe_name(task$analysis),
+    safe_name(task$target),
+    paste0(safe_name(task$context), ".rds")
+  )
+}
+
+make_tcgaplot_task_cache_metadata <- function(task) {
+  make_resource_cache_metadata(
+    resource_name = paste0("TCGAplot::", task$function_name),
+    species = "human",
+    extra = list(
+      package_version = as.character(utils::packageVersion("TCGAplot")),
+      analysis = task$analysis,
+      target = task$target,
+      context = task$context,
+      renderer = task$renderer,
+      width = task$width,
+      height = task$height,
+      args = task$args
+    )
+  )
+}
+
+read_tcgaplot_task_cache <- function(task) {
+  if (!is_cacheable_tcgaplot_task(task)) {
+    return(NULL)
+  }
+
+  cache_file <- get_tcgaplot_task_cache_file(task)
+  metadata <- make_tcgaplot_task_cache_metadata(task)
+  cached <- read_reference_cache(
+    cache_file = cache_file,
+    expected_metadata = metadata,
+    max_age_days = TCGAPLOT_TASK_CACHE_MAX_AGE_DAYS,
+    use_cache = USE_TCGAPLOT_TASK_CACHE
+  )
+
+  if (!cached$found || !manifest_files_exist(cached$result)) {
+    return(NULL)
+  }
+
+  cached$result$Status <- "cached"
+  cached$result$Cache_File <- cache_file
+  cached$result
+}
+
+write_tcgaplot_task_cache <- function(task, manifest) {
+  if (!is_cacheable_tcgaplot_task(task) || !identical(manifest$Status[1], "success")) {
+    return(invisible(FALSE))
+  }
+
+  cache_file <- get_tcgaplot_task_cache_file(task)
+  metadata <- make_tcgaplot_task_cache_metadata(task)
+  write_reference_cache(
+    cache_file = cache_file,
+    metadata = metadata,
+    result = manifest
+  )
+  invisible(TRUE)
 }
 
 
@@ -812,8 +1080,8 @@ make_analysis_catalog <- function(selected_analyses = character(0)) {
   add_row("gene_gsea_kegg", "gene_gsea_kegg", "高低表达分组机制分析", "指定癌种", "基因", "按目标基因高低表达分组做GSEA-KEGG")
   add_row("gene_coexp_heatmap", "gene_coexp_heatmap", "共表达分析", "指定癌种", "基因", "目标基因正/负共表达基因热图及GO富集")
   add_row("gene_gene_scatter", "gene_gene_scatter", "基因相关", "指定癌种", "基因对", "两个指定基因的表达相关散点图", "需要在GENE_PAIR_DESIGNS配置基因对")
-  add_row("gene_network_go", "gene_network_go", "基因网络", "不限癌种", "基因/基因列表", "输入基因列表的GO cnetplot网络图")
-  add_row("gene_network_kegg", "gene_network_kegg", "基因网络", "不限癌种", "基因/基因列表", "输入基因列表的KEGG cnetplot网络图")
+  add_row("gene_network_go", "gene_network_go", "基因网络", "不限癌种", "基因/基因列表", "输入基因列表的GO cnetplot网络图", "默认至少2个NETWORK_GENES；ATF3单基因默认跳过")
+  add_row("gene_network_kegg", "gene_network_kegg", "基因网络", "不限癌种", "基因/基因列表", "输入基因列表的KEGG cnetplot网络图", "默认至少2个NETWORK_GENES；ATF3单基因默认跳过")
 
   add_row("gs_pan_boxplot", "gs_pan_boxplot", "基因集表达", "泛癌", "基因集", "基因集泛癌tumor-normal表达差异箱线图", "需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS")
   add_row("gs_pan_paired_boxplot", "gs_pan_paired_boxplot", "基因集表达", "泛癌", "基因集", "基因集泛癌配对tumor-normal表达差异箱线图", "需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS")
@@ -1295,6 +1563,49 @@ build_geneset_tasks <- function(selected_analyses) {
   tasks
 }
 
+validate_tcgaplot_tasks <- function(tasks) {
+  if (length(tasks) == 0L) {
+    validation <- data.frame()
+    write_table(validation, SUMMARY_ROOT, "tcgaplot_task_argument_validation")
+    return(invisible(validation))
+  }
+
+  validation <- do.call(
+    rbind,
+    lapply(seq_along(tasks), function(i) {
+      task <- tasks[[i]]
+      fn <- get_tcgaplot_function(task$function_name)
+      formal_names <- names(formals(fn))
+      arg_names <- names(task$args)
+      unknown_args <- setdiff(arg_names, formal_names)
+
+      data.frame(
+        Task_ID = i,
+        Analysis = task$analysis,
+        Function = task$function_name,
+        Target = task$target,
+        Context = task$context,
+        Argument_Names = paste(arg_names, collapse = ";"),
+        Unknown_Arguments = paste(unknown_args, collapse = ";"),
+        Status = ifelse(length(unknown_args) == 0L, "ok", "invalid_args"),
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+
+  write_table(validation, SUMMARY_ROOT, "tcgaplot_task_argument_validation")
+
+  invalid <- validation[validation$Status != "ok", , drop = FALSE]
+  if (nrow(invalid) > 0L) {
+    stop(
+      "TCGAplot task argument validation failed. See: ",
+      file.path(SUMMARY_ROOT, "tcgaplot_task_argument_validation.csv")
+    )
+  }
+
+  invisible(validation)
+}
+
 
 # 7. TCGAplot任务执行器 --------------------------------------------------------
 
@@ -1302,6 +1613,24 @@ run_one_tcgaplot_task <- function(task) {
   # 每个TCGAplot函数被抽象成一个task：
   # analysis：脚本任务名；function_name：TCGAplot原始函数名；
   # target/context：用于组织输出目录；renderer：用于处理不同函数的输出方式。
+  task_start_time <- Sys.time()
+  cache_file <- if (is_cacheable_tcgaplot_task(task)) {
+    get_tcgaplot_task_cache_file(task)
+  } else {
+    ""
+  }
+
+  skip_reason <- get_tcgaplot_task_skip_reason(task)
+  if (nzchar(skip_reason)) {
+    return(make_task_result(
+      task = task,
+      status = "skipped",
+      messages = skip_reason,
+      start_time = task_start_time,
+      cache_file = cache_file
+    ))
+  }
+
   plot_dir <- file.path(
     PLOT_ROOT,
     safe_name(task$analysis),
@@ -1316,6 +1645,19 @@ run_one_tcgaplot_task <- function(task) {
   )
   dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(table_dir, recursive = TRUE, showWarnings = FALSE)
+
+  cached_manifest <- read_tcgaplot_task_cache(task)
+  if (!is.null(cached_manifest)) {
+    return(make_task_result(
+      task = task,
+      status = "cached",
+      output_files = split_manifest_files(cached_manifest$Output_Files[1]),
+      generated_files = split_manifest_files(cached_manifest$Generated_Files[1]),
+      messages = "Reused TCGAplot task cache because output files already exist",
+      start_time = task_start_time,
+      cache_file = cache_file
+    ))
+  }
 
   if (CLEAN_TASK_OUTPUT_DIR) {
     unlink(list.files(plot_dir, recursive = TRUE, full.names = TRUE))
@@ -1379,7 +1721,7 @@ run_one_tcgaplot_task <- function(task) {
     # 因此这里为它保留显式调用分支。
     direct_stage <- new.env(parent = emptyenv())
     direct_stage$value <- "initializing"
-    direct_result <- with_task_workspace(task, tryCatch({
+    direct_captured <- with_task_workspace(task, capture_task(tryCatch({
       direct_stage$value <- "get_tcgaplot_function"
       fn <- get_tcgaplot_function(task$function_name)
       direct_stage$value <- "call_tcgaplot_function"
@@ -1408,26 +1750,36 @@ run_one_tcgaplot_task <- function(task) {
     }, error = function(error) {
       attr(error, "task_stage") <- direct_stage$value
       error
-    }))
+    })))
 
-    if (inherits(direct_result, "error")) {
+    if (inherits(direct_captured$result, "error")) {
       return(make_task_result(
         task = task,
         status = "failed",
+        warnings = direct_captured$warnings,
+        messages = direct_captured$messages,
         error = paste(
-          paste0("stage=", attr(direct_result, "task_stage")),
-          conditionMessage(direct_result),
+          paste0("stage=", attr(direct_captured$result, "task_stage")),
+          conditionMessage(direct_captured$result),
           sep = "\n"
-        )
+        ),
+        start_time = task_start_time,
+        cache_file = cache_file
       ))
     }
 
-    return(make_task_result(
+    manifest <- make_task_result(
       task = task,
       status = "success",
-      output_files = direct_result$output_files,
-      generated_files = direct_result$generated_files
-    ))
+      output_files = direct_captured$result$output_files,
+      generated_files = direct_captured$result$generated_files,
+      warnings = direct_captured$warnings,
+      messages = direct_captured$messages,
+      start_time = task_start_time,
+      cache_file = cache_file
+    )
+    write_tcgaplot_task_cache(task, manifest)
+    return(manifest)
   }
 
   captured <- with_task_workspace(task, capture_task(task_call()))
@@ -1438,18 +1790,232 @@ run_one_tcgaplot_task <- function(task) {
       status = "failed",
       warnings = captured$warnings,
       messages = captured$messages,
-      error = conditionMessage(captured$result)
+      error = conditionMessage(captured$result),
+      start_time = task_start_time,
+      cache_file = cache_file
     ))
   }
 
-  make_task_result(
+  manifest <- make_task_result(
     task = task,
     status = "success",
     output_files = captured$result$output_files,
     generated_files = captured$result$generated_files,
     warnings = captured$warnings,
-    messages = captured$messages
+    messages = captured$messages,
+    start_time = task_start_time,
+    cache_file = cache_file
   )
+  write_tcgaplot_task_cache(task, manifest)
+  manifest
+}
+
+run_one_special_tcgaplot_task <- function(task_name) {
+  task_start_time <- Sys.time()
+  captured <- capture_task({
+    result <- switch(
+      task_name,
+      sample_audit = run_sample_audit(),
+      data_summary = run_data_summary(),
+      stop("Unknown special TCGAplot task: ", task_name)
+    )
+
+    rows <- if (is.data.frame(result)) {
+      nrow(result)
+    } else {
+      length(result)
+    }
+
+    output_files <- switch(
+      task_name,
+      sample_audit = file.path(SUMMARY_ROOT, "sample_audit_summary.csv"),
+      data_summary = c(
+        file.path(TABLE_ROOT, "builtin_data", "tcgaplot_cancers.csv"),
+        file.path(TABLE_ROOT, "builtin_data", "tcgaplot_paired_cancers.csv"),
+        file.path(TABLE_ROOT, "builtin_data", "tcgaplot_package_info.csv")
+      ),
+      character(0)
+    )
+
+    list(rows = rows, output_files = output_files)
+  })
+
+  if (inherits(captured$result, "error")) {
+    return(make_special_task_result(
+      task_name = task_name,
+      status = "failed",
+      warnings = captured$warnings,
+      messages = captured$messages,
+      error = conditionMessage(captured$result),
+      start_time = task_start_time
+    ))
+  }
+
+  make_special_task_result(
+    task_name = task_name,
+    status = "success",
+    output_files = captured$result$output_files,
+    rows = captured$result$rows,
+    warnings = captured$warnings,
+    messages = captured$messages,
+    start_time = task_start_time
+  )
+}
+
+normalize_parallel_tcgaplot_results <- function(results, tasks) {
+  normalized <- vector("list", length(results))
+
+  for (i in seq_along(results)) {
+    result <- results[[i]]
+    if (inherits(result, "try-error") || is.null(result)) {
+      normalized[[i]] <- make_task_result(
+        task = tasks[[i]],
+        status = "failed",
+        error = paste(as.character(result), collapse = "\n")
+      )
+    } else {
+      normalized[[i]] <- result
+    }
+  }
+
+  normalized
+}
+
+normalize_parallel_special_results <- function(results, task_names) {
+  normalized <- vector("list", length(results))
+
+  for (i in seq_along(results)) {
+    result <- results[[i]]
+    if (inherits(result, "try-error") || is.null(result)) {
+      normalized[[i]] <- make_special_task_result(
+        task_name = task_names[i],
+        status = "failed",
+        error = paste(as.character(result), collapse = "\n")
+      )
+    } else {
+      normalized[[i]] <- result
+    }
+  }
+
+  normalized
+}
+
+is_success_status <- function(status) {
+  status %in% c("success", "cached", "skipped")
+}
+
+make_runtime_summary <- function(special_task_summary, task_summary, start_time) {
+  total_runtime_seconds <- as.numeric(difftime(Sys.time(), start_time, units = "secs"))
+
+  special_status <- if (nrow(special_task_summary) > 0L) special_task_summary$Status else character(0)
+  plot_status <- if (nrow(task_summary) > 0L) task_summary$Status else character(0)
+
+  data.frame(
+    Section = c("special_tasks", "tcgaplot_tasks", "total"),
+    Tasks = c(nrow(special_task_summary), nrow(task_summary), nrow(special_task_summary) + nrow(task_summary)),
+    Completed_Without_Error = c(
+      sum(is_success_status(special_status)),
+      sum(is_success_status(plot_status)),
+      sum(is_success_status(c(special_status, plot_status)))
+    ),
+    Failed = c(
+      sum(!is_success_status(special_status)),
+      sum(!is_success_status(plot_status)),
+      sum(!is_success_status(c(special_status, plot_status)))
+    ),
+    Runtime_Seconds = c(
+      sum(suppressWarnings(as.numeric(special_task_summary$Runtime_Seconds)), na.rm = TRUE),
+      sum(suppressWarnings(as.numeric(task_summary$Runtime_Seconds)), na.rm = TRUE),
+      total_runtime_seconds
+    ),
+    Runtime = c(
+      format_runtime_seconds(sum(suppressWarnings(as.numeric(special_task_summary$Runtime_Seconds)), na.rm = TRUE)),
+      format_runtime_seconds(sum(suppressWarnings(as.numeric(task_summary$Runtime_Seconds)), na.rm = TRUE)),
+      format_runtime_seconds(total_runtime_seconds)
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+normalize_existing_path <- function(path) {
+  normalizePath(path, winslash = "/", mustWork = FALSE)
+}
+
+prune_directory_except <- function(root, keep_leaf_dirs) {
+  root <- normalize_existing_path(root)
+  keep_leaf_dirs <- normalize_existing_path(keep_leaf_dirs)
+
+  if (!dir.exists(root)) {
+    return(invisible(FALSE))
+  }
+  if (root %in% keep_leaf_dirs) {
+    return(invisible(TRUE))
+  }
+
+  children <- list.files(root, all.files = FALSE, full.names = TRUE, recursive = FALSE)
+  for (child in children) {
+    child <- normalize_existing_path(child)
+    keep_child <- keep_leaf_dirs[
+      keep_leaf_dirs == child |
+        startsWith(keep_leaf_dirs, paste0(child, "/"))
+    ]
+
+    if (length(keep_child) == 0L) {
+      unlink(child, recursive = TRUE, force = TRUE)
+    } else if (dir.exists(child)) {
+      prune_directory_except(child, keep_child)
+    }
+  }
+
+  invisible(TRUE)
+}
+
+task_plot_dir <- function(task) {
+  file.path(PLOT_ROOT, safe_name(task$analysis), safe_name(task$target), safe_name(task$context))
+}
+
+task_table_dir <- function(task) {
+  file.path(TABLE_ROOT, safe_name(task$analysis), safe_name(task$target), safe_name(task$context))
+}
+
+clean_selected_tcgaplot_outputs <- function(selected_analyses, tasks) {
+  if (!CLEAN_TASK_OUTPUT_DIR) {
+    return(invisible(FALSE))
+  }
+
+  plot_analyses <- setdiff(selected_analyses, c("sample_audit", "data_summary"))
+  for (analysis_name in unique(plot_analyses)) {
+    current_tasks <- tasks[
+      vapply(tasks, function(task) {
+        task$analysis == analysis_name && !nzchar(get_tcgaplot_task_skip_reason(task))
+      }, logical(1))
+    ]
+
+    keep_plot_dirs <- vapply(current_tasks, task_plot_dir, character(1))
+    keep_table_dirs <- vapply(current_tasks, task_table_dir, character(1))
+    prune_directory_except(file.path(PLOT_ROOT, safe_name(analysis_name)), keep_plot_dirs)
+    prune_directory_except(file.path(TABLE_ROOT, safe_name(analysis_name)), keep_table_dirs)
+  }
+
+  if ("sample_audit" %in% selected_analyses) {
+    unlink(file.path(TABLE_ROOT, "sample_audit"), recursive = TRUE, force = TRUE)
+    unlink(file.path(SUMMARY_ROOT, "sample_audit_summary.csv"), force = TRUE)
+  }
+
+  if ("data_summary" %in% selected_analyses) {
+    unlink(file.path(TABLE_ROOT, "builtin_data"), recursive = TRUE, force = TRUE)
+  }
+
+  summary_files <- c(
+    "tcgaplot_special_task_summary.csv",
+    "tcgaplot_task_summary.csv",
+    "tcgaplot_failed_tasks.csv",
+    "tcgaplot_runtime_summary.csv",
+    "tcgaplot_task_argument_validation.csv"
+  )
+  unlink(file.path(SUMMARY_ROOT, summary_files), force = TRUE)
+
+  invisible(TRUE)
 }
 
 
@@ -1461,70 +2027,112 @@ dir.create(TABLE_ROOT, recursive = TRUE, showWarnings = FALSE)
 dir.create(SUMMARY_ROOT, recursive = TRUE, showWarnings = FALSE)
 dir.create(DATA_ROOT, recursive = TRUE, showWarnings = FALSE)
 dir.create(TEMP_ROOT, recursive = TRUE, showWarnings = FALSE)
+dir.create(TCGAPLOT_REFERENCE_CACHE_ROOT, recursive = TRUE, showWarnings = FALSE)
+dir.create(TCGAPLOT_TASK_CACHE_ROOT, recursive = TRUE, showWarnings = FALSE)
+configure_omnipathr_runtime(
+  cache_dir = OMNIPATHR_CACHE_DIR,
+  log_dir = OMNIPATHR_LOG_DIR
+)
 
 selected_analyses <- resolve_requested_analyses()
+plot_analyses <- setdiff(selected_analyses, c("sample_audit", "data_summary"))
+tcgaplot_tasks <- build_tcgaplot_tasks(plot_analyses)
+clean_selected_tcgaplot_outputs(selected_analyses, tcgaplot_tasks)
+validate_tcgaplot_tasks(tcgaplot_tasks)
+
+special_task_names <- intersect(c("sample_audit", "data_summary"), selected_analyses)
+total_runtime_tasks <- length(special_task_names) + length(tcgaplot_tasks)
+parallel_strategy <- setup_parallel_strategy(
+  total_tasks = max(total_runtime_tasks, 1L),
+  max_workers = PARALLEL_WORKERS,
+  inner_label = "TCGAplot inner workers",
+  nested_label = "Nested workers"
+)
 
 cat("\nTCGAplot quick analysis configuration:\n")
 cat("TCGAplot version: ", as.character(utils::packageVersion("TCGAplot")), "\n", sep = "")
 cat("Target genes: ", paste(TARGET_GENES, collapse = ", "), "\n", sep = "")
 cat("Target cancers: ", paste(TARGET_CANCERS, collapse = ", "), "\n", sep = "")
 cat("Selected analyses: ", paste(selected_analyses, collapse = ", "), "\n", sep = "")
+cat("Prepared special tasks: ", length(special_task_names), "\n", sep = "")
+cat("Prepared plotting/statistical tasks: ", length(tcgaplot_tasks), "\n", sep = "")
 cat("Result root: ", RESULT_ROOT, "\n", sep = "")
 cat("Temporary root: ", TEMP_ROOT, "\n", sep = "")
+cat("TCGAplot data/cache root: ", DATA_ROOT, "\n", sep = "")
 
 cat("\nWriting TCGAplot analysis catalog...\n")
 write_analysis_catalog(selected_analyses)
 
-special_results <- list()
-if ("sample_audit" %in% selected_analyses) {
-  cat("\nRunning TCGAplot/local-SE sample audit...\n")
-  special_results$sample_audit <- run_sample_audit()
-}
-if ("data_summary" %in% selected_analyses) {
-  cat("\nSaving TCGAplot built-in data summaries...\n")
-  special_results$data_summary <- run_data_summary()
+special_task_summary <- if (length(special_task_names) > 0L) {
+  cat("\nRunning TCGAplot setup/data tasks...\n")
+  special_results <- run_indexed_tasks_with_progress(
+    total_tasks = length(special_task_names),
+    task_function = function(task_id) {
+      run_one_special_tcgaplot_task(special_task_names[task_id])
+    },
+    workers = min(parallel_strategy$task_workers, length(special_task_names)),
+    progress_label = "TCGAplot setup"
+  )
+  special_results <- normalize_parallel_special_results(
+    results = special_results,
+    task_names = special_task_names
+  )
+  do.call(rbind, special_results)
+} else {
+  data.frame()
 }
 
-plot_analyses <- setdiff(selected_analyses, c("sample_audit", "data_summary"))
-tcgaplot_tasks <- build_tcgaplot_tasks(plot_analyses)
+if (nrow(special_task_summary) > 0L) {
+  write_table(special_task_summary, SUMMARY_ROOT, "tcgaplot_special_task_summary")
+}
 
 cat("\nTCGAplot plotting/statistical tasks: ", length(tcgaplot_tasks), "\n", sep = "")
 
-task_summary <- if (length(tcgaplot_tasks) > 0) {
-  do.call(
-    rbind,
-    lapply(seq_along(tcgaplot_tasks), function(i) {
-      task <- tcgaplot_tasks[[i]]
-      cat(
-        sprintf(
-          "[%d/%d] %s | %s | %s | renderer=%s\n",
-          i,
-          length(tcgaplot_tasks),
-          task$analysis,
-          task$target,
-          task$context,
-          paste(task$renderer, collapse = ",")
-        )
-      )
-      run_one_tcgaplot_task(task)
-    })
+task_summary <- if (length(tcgaplot_tasks) > 0L) {
+  raw_task_results <- run_indexed_tasks_with_progress(
+    total_tasks = length(tcgaplot_tasks),
+    task_function = function(task_id) {
+      run_one_tcgaplot_task(tcgaplot_tasks[[task_id]])
+    },
+    workers = min(parallel_strategy$task_workers, length(tcgaplot_tasks)),
+    progress_label = "TCGAplot tasks"
   )
+  normalized_task_results <- normalize_parallel_tcgaplot_results(
+    results = raw_task_results,
+    tasks = tcgaplot_tasks
+  )
+  do.call(rbind, normalized_task_results)
 } else {
   data.frame()
 }
 
 if (nrow(task_summary) > 0) {
   write_table(task_summary, SUMMARY_ROOT, "tcgaplot_task_summary")
-  failed_tasks <- task_summary[task_summary$Status != "success", , drop = FALSE]
+  failed_tasks <- task_summary[!is_success_status(task_summary$Status), , drop = FALSE]
   write_table(failed_tasks, SUMMARY_ROOT, "tcgaplot_failed_tasks")
 }
 
+runtime_summary <- make_runtime_summary(
+  special_task_summary = special_task_summary,
+  task_summary = task_summary,
+  start_time = SCRIPT_START_TIME
+)
+write_table(runtime_summary, SUMMARY_ROOT, "tcgaplot_runtime_summary")
+
 cat("\nTCGAplot quick analysis finished.\n")
+if (nrow(special_task_summary) > 0) {
+  cat("Special tasks successful: ", sum(is_success_status(special_task_summary$Status)), "\n", sep = "")
+  cat("Special tasks failed: ", sum(!is_success_status(special_task_summary$Status)), "\n", sep = "")
+  cat("Special task summary: ", file.path(SUMMARY_ROOT, "tcgaplot_special_task_summary.csv"), "\n", sep = "")
+}
 if (nrow(task_summary) > 0) {
-  cat("Successful tasks: ", sum(task_summary$Status == "success"), "\n", sep = "")
-  cat("Failed tasks: ", sum(task_summary$Status != "success"), "\n", sep = "")
+  cat("Completed without error: ", sum(is_success_status(task_summary$Status)), "\n", sep = "")
+  cat("Failed tasks: ", sum(!is_success_status(task_summary$Status)), "\n", sep = "")
   cat("Task summary: ", file.path(SUMMARY_ROOT, "tcgaplot_task_summary.csv"), "\n", sep = "")
   cat("Failed task summary: ", file.path(SUMMARY_ROOT, "tcgaplot_failed_tasks.csv"), "\n", sep = "")
 }
-cat("Sample audit summary: ", file.path(SUMMARY_ROOT, "sample_audit_summary.csv"), "\n", sep = "")
+if ("sample_audit" %in% selected_analyses) {
+  cat("Sample audit summary: ", file.path(SUMMARY_ROOT, "sample_audit_summary.csv"), "\n", sep = "")
+}
+cat("Runtime summary: ", file.path(SUMMARY_ROOT, "tcgaplot_runtime_summary.csv"), "\n", sep = "")
 print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
