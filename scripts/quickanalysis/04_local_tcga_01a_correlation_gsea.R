@@ -6,7 +6,7 @@
 # 3. 以指定基因为连续变量，计算其他全部protein-coding基因与它的相关性；
 # 4. 相关性结果按相关系数从高到低排序保存；
 # 5. 复用NGS流程中的clusterProfiler + msigdbr + GseaVis GSEA全套表格和绘图逻辑；
-# 6. 结果统一保存到results/local_tcga/<目标基因>-tcga/04_correlation_gsea。
+# 6. 结果统一保存到results/quickanalysis/local_tcga/<目标基因>_correlation。
 #
 # 默认示例：
 # - 目标基因：ATF3
@@ -260,16 +260,20 @@ SINGLE_PATHWAY_SAMPLE_TEXT_HEIGHT_FACTOR <- 0.74
 # 3. 输出、缓存与运行控制 ------------------------------------------------------
 
 DATASET_ID <- "local_tcga"
-RESULT_DATASET_SLUG <- qa_make_gene_result_slug(TARGET_GENES, "tcga")
-ANALYSIS_MODULE <- "04_correlation_gsea"
-OUTPUT_ROOT <- file.path(PROJECT_ROOT, "results", DATASET_ID, RESULT_DATASET_SLUG, ANALYSIS_MODULE)
+SCRIPT_OUTPUT_PREFIX <- "tcga"
+ANALYSIS_MODULE <- qa_make_gene_analysis_slug(TARGET_GENES, "correlation")
+OUTPUT_ROOT <- file.path(PROJECT_ROOT, "results", "quickanalysis", DATASET_ID, ANALYSIS_MODULE)
 TABLE_ROOT <- file.path(OUTPUT_ROOT, "tables")
 TABLE_OUTPUT_ROOT <- TABLE_ROOT
+CORRELATION_TABLE_ROOT <- file.path(TABLE_ROOT, "Correlation")
 PLOT_ROOT <- file.path(OUTPUT_ROOT, "plots", "GSEA")
-TEMP_ROOT <- file.path(PROJECT_ROOT, "temporary", "quickanalysis", DATASET_ID, RESULT_DATASET_SLUG, ANALYSIS_MODULE)
+TEMP_ROOT <- file.path(PROJECT_ROOT, "temporary", "quickanalysis", DATASET_ID, ANALYSIS_MODULE, "tcga_correlation")
 QS2_CACHE_DIR <- file.path(TEMP_ROOT, "GSEA_qs2_cache")
 MSIGDB_REFERENCE_DIR <- file.path(PROJECT_ROOT, "data", "reference", "msigdb")
 
+# 默认在运行前清空本脚本前次运行产生的全部结果与中间文件。
+# 这只删除当前TCGA相关性分析名和tcga_前缀对应的旧文件，以及本脚本TEMP_ROOT；
+# 不会删除同一ATF3_correlation目录中的GTEx结果、本地SE对象或MSigDB参考缓存。
 CLEAR_PREVIOUS_RUN_OUTPUTS <- parse_env_logical("TCGA_CORRELATION_CLEAR_PREVIOUS", TRUE)
 MAX_PARALLEL_WORKERS <- parse_env_integer("TCGA_CORRELATION_PARALLEL_WORKERS", NA_integer_)
 options(width = 200)
@@ -306,21 +310,38 @@ PARALLEL_WORKERS <- if (is.na(MAX_PARALLEL_WORKERS)) {
 
 # 5. 清理旧结果并准备任务 ------------------------------------------------------
 
-if (CLEAR_PREVIOUS_RUN_OUTPUTS) {
-  unlink(OUTPUT_ROOT, recursive = TRUE, force = TRUE)
-  unlink(TEMP_ROOT, recursive = TRUE, force = TRUE)
-}
-dir.create(TABLE_ROOT, recursive = TRUE, showWarnings = FALSE)
-dir.create(PLOT_ROOT, recursive = TRUE, showWarnings = FALSE)
-dir.create(TEMP_ROOT, recursive = TRUE, showWarnings = FALSE)
-
 analysis_task_table <- expand.grid(
   Cancer = TARGET_CANCERS,
   Target_Gene = TARGET_GENES,
   KEEP.OUT.ATTRS = FALSE,
   stringsAsFactors = FALSE
 )
+analysis_task_table$Analysis_Name <- sanitize_file_name(
+  paste(
+    analysis_task_table$Cancer,
+    "01A",
+    analysis_task_table$Target_Gene,
+    CORRELATION_METHOD,
+    "correlation",
+    sep = "_"
+  )
+)
 analysis_task_table$Task_ID <- seq_len(nrow(analysis_task_table))
+
+if (CLEAR_PREVIOUS_RUN_OUTPUTS) {
+  qa_clean_quickanalysis_local_outputs(
+    output_root = OUTPUT_ROOT,
+    analysis_names = analysis_task_table$Analysis_Name,
+    summary_prefix = SCRIPT_OUTPUT_PREFIX,
+    table_categories = c("Correlation", "GSEA"),
+    plot_categories = "GSEA",
+    temp_root = TEMP_ROOT
+  )
+}
+dir.create(CORRELATION_TABLE_ROOT, recursive = TRUE, showWarnings = FALSE)
+dir.create(file.path(TABLE_ROOT, "GSEA"), recursive = TRUE, showWarnings = FALSE)
+dir.create(PLOT_ROOT, recursive = TRUE, showWarnings = FALSE)
+dir.create(TEMP_ROOT, recursive = TRUE, showWarnings = FALSE)
 
 cat("\nLocal TCGA 01A target-gene correlation + GSEA configuration:\n")
 cat("Target genes: ", paste(TARGET_GENES, collapse = ", "), "\n", sep = "")
@@ -356,9 +377,7 @@ qa_correlation_pvalues <- function(correlation, complete_n) {
 run_one_correlation_analysis <- function(task_id) {
   cancer <- analysis_task_table$Cancer[task_id]
   target_gene <- analysis_task_table$Target_Gene[task_id]
-  analysis_name <- sanitize_file_name(
-    paste(cancer, "01A", target_gene, CORRELATION_METHOD, "correlation", sep = "_")
-  )
+  analysis_name <- analysis_task_table$Analysis_Name[task_id]
 
   inputs <- qa_load_tcga_01a_inputs(
     project_root = PROJECT_ROOT,
@@ -462,18 +481,18 @@ run_one_correlation_analysis <- function(task_id) {
   negative_index <- significant_index & result_table$Correlation < 0
   significant_table <- result_table[significant_index, , drop = FALSE]
 
-  analysis_output_dir <- file.path(TABLE_ROOT, analysis_name, "Correlation")
+  analysis_output_dir <- CORRELATION_TABLE_ROOT
   dir.create(analysis_output_dir, recursive = TRUE, showWarnings = FALSE)
 
   all_results_file <- write_csv_with_report_previews(
     qa_prepare_ranked_output_table(result_table, OUTPUT_DROP_COLUMNS),
-    file.path(analysis_output_dir, "all_genes.csv"),
+    file.path(analysis_output_dir, paste0(analysis_name, "_all_genes.csv")),
     n_rows = 21,
     na = "NA"
   )
   significant_results_file <- write_csv_with_report_previews(
     qa_prepare_ranked_output_table(significant_table, OUTPUT_DROP_COLUMNS),
-    file.path(analysis_output_dir, "significant_genes.csv"),
+    file.path(analysis_output_dir, paste0(analysis_name, "_significant_genes.csv")),
     n_rows = 21,
     na = "NA"
   )
@@ -482,7 +501,7 @@ run_one_correlation_analysis <- function(task_id) {
       head(result_table[result_table$Correlation > 0, , drop = FALSE], TOP_CORRELATED_N),
       OUTPUT_DROP_COLUMNS
     ),
-    file.path(analysis_output_dir, "top_positive_genes.csv"),
+    file.path(analysis_output_dir, paste0(analysis_name, "_top_positive_genes.csv")),
     n_rows = 21,
     na = "NA"
   )
@@ -499,7 +518,7 @@ run_one_correlation_analysis <- function(task_id) {
       },
       OUTPUT_DROP_COLUMNS
     ),
-    file.path(analysis_output_dir, "top_negative_genes.csv"),
+    file.path(analysis_output_dir, paste0(analysis_name, "_top_negative_genes.csv")),
     n_rows = 21,
     na = "NA"
   )
@@ -519,7 +538,7 @@ run_one_correlation_analysis <- function(task_id) {
   )
   sample_expression_file <- write_csv_with_report_previews(
     sample_expression_table,
-    file.path(analysis_output_dir, "target_gene_sample_expression.csv"),
+    file.path(analysis_output_dir, paste0(analysis_name, "_target_gene_sample_expression.csv")),
     n_rows = 21,
     na = "NA"
   )
@@ -560,7 +579,7 @@ run_one_correlation_analysis <- function(task_id) {
   )
   summary_file <- write_csv_with_report_previews(
     summary_table,
-    file.path(analysis_output_dir, "summary.csv"),
+    file.path(analysis_output_dir, paste0(analysis_name, "_summary.csv")),
     n_rows = 21,
     na = "NA"
   )
@@ -617,17 +636,17 @@ ranked_file_info <- do.call(rbind, lapply(analysis_results, `[[`, "ranked_file_i
 expression_input_list <- lapply(analysis_results, `[[`, "expression_input")
 names(expression_input_list) <- ranked_file_info$Analysis_Name
 
-run_summary_dir <- file.path(TABLE_ROOT, "run_summary")
+run_summary_dir <- CORRELATION_TABLE_ROOT
 dir.create(run_summary_dir, recursive = TRUE, showWarnings = FALSE)
 summary_csv <- write_csv_with_report_previews(
   analysis_summaries,
-  file.path(run_summary_dir, "correlation_summary.csv"),
+  file.path(run_summary_dir, paste0(SCRIPT_OUTPUT_PREFIX, "_correlation_summary.csv")),
   n_rows = 21,
   na = "NA"
 )
 ranked_input_csv <- write_csv_with_report_previews(
   ranked_file_info,
-  file.path(run_summary_dir, "gsea_ranked_input_files.csv"),
+  file.path(run_summary_dir, paste0(SCRIPT_OUTPUT_PREFIX, "_gsea_ranked_input_files.csv")),
   n_rows = 21,
   na = "NA"
 )
@@ -657,6 +676,7 @@ gsea_result <- qa_run_gsea_compute_and_plot(
   plot_root = PLOT_ROOT,
   parallel_workers = PARALLEL_WORKERS,
   clean_outputs = TRUE,
+  summary_file_prefix = SCRIPT_OUTPUT_PREFIX,
   run_plots = RUN_GSEA_PLOTS
 )
 
@@ -664,8 +684,9 @@ cat("\nOutput summary:\n")
 cat("Correlation summary table: ", summary_csv, "\n", sep = "")
 cat("GSEA input table:          ", ranked_input_csv, "\n", sep = "")
 cat("GSEA summary table:        ", gsea_result$summary_csv_file, "\n", sep = "")
-cat("Table root:                ", TABLE_ROOT, "\n", sep = "")
-cat("Plot root:                 ", PLOT_ROOT, "\n", sep = "")
+cat("Correlation table root:    ", CORRELATION_TABLE_ROOT, "\n", sep = "")
+cat("GSEA table root:           ", file.path(TABLE_ROOT, "GSEA"), "\n", sep = "")
+cat("GSEA plot root:            ", PLOT_ROOT, "\n", sep = "")
 print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
 
 cat("\nLocal TCGA target-gene correlation + GSEA analysis finished.\n")

@@ -172,8 +172,8 @@ SAVE_BUILTIN_DATA_EXTRACTS <- parse_env_logical(
 )
 
 # 默认在运行前清空本脚本前次运行产生的全部结果与中间文件。
-# 这会删除results/quickanalysis/tcga/plots/TCGAplot、results/quickanalysis/tcga/tables/TCGAplot、
-# temporary/tcgaplot，以及本脚本的任务manifest缓存；不会删除data/tcgaplot中保存的TCGAplot数据提取结果。
+# 这会删除results/quickanalysis/tcga、temporary/tcgaplot，
+# 以及本脚本的任务manifest缓存；不会删除data/tcgaplot中保存的TCGAplot数据提取结果。
 CLEAR_PREVIOUS_RUN_OUTPUTS <- parse_env_logical("TCGAPLOT_CLEAR_PREVIOUS_OUTPUTS", TRUE)
 
 # 单个任务运行前清理自己的临时工作目录，避免TCGAplot内部写出的文件相互混入。
@@ -2699,8 +2699,7 @@ clear_previous_tcgaplot_run_outputs <- function() {
     return(invisible(FALSE))
   }
 
-  unlink(PLOT_ROOT, recursive = TRUE, force = TRUE)
-  unlink(TABLE_ROOT, recursive = TRUE, force = TRUE)
+  unlink(RESULT_ROOT, recursive = TRUE, force = TRUE)
   unlink(TEMP_ROOT, recursive = TRUE, force = TRUE)
   unlink(TCGAPLOT_TASK_CACHE_ROOT, recursive = TRUE, force = TRUE)
 

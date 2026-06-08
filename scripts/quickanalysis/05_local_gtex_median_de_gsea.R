@@ -6,7 +6,7 @@
 # 3. 以指定基因在全部GTEx样本中的表达中位数为阈值，分为高表达组和低表达组；
 # 4. 复用NGS流程中的edgeR + voom + limma差异分析逻辑；
 # 5. 复用NGS流程中的clusterProfiler + msigdbr + GseaVis GSEA全套表格和绘图逻辑；
-# 6. 结果统一保存到results/local_tcga/<目标基因>-gtex/05_median_de_gsea。
+# 6. 结果统一保存到results/quickanalysis/local_tcga/<目标基因>_deg。
 #
 # 默认示例：
 # - 目标基因：ATF3
@@ -249,16 +249,21 @@ SINGLE_PATHWAY_SAMPLE_TEXT_HEIGHT_FACTOR <- 0.74
 # 3. 输出、缓存与运行控制 ------------------------------------------------------
 
 DATASET_ID <- "local_tcga"
-RESULT_DATASET_SLUG <- qa_make_gene_result_slug(TARGET_GENES, "gtex")
-ANALYSIS_MODULE <- "05_median_de_gsea"
-OUTPUT_ROOT <- file.path(PROJECT_ROOT, "results", DATASET_ID, RESULT_DATASET_SLUG, ANALYSIS_MODULE)
+SCRIPT_OUTPUT_PREFIX <- "gtex"
+ANALYSIS_MODULE <- qa_make_gene_analysis_slug(TARGET_GENES, "deg")
+OUTPUT_ROOT <- file.path(PROJECT_ROOT, "results", "quickanalysis", DATASET_ID, ANALYSIS_MODULE)
 TABLE_ROOT <- file.path(OUTPUT_ROOT, "tables")
 TABLE_OUTPUT_ROOT <- TABLE_ROOT
+DEG_TABLE_ROOT <- file.path(TABLE_ROOT, "DEG")
 PLOT_ROOT <- file.path(OUTPUT_ROOT, "plots", "GSEA")
-TEMP_ROOT <- file.path(PROJECT_ROOT, "temporary", "quickanalysis", DATASET_ID, RESULT_DATASET_SLUG, ANALYSIS_MODULE)
+VOLCANO_PLOT_ROOT <- file.path(OUTPUT_ROOT, "plots", "DEG")
+TEMP_ROOT <- file.path(PROJECT_ROOT, "temporary", "quickanalysis", DATASET_ID, ANALYSIS_MODULE, "gtex_median_de")
 QS2_CACHE_DIR <- file.path(TEMP_ROOT, "GSEA_qs2_cache")
 MSIGDB_REFERENCE_DIR <- file.path(PROJECT_ROOT, "data", "reference", "msigdb")
 
+# 默认在运行前清空本脚本前次运行产生的全部结果与中间文件。
+# 这只删除当前GTEx差异分析名和gtex_前缀对应的旧文件，以及本脚本TEMP_ROOT；
+# 不会删除同一ATF3_deg目录中的TCGA结果、本地SE对象或MSigDB参考缓存。
 CLEAR_PREVIOUS_RUN_OUTPUTS <- parse_env_logical("GTEX_MEDIAN_DE_CLEAR_PREVIOUS", TRUE)
 MAX_PARALLEL_WORKERS <- parse_env_integer("GTEX_MEDIAN_DE_PARALLEL_WORKERS", NA_integer_)
 options(width = 200)
@@ -301,21 +306,38 @@ PARALLEL_WORKERS <- if (is.na(MAX_PARALLEL_WORKERS)) {
 
 # 5. 清理旧结果并准备任务 ------------------------------------------------------
 
-if (CLEAR_PREVIOUS_RUN_OUTPUTS) {
-  unlink(OUTPUT_ROOT, recursive = TRUE, force = TRUE)
-  unlink(TEMP_ROOT, recursive = TRUE, force = TRUE)
-}
-dir.create(TABLE_ROOT, recursive = TRUE, showWarnings = FALSE)
-dir.create(PLOT_ROOT, recursive = TRUE, showWarnings = FALSE)
-dir.create(TEMP_ROOT, recursive = TRUE, showWarnings = FALSE)
-
 analysis_task_table <- expand.grid(
   Tissue = TARGET_TISSUES,
   Target_Gene = TARGET_GENES,
   KEEP.OUT.ATTRS = FALSE,
   stringsAsFactors = FALSE
 )
+analysis_task_table$Analysis_Name <- sanitize_file_name(
+  paste(
+    analysis_task_table$Tissue,
+    "GTEx",
+    analysis_task_table$Target_Gene,
+    "median_high_vs_low",
+    sep = "_"
+  )
+)
 analysis_task_table$Task_ID <- seq_len(nrow(analysis_task_table))
+
+if (CLEAR_PREVIOUS_RUN_OUTPUTS) {
+  qa_clean_quickanalysis_local_outputs(
+    output_root = OUTPUT_ROOT,
+    analysis_names = analysis_task_table$Analysis_Name,
+    summary_prefix = SCRIPT_OUTPUT_PREFIX,
+    table_categories = c("DEG", "GSEA"),
+    plot_categories = c("DEG", "GSEA"),
+    temp_root = TEMP_ROOT
+  )
+}
+dir.create(DEG_TABLE_ROOT, recursive = TRUE, showWarnings = FALSE)
+dir.create(file.path(TABLE_ROOT, "GSEA"), recursive = TRUE, showWarnings = FALSE)
+dir.create(VOLCANO_PLOT_ROOT, recursive = TRUE, showWarnings = FALSE)
+dir.create(PLOT_ROOT, recursive = TRUE, showWarnings = FALSE)
+dir.create(TEMP_ROOT, recursive = TRUE, showWarnings = FALSE)
 
 sample_filter_text <- if (nzchar(SAMPLE_FILTER_COLUMN) && length(SAMPLE_FILTER_VALUES) > 0L) {
   paste0(SAMPLE_FILTER_COLUMN, " in ", paste(SAMPLE_FILTER_VALUES, collapse = ", "))
@@ -342,9 +364,7 @@ cat("Prepared analyses: ", nrow(analysis_task_table), "\n", sep = "")
 run_one_median_de_analysis <- function(task_id) {
   tissue <- analysis_task_table$Tissue[task_id]
   target_gene <- analysis_task_table$Target_Gene[task_id]
-  analysis_name <- sanitize_file_name(
-    paste(tissue, "GTEx", target_gene, "median_high_vs_low", sep = "_")
-  )
+  analysis_name <- analysis_task_table$Analysis_Name[task_id]
 
   inputs <- qa_load_local_se_inputs(
     project_root = PROJECT_ROOT,
@@ -476,18 +496,18 @@ run_one_median_de_analysis <- function(task_id) {
   )
   significant_results <- diff_results[regulation$significant, , drop = FALSE]
 
-  analysis_output_dir <- file.path(TABLE_ROOT, analysis_name, "DEG")
+  analysis_output_dir <- DEG_TABLE_ROOT
   dir.create(analysis_output_dir, recursive = TRUE, showWarnings = FALSE)
 
   all_results_file <- write_csv_with_report_previews(
     qa_prepare_ranked_output_table(diff_results, OUTPUT_DROP_COLUMNS),
-    file.path(analysis_output_dir, "all_genes.csv"),
+    file.path(analysis_output_dir, paste0(analysis_name, "_all_genes.csv")),
     n_rows = 21,
     na = "NA"
   )
   significant_results_file <- write_csv_with_report_previews(
     qa_prepare_ranked_output_table(significant_results, OUTPUT_DROP_COLUMNS),
-    file.path(analysis_output_dir, "significant_genes.csv"),
+    file.path(analysis_output_dir, paste0(analysis_name, "_significant_genes.csv")),
     n_rows = 21,
     na = "NA"
   )
@@ -507,7 +527,7 @@ run_one_median_de_analysis <- function(task_id) {
   )
   sample_group_file <- write_csv_with_report_previews(
     sample_group_table,
-    file.path(analysis_output_dir, "sample_groups.csv"),
+    file.path(analysis_output_dir, paste0(analysis_name, "_sample_groups.csv")),
     n_rows = 21,
     na = "NA"
   )
@@ -551,7 +571,7 @@ run_one_median_de_analysis <- function(task_id) {
   )
   summary_file <- write_csv_with_report_previews(
     summary_table,
-    file.path(analysis_output_dir, "summary.csv"),
+    file.path(analysis_output_dir, paste0(analysis_name, "_summary.csv")),
     n_rows = 21,
     na = "NA"
   )
@@ -606,17 +626,17 @@ ranked_file_info <- do.call(rbind, lapply(analysis_results, `[[`, "ranked_file_i
 expression_input_list <- lapply(analysis_results, `[[`, "expression_input")
 names(expression_input_list) <- ranked_file_info$Analysis_Name
 
-run_summary_dir <- file.path(TABLE_ROOT, "run_summary")
+run_summary_dir <- DEG_TABLE_ROOT
 dir.create(run_summary_dir, recursive = TRUE, showWarnings = FALSE)
 summary_csv <- write_csv_with_report_previews(
   analysis_summaries,
-  file.path(run_summary_dir, "median_de_summary.csv"),
+  file.path(run_summary_dir, paste0(SCRIPT_OUTPUT_PREFIX, "_median_de_summary.csv")),
   n_rows = 21,
   na = "NA"
 )
 ranked_input_csv <- write_csv_with_report_previews(
   ranked_file_info,
-  file.path(run_summary_dir, "gsea_ranked_input_files.csv"),
+  file.path(run_summary_dir, paste0(SCRIPT_OUTPUT_PREFIX, "_gsea_ranked_input_files.csv")),
   n_rows = 21,
   na = "NA"
 )
@@ -635,7 +655,22 @@ print(
 )
 
 
-# 8. 运行GSEA计算和绘图 --------------------------------------------------------
+# 8. 绘制传统火山图 ------------------------------------------------------------
+
+volcano_result <- qa_run_traditional_volcano_plots(
+  ranked_file_info = ranked_file_info,
+  plot_root = VOLCANO_PLOT_ROOT,
+  table_output_root = DEG_TABLE_ROOT,
+  parallel_workers = PARALLEL_WORKERS,
+  p_value_column = P_VALUE_COLUMN,
+  p_value_cutoff = P_VALUE_CUTOFF,
+  logfc_cutoff = LOGFC_CUTOFF,
+  clean_outputs = TRUE,
+  summary_file_prefix = SCRIPT_OUTPUT_PREFIX
+)
+
+
+# 9. 运行GSEA计算和绘图 --------------------------------------------------------
 
 SE_RDS_FILE <- ranked_file_info$SE_RDS_File[1]
 
@@ -646,15 +681,19 @@ gsea_result <- qa_run_gsea_compute_and_plot(
   plot_root = PLOT_ROOT,
   parallel_workers = PARALLEL_WORKERS,
   clean_outputs = TRUE,
+  summary_file_prefix = SCRIPT_OUTPUT_PREFIX,
   run_plots = RUN_GSEA_PLOTS
 )
 
 cat("\nOutput summary:\n")
 cat("DE summary table:    ", summary_csv, "\n", sep = "")
+cat("Volcano summary:     ", volcano_result$summary_csv_file, "\n", sep = "")
 cat("GSEA input table:    ", ranked_input_csv, "\n", sep = "")
 cat("GSEA summary table:  ", gsea_result$summary_csv_file, "\n", sep = "")
-cat("Table root:          ", TABLE_ROOT, "\n", sep = "")
-cat("Plot root:           ", PLOT_ROOT, "\n", sep = "")
+cat("DEG table root:      ", DEG_TABLE_ROOT, "\n", sep = "")
+cat("GSEA table root:     ", file.path(TABLE_ROOT, "GSEA"), "\n", sep = "")
+cat("DEG plot root:       ", VOLCANO_PLOT_ROOT, "\n", sep = "")
+cat("GSEA plot root:      ", PLOT_ROOT, "\n", sep = "")
 print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
 
 cat("\nLocal GTEx median-expression DE + GSEA analysis finished.\n")

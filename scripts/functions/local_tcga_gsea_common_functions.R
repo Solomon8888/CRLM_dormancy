@@ -432,6 +432,75 @@ qa_make_gene_result_slug <- function(target_genes, suffix) {
   paste0(gene_slug, "-", suffix)
 }
 
+qa_make_gene_analysis_slug <- function(target_genes, analysis_type) {
+  gene_slug <- qa_sanitize_file_name(paste(unique(target_genes), collapse = "_"))
+  paste0(gene_slug, "_", qa_sanitize_file_name(analysis_type))
+}
+
+qa_clean_flat_prefixed_files <- function(directories, prefixes) {
+  prefixes <- unique(qa_sanitize_file_name(prefixes))
+  prefixes <- prefixes[nzchar(prefixes)]
+  if (length(prefixes) == 0L) {
+    return(invisible(character(0)))
+  }
+
+  removed <- character(0)
+  for (directory in unique(directories)) {
+    if (!dir.exists(directory)) {
+      next
+    }
+
+    files <- list.files(
+      directory,
+      all.files = FALSE,
+      full.names = TRUE,
+      recursive = FALSE
+    )
+    if (length(files) == 0L) {
+      next
+    }
+
+    file_names <- basename(files)
+    should_remove <- vapply(file_names, function(file_name) {
+      any(vapply(prefixes, function(prefix) {
+        startsWith(file_name, paste0(prefix, "_"))
+      }, logical(1)))
+    }, logical(1))
+
+    if (any(should_remove)) {
+      unlink(files[should_remove], recursive = TRUE, force = TRUE)
+      removed <- c(removed, files[should_remove])
+    }
+  }
+
+  invisible(removed)
+}
+
+qa_clean_quickanalysis_local_outputs <- function(
+    output_root,
+    analysis_names,
+    summary_prefix,
+    table_categories,
+    plot_categories,
+    temp_root = NULL) {
+  prefixes <- unique(c(analysis_names, summary_prefix))
+  table_dirs <- file.path(output_root, "tables", table_categories)
+  plot_dirs <- unlist(lapply(plot_categories, function(plot_category) {
+    file.path(output_root, "plots", plot_category, c("pdf", "png"))
+  }), use.names = FALSE)
+
+  qa_clean_flat_prefixed_files(
+    directories = c(table_dirs, plot_dirs),
+    prefixes = prefixes
+  )
+
+  if (!is.null(temp_root) && nzchar(temp_root)) {
+    unlink(temp_root, recursive = TRUE, force = TRUE)
+  }
+
+  invisible(TRUE)
+}
+
 
 # 3. 基因定位、分组和输出整理 --------------------------------------------------
 
@@ -564,6 +633,300 @@ qa_count_regulation <- function(dat, p_value_column, p_value_cutoff, effect_colu
   )
 }
 
+qa_get_volcano_axis_limits <- function(plot_data, p_value_cutoff, logfc_cutoff) {
+  x_abs <- max(abs(plot_data$logFC), logfc_cutoff, na.rm = TRUE)
+  x_limit <- ceiling(x_abs * 1.08 * 2) / 2
+  x_limit <- max(x_limit, 1)
+
+  y_threshold <- -log10(p_value_cutoff)
+  y_limit <- ceiling(max(plot_data$Neg_Log10_P, y_threshold, na.rm = TRUE) * 1.08)
+  y_limit <- max(y_limit, 2)
+
+  list(
+    x = c(-x_limit, x_limit),
+    y = c(0, y_limit)
+  )
+}
+
+qa_get_volcano_pdf_size <- function(axis_limits) {
+  base_height <- get0("VOLCANO_BASE_PDF_HEIGHT", ifnotfound = 6.2)
+  max_extra_height <- get0("VOLCANO_MAX_EXTRA_PDF_HEIGHT", ifnotfound = 0.8)
+  legend_width <- get0("VOLCANO_LEGEND_WIDTH_INCH", ifnotfound = 0.95)
+  legend_gap <- get0("VOLCANO_RIGHT_LEGEND_GAP_INCH", ifnotfound = 0.18)
+  max_ratio <- get0("VOLCANO_MAX_PDF_WIDTH_HEIGHT_RATIO", ifnotfound = 1.28)
+
+  y_span <- diff(axis_limits$y)
+  extra_height <- min(max((y_span - 6) * 0.04, 0), max_extra_height)
+  pdf_height <- base_height + extra_height
+
+  pdf_width <- pdf_height + legend_width + legend_gap
+  pdf_width <- min(pdf_width, pdf_height * max_ratio)
+  pdf_width <- max(pdf_width, pdf_height * 1.08)
+
+  list(
+    width = pdf_width,
+    height = pdf_height
+  )
+}
+
+qa_make_traditional_volcano_plot <- function(
+    plot_data,
+    axis_limits,
+    p_value_column,
+    p_value_cutoff,
+    logfc_cutoff,
+    custom_label_genes = character(0)) {
+  not_significant_color <- get0("NOT_SIGNIFICANT_COLOR", ifnotfound = "#B8B8B8")
+  threshold_line_color <- get0("THRESHOLD_LINE_COLOR", ifnotfound = "#333333")
+  threshold_line_width <- get0("THRESHOLD_LINE_WIDTH", ifnotfound = 0.45)
+  threshold_line_type <- get0("THRESHOLD_LINE_TYPE", ifnotfound = "dashed")
+  panel_height_width_ratio <- get0("VOLCANO_PANEL_HEIGHT_WIDTH_RATIO", ifnotfound = 1.0)
+  use_gg_repel <- requireNamespace("ggrepel", quietly = TRUE)
+
+  label_data <- get_volcano_label_data(
+    plot_data = plot_data,
+    custom_label_genes = custom_label_genes,
+    symbol_column = TOP_GENE_SYMBOL_COLUMN,
+    match_columns = CUSTOM_LABEL_MATCH_COLUMNS,
+    p_value_column = p_value_column,
+    top_up_n = TOP_UP_LABEL_N,
+    top_down_n = TOP_DOWN_LABEL_N
+  )
+  label_colors <- get_regulation_label_colors(
+    label_data = label_data,
+    up_color = UP_COLOR,
+    down_color = DOWN_COLOR,
+    darken_fraction = TOP_GENE_LABEL_COLOR_DARKEN
+  )
+
+  volcano_plot <- ggplot2::ggplot(
+    plot_data,
+    ggplot2::aes(x = logFC, y = Neg_Log10_P, color = Regulation)
+  ) +
+    ggplot2::geom_point(
+      size = POINT_SIZE,
+      alpha = POINT_ALPHA,
+      shape = 16,
+      stroke = 0
+    ) +
+    ggplot2::geom_vline(
+      xintercept = c(-logfc_cutoff, logfc_cutoff),
+      linewidth = threshold_line_width,
+      linetype = threshold_line_type,
+      color = threshold_line_color
+    ) +
+    ggplot2::geom_hline(
+      yintercept = -log10(p_value_cutoff),
+      linewidth = threshold_line_width,
+      linetype = threshold_line_type,
+      color = threshold_line_color
+    ) +
+    ggplot2::scale_color_manual(
+      values = c(
+        "Not significant" = not_significant_color,
+        "Down" = DOWN_COLOR,
+        "Up" = UP_COLOR
+      ),
+      breaks = c("Up", "Down", "Not significant"),
+      labels = c("Sig_Up", "Sig_Down", "Not_Sig")
+    ) +
+    ggplot2::scale_x_continuous(
+      limits = axis_limits$x,
+      breaks = pretty(axis_limits$x, n = 7),
+      expand = ggplot2::expansion(mult = 0)
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = axis_limits$y,
+      breaks = pretty(axis_limits$y, n = 6),
+      expand = ggplot2::expansion(mult = c(0, 0.02))
+    ) +
+    ggplot2::labs(
+      x = "log2 fold change",
+      y = paste0("-log10(", p_value_column, ")"),
+      color = NULL
+    ) +
+    ggplot2::theme_bw(base_size = BASE_FONT_SIZE, base_family = TEXT_FONT_FAMILY) +
+    ggplot2::theme(
+      panel.grid.major = ggplot2::element_line(color = "#E6E6E6", linewidth = 0.25),
+      panel.grid.minor = ggplot2::element_blank(),
+      panel.border = ggplot2::element_rect(color = TEXT_COLOR, fill = NA, linewidth = AXIS_LINE_WIDTH),
+      axis.line = ggplot2::element_line(color = TEXT_COLOR, linewidth = AXIS_LINE_WIDTH),
+      axis.text = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
+      axis.title = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
+      aspect.ratio = panel_height_width_ratio,
+      legend.position = "right",
+      legend.text = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
+      legend.key = ggplot2::element_blank(),
+      legend.key.height = grid::unit(5.5, "mm"),
+      legend.key.width = grid::unit(5.5, "mm"),
+      legend.box.spacing = grid::unit(8, "pt"),
+      legend.margin = ggplot2::margin(0, 0, 0, 4, unit = "pt"),
+      strip.text = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
+      text = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
+      plot.margin = ggplot2::margin(10, 12, 10, 10, unit = "pt")
+    ) +
+    ggplot2::guides(
+      color = ggplot2::guide_legend(
+        override.aes = list(size = POINT_SIZE * 1.15, alpha = 0.85)
+      )
+    )
+
+  add_volcano_gene_label_layer(
+    plot = volcano_plot,
+    label_data = label_data,
+    label_colors = label_colors,
+    use_gg_repel = use_gg_repel,
+    text_family = TEXT_FONT_FAMILY,
+    fontface = TOP_GENE_LABEL_FONT_FACE,
+    font_size = TOP_GENE_LABEL_FONT_SIZE,
+    box_padding = TOP_GENE_LABEL_BOX_PADDING,
+    point_padding = TOP_GENE_LABEL_POINT_PADDING,
+    segment_width = TOP_GENE_LABEL_SEGMENT_WIDTH,
+    force = TOP_GENE_LABEL_FORCE,
+    force_pull = TOP_GENE_LABEL_FORCE_PULL,
+    max_overlaps = TOP_GENE_LABEL_MAX_OVERLAPS,
+    fallback_vjust = -0.8
+  )
+}
+
+qa_run_traditional_volcano_plots <- function(
+    ranked_file_info,
+    plot_root,
+    table_output_root,
+    parallel_workers,
+    p_value_column,
+    p_value_cutoff,
+    logfc_cutoff,
+    clean_outputs = TRUE,
+    summary_file_prefix = "",
+    custom_label_genes = character(0)) {
+  stopifnot(all(c("Analysis_Name", "All_Genes_File") %in% colnames(ranked_file_info)))
+  stopifnot(all(file.exists(ranked_file_info$All_Genes_File)))
+
+  summary_file_prefix <- qa_sanitize_file_name(summary_file_prefix)
+  summary_file_name <- if (nzchar(summary_file_prefix)) {
+    paste0(summary_file_prefix, "_volcano_summary.csv")
+  } else {
+    "volcano_summary.csv"
+  }
+
+  if (clean_outputs) {
+    unlink(file.path(table_output_root, summary_file_name), force = TRUE)
+    qa_clean_flat_prefixed_files(
+      directories = file.path(plot_root, c("pdf", "png")),
+      prefixes = ranked_file_info$Analysis_Name
+    )
+  }
+
+  dir.create(plot_root, recursive = TRUE, showWarnings = FALSE)
+
+  run_one_volcano_plot <- function(task_id) {
+    analysis_name <- ranked_file_info$Analysis_Name[task_id]
+    dat <- read.csv(
+      ranked_file_info$All_Genes_File[task_id],
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+
+    plot_data <- prepare_volcano_data(
+      dat = dat,
+      analysis_name = analysis_name,
+      p_value_column = p_value_column,
+      p_value_cutoff = p_value_cutoff,
+      logfc_cutoff = logfc_cutoff,
+      ns_label = "Not significant",
+      regulation_levels = c("Not significant", "Down", "Up")
+    )
+    axis_limits <- qa_get_volcano_axis_limits(
+      plot_data = plot_data,
+      p_value_cutoff = p_value_cutoff,
+      logfc_cutoff = logfc_cutoff
+    )
+    pdf_size <- qa_get_volcano_pdf_size(axis_limits)
+    volcano_plot <- qa_make_traditional_volcano_plot(
+      plot_data = plot_data,
+      axis_limits = axis_limits,
+      p_value_column = p_value_column,
+      p_value_cutoff = p_value_cutoff,
+      logfc_cutoff = logfc_cutoff,
+      custom_label_genes = custom_label_genes
+    )
+
+    file_stem <- paste0(sanitize_file_name(analysis_name), "_volcano_plot")
+    output_files <- save_ggplot_pdf_png(
+      plot = volcano_plot,
+      pdf_file = file.path(plot_root, paste0(file_stem, ".pdf")),
+      width = pdf_size$width,
+      height = pdf_size$height
+    )
+
+    status_counts <- table(plot_data$Regulation)
+    data.frame(
+      Analysis_Name = analysis_name,
+      Genes_Plotted = nrow(plot_data),
+      Up = count_status(status_counts, "Up"),
+      Down = count_status(status_counts, "Down"),
+      Not_Significant = count_status(status_counts, "Not significant"),
+      X_Min = axis_limits$x[1],
+      X_Max = axis_limits$x[2],
+      Y_Max = axis_limits$y[2],
+      PDF_Width = round(pdf_size$width, 2),
+      PDF_Height = round(pdf_size$height, 2),
+      PDF_File = output_files$pdf_file,
+      PNG_File = output_files$png_file,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  parallel_strategy <- setup_parallel_strategy(
+    total_tasks = nrow(ranked_file_info),
+    max_workers = parallel_workers,
+    inner_label = "Volcano inner workers",
+    nested_label = "Nested workers"
+  )
+
+  cat("\nRunning traditional volcano plot generation...\n")
+  summary_list <- run_parallel_tasks_with_progress(
+    task_ids = seq_len(nrow(ranked_file_info)),
+    task_function = run_one_volcano_plot,
+    workers = parallel_strategy$task_workers,
+    progress_label = "Volcano"
+  )
+  stop_on_parallel_errors(
+    summary_list,
+    task_ids = ranked_file_info$Analysis_Name,
+    label = "traditional volcano plots"
+  )
+
+  summary_table <- do.call(rbind, summary_list)
+  rownames(summary_table) <- NULL
+
+  dir.create(table_output_root, recursive = TRUE, showWarnings = FALSE)
+  summary_csv_file <- write_csv_with_report_previews(
+    summary_table,
+    file.path(table_output_root, summary_file_name),
+    n_rows = 21
+  )
+
+  cat("\nTraditional volcano plot summary:\n")
+  print(
+    summary_table[
+      ,
+      c(
+        "Analysis_Name", "Genes_Plotted", "Up", "Down",
+        "Not_Significant", "X_Min", "X_Max", "Y_Max",
+        "PDF_Width", "PDF_Height"
+      )
+    ],
+    row.names = FALSE
+  )
+
+  list(
+    summary = summary_table,
+    summary_csv_file = summary_csv_file
+  )
+}
+
 
 # 4. GSEA计算和绘图 -----------------------------------------------------------
 
@@ -651,10 +1014,19 @@ qa_prepare_gsea_analysis_cache <- function(
   analysis_cache
 }
 
-qa_clean_gsea_outputs <- function(table_output_root, plot_root, analysis_names) {
-  unlink(file.path(table_output_root, analysis_names, "GSEA"), recursive = TRUE, force = TRUE)
-  unlink(file.path(plot_root, sanitize_file_name(analysis_names)), recursive = TRUE, force = TRUE)
-  unlink(file.path(table_output_root, "GSEA_summary"), recursive = TRUE, force = TRUE)
+qa_clean_gsea_outputs <- function(
+    table_output_root,
+    plot_root,
+    analysis_names,
+    summary_file_prefix = "") {
+  qa_clean_flat_prefixed_files(
+    directories = c(
+      file.path(table_output_root, "GSEA"),
+      file.path(plot_root, c("pdf", "png")),
+      file.path(plot_root, "single_pathway")
+    ),
+    prefixes = c(analysis_names, summary_file_prefix)
+  )
   invisible(TRUE)
 }
 
@@ -665,6 +1037,7 @@ qa_run_gsea_compute_and_plot <- function(
     plot_root,
     parallel_workers,
     clean_outputs = TRUE,
+    summary_file_prefix = "",
     run_plots = TRUE) {
   if (nrow(ranked_file_info) == 0L) {
     stop("No ranked gene files were supplied for GSEA.")
@@ -677,9 +1050,13 @@ qa_run_gsea_compute_and_plot <- function(
     qa_clean_gsea_outputs(
       table_output_root = table_output_root,
       plot_root = plot_root,
-      analysis_names = ranked_file_info$Analysis_Name
+      analysis_names = ranked_file_info$Analysis_Name,
+      summary_file_prefix = summary_file_prefix
     )
   }
+
+  gsea_table_root <- file.path(table_output_root, "GSEA")
+  dir.create(gsea_table_root, recursive = TRUE, showWarnings = FALSE)
 
   geneset_cache <- qa_make_gsea_geneset_cache()
   analysis_cache <- qa_prepare_gsea_analysis_cache(
@@ -713,14 +1090,6 @@ qa_run_gsea_compute_and_plot <- function(
     output_name <- cache$config$output_name
     output_dir_name <- sanitize_file_name(output_name)
 
-    table_output_dir <- file.path(
-      table_output_root,
-      analysis_name,
-      "GSEA",
-      output_dir_name
-    )
-    dir.create(table_output_dir, recursive = TRUE, showWarnings = FALSE)
-
     gsea_run <- load_or_run_gsea(
       analysis_name = analysis_name,
       deg_file = analysis_input$deg_file,
@@ -732,7 +1101,15 @@ qa_run_gsea_compute_and_plot <- function(
     )
 
     gsea_result <- gsea_run$result
-    csv_file <- file.path(table_output_dir, "gsea_result.csv")
+    csv_file <- file.path(
+      gsea_table_root,
+      paste0(
+        sanitize_file_name(analysis_name),
+        "_",
+        output_dir_name,
+        "_gsea_result.csv"
+      )
+    )
     result_table <- write_gsea_result_tables(gsea_result, csv_file)
     csv_file <- resolve_report_csv_file(csv_file)
 
@@ -740,13 +1117,6 @@ qa_run_gsea_compute_and_plot <- function(
     single_pathway_count <- 0L
 
     if (run_plots) {
-      plot_output_dir <- file.path(
-        plot_root,
-        sanitize_file_name(analysis_name),
-        output_dir_name
-      )
-      dir.create(plot_output_dir, recursive = TRUE, showWarnings = FALSE)
-
       if (is_gsea_result_object(gsea_result)) {
         plot_gsea_result <- prepare_gsea_result_for_plot(gsea_result)
         plot_result_table <- as.data.frame(plot_gsea_result)
@@ -771,7 +1141,15 @@ qa_run_gsea_compute_and_plot <- function(
       plot_files <- with_gsea_warnings_suppressed(
         save_ggplot_pdf_png(
           plot = dotplot_result$plot,
-          pdf_file = file.path(plot_output_dir, "dotplot.pdf"),
+          pdf_file = file.path(
+            plot_root,
+            paste0(
+              sanitize_file_name(analysis_name),
+              "_",
+              output_dir_name,
+              "_dotplot.pdf"
+            )
+          ),
           width = plot_size$width,
           height = plot_size$height
         )
@@ -784,7 +1162,11 @@ qa_run_gsea_compute_and_plot <- function(
             result_table = result_table,
             analysis_name = analysis_name,
             geneset_name = geneset_name,
-            plot_output_dir = plot_output_dir,
+            plot_output_dir = file.path(
+              plot_root,
+              "single_pathway",
+              paste0(sanitize_file_name(analysis_name), "_", output_dir_name)
+            ),
             expression_data = analysis_input$expression_data
           )
         )
@@ -820,11 +1202,15 @@ qa_run_gsea_compute_and_plot <- function(
   summary_table <- do.call(rbind, summary_records)
   rownames(summary_table) <- NULL
 
-  summary_output_dir <- file.path(table_output_root, "GSEA_summary")
-  dir.create(summary_output_dir, recursive = TRUE, showWarnings = FALSE)
+  summary_file_prefix <- qa_sanitize_file_name(summary_file_prefix)
+  summary_file_name <- if (nzchar(summary_file_prefix)) {
+    paste0(summary_file_prefix, "_gsea_summary.csv")
+  } else {
+    "gsea_summary.csv"
+  }
   summary_csv_file <- write_csv_with_report_previews(
     summary_table,
-    file.path(summary_output_dir, "summary.csv"),
+    file.path(gsea_table_root, summary_file_name),
     n_rows = 21
   )
 

@@ -169,6 +169,9 @@ SLCPTAC_REFERENCE_CACHE_ROOT <- file.path(DATA_ROOT, "reference_cache")
 SLCPTAC_TASK_CACHE_ROOT <- file.path(SLCPTAC_REFERENCE_CACHE_ROOT, "task_manifest")
 
 # 结果与运行控制。
+# 默认在运行前清空本脚本前次运行产生的全部结果与中间文件。
+# 这会删除results/quickanalysis/cptac、temporary/slcptac，
+# 以及本脚本的任务manifest缓存；不会删除data/cptac中的SLCPTAC输入数据。
 CLEAR_PREVIOUS_RUN_OUTPUTS <- parse_env_logical("SLCPTAC_CLEAR_PREVIOUS_OUTPUTS", TRUE)
 CLEAN_TASK_OUTPUT_DIR <- parse_env_logical("SLCPTAC_CLEAN_OUTPUT", TRUE)
 SAVE_RAW_DATA_TABLES <- parse_env_logical("SLCPTAC_SAVE_RAW_DATA_TABLES", TRUE)
@@ -2985,8 +2988,7 @@ clear_previous_slcptac_run_outputs <- function() {
     return(invisible(FALSE))
   }
 
-  unlink(PLOT_ROOT, recursive = TRUE, force = TRUE)
-  unlink(TABLE_ROOT, recursive = TRUE, force = TRUE)
+  unlink(RESULT_ROOT, recursive = TRUE, force = TRUE)
   unlink(TEMP_ROOT, recursive = TRUE, force = TRUE)
   unlink(SLCPTAC_TASK_CACHE_ROOT, recursive = TRUE, force = TRUE)
   invisible(TRUE)
