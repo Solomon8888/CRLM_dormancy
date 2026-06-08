@@ -2,7 +2,7 @@
 #
 # 设计目的：
 # 1. 先以TCGAplot包为主，快速完成ATF3的TCGA单癌种和泛癌扫描；
-# 2. 所有正式结果统一保存到results/ngs/tcga，不让TCGAplot把文件散落到项目根目录；
+# 2. 所有正式结果统一保存到results/quickanalysis/tcga，不让TCGAplot把文件散落到项目根目录；
 # 3. 下载或从包内提取的大型数据统一保存到data/tcgaplot；
 # 4. TCGAplot运行时产生的中间文件统一放到temporary/tcgaplot；
 # 5. 额外审计TCGAplot内置COAD样本和本项目本地SE对象是否一致。
@@ -54,7 +54,7 @@ parse_env_integer <- function(name, default) {
 
 # 单基因分析的目标基因。默认只分析ATF3。
 # 临时换基因可在终端使用：
-# TCGAPLOT_TARGET_GENES=ATF3,MYC Rscript scripts/TCGA/00_tcgaplot_quick_analysis.R
+# TCGAPLOT_TARGET_GENES=ATF3,MYC Rscript scripts/quickanalysis/01_tcgaplot_quick_analysis.R
 TARGET_GENES <- parse_env_vector("TCGAPLOT_TARGET_GENES", c("ATF3"))
 
 # 单癌种分析的TCGA癌种。当前项目主线只分析COAD，不纳入READ。
@@ -147,10 +147,9 @@ PAN_FOREST_ADJUST_VARIABLES <- parse_env_vector(
 
 # 输出目录。这里统一使用绝对路径，避免TCGAplot在任务临时目录运行时写错位置。
 PROJECT_ROOT <- normalizePath(".", winslash = "/", mustWork = TRUE)
-SCRIPT_FILE <- file.path(PROJECT_ROOT, "scripts", "TCGA", "00_tcgaplot_quick_analysis.R")
+SCRIPT_FILE <- file.path(PROJECT_ROOT, "scripts", "quickanalysis", "01_tcgaplot_quick_analysis.R")
 DATASET_ID <- "tcga"
-DATA_TYPE <- "ngs"
-RESULT_ROOT <- file.path(PROJECT_ROOT, "results", DATA_TYPE, DATASET_ID)
+RESULT_ROOT <- file.path(PROJECT_ROOT, "results", "quickanalysis", DATASET_ID)
 PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "TCGAplot")
 TABLE_ROOT <- file.path(RESULT_ROOT, "tables", "TCGAplot")
 PLOT_PDF_DIR <- file.path(PLOT_ROOT, "pdf")
@@ -173,7 +172,7 @@ SAVE_BUILTIN_DATA_EXTRACTS <- parse_env_logical(
 )
 
 # 默认在运行前清空本脚本前次运行产生的全部结果与中间文件。
-# 这会删除results/ngs/tcga/plots/TCGAplot、results/ngs/tcga/tables/TCGAplot、
+# 这会删除results/quickanalysis/tcga/plots/TCGAplot、results/quickanalysis/tcga/tables/TCGAplot、
 # temporary/tcgaplot，以及本脚本的任务manifest缓存；不会删除data/tcgaplot中保存的TCGAplot数据提取结果。
 CLEAR_PREVIOUS_RUN_OUTPUTS <- parse_env_logical("TCGAPLOT_CLEAR_PREVIOUS_OUTPUTS", TRUE)
 
@@ -182,7 +181,7 @@ CLEAN_TASK_OUTPUT_DIR <- parse_env_logical("TCGAPLOT_CLEAN_OUTPUT", TRUE)
 
 # 并行配置。默认使用parallel_runtime_functions.R自动识别的可用核心数；
 # 如需限制CPU占用，可在终端设置：
-# TCGAPLOT_PARALLEL_WORKERS=4 Rscript scripts/TCGA/00_tcgaplot_quick_analysis.R
+# TCGAPLOT_PARALLEL_WORKERS=4 Rscript scripts/quickanalysis/01_tcgaplot_quick_analysis.R
 MAX_PARALLEL_WORKERS <- parse_env_integer("TCGAPLOT_PARALLEL_WORKERS", NA_integer_)
 
 # 对网络/富集类TCGAplot任务启用任务输出缓存。

@@ -3,8 +3,8 @@
 # 设计目的：
 # 1. 使用SLCPTAC包快速完成ATF3在CPTAC-COAD及泛癌中的多组学探索；
 # 2. 覆盖SLCPTAC官方说明中的17个分析场景，并把每个场景登记到结果目录中的catalog表；
-# 3. 正式结果统一保存到results/ngs/cptac，不让SLCPTAC自动生成的slcptac_output散落在项目根目录；
-# 4. CPTAC bulk数据默认放在data/slcptac/bulk_data，并通过SL_BULK_DATA传给SLCPTAC；
+# 3. 正式结果统一保存到results/quickanalysis/cptac，不让SLCPTAC自动生成的slcptac_output散落在项目根目录；
+# 4. CPTAC bulk数据默认放在data/cptac/bulk_data，并通过SL_BULK_DATA传给SLCPTAC；
 # 5. SLCPTAC产生的临时图片、中间文件统一放在temporary/slcptac；
 # 6. 复用scripts/functions中的表格保存、并行运行、进度条、耗时统计和缓存函数。
 #
@@ -56,7 +56,7 @@ parse_env_integer <- function(name, default) {
 # 1. 分析设计区：日常主要修改这里 ---------------------------------------------
 
 # 主分析基因。临时换基因可使用：
-# SLCPTAC_TARGET_GENES=ATF3,MYC Rscript scripts/CPTAC/00_slcptac_quick_analysis.R
+# SLCPTAC_TARGET_GENES=ATF3,MYC Rscript scripts/quickanalysis/02_slcptac_quick_analysis.R
 TARGET_GENES <- parse_env_vector("SLCPTAC_TARGET_GENES", c("ATF3"))
 
 # 主分析癌种。SLCPTAC中COAD仅代表CPTAC-COAD，不包含READ。
@@ -148,15 +148,14 @@ RUN_MODAL_PAIR_GRID <- parse_env_logical("SLCPTAC_RUN_MODAL_PAIR_GRID", TRUE)
 #     LinkedOmicsKB_PanCancer_Clin.qs
 #     ...
 PROJECT_ROOT <- normalizePath(".", winslash = "/", mustWork = TRUE)
-SCRIPT_FILE <- file.path(PROJECT_ROOT, "scripts", "CPTAC", "00_slcptac_quick_analysis.R")
+SCRIPT_FILE <- file.path(PROJECT_ROOT, "scripts", "quickanalysis", "02_slcptac_quick_analysis.R")
 DATASET_ID <- "cptac"
-DATA_TYPE <- "ngs"
-RESULT_ROOT <- file.path(PROJECT_ROOT, "results", DATA_TYPE, DATASET_ID)
+RESULT_ROOT <- file.path(PROJECT_ROOT, "results", "quickanalysis", DATASET_ID)
 PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "SLCPTAC")
 TABLE_ROOT <- file.path(RESULT_ROOT, "tables", "SLCPTAC")
 PLOT_PDF_DIR <- file.path(PLOT_ROOT, "pdf")
 PLOT_PNG_DIR <- file.path(PLOT_ROOT, "png")
-DATA_ROOT <- file.path(PROJECT_ROOT, "data", "slcptac")
+DATA_ROOT <- file.path(PROJECT_ROOT, "data", "cptac")
 TEMP_ROOT <- file.path(PROJECT_ROOT, "temporary", "slcptac")
 SLCPTAC_BULK_DATA_ROOT <- Sys.getenv(
   "SL_BULK_DATA",
@@ -175,15 +174,53 @@ CLEAN_TASK_OUTPUT_DIR <- parse_env_logical("SLCPTAC_CLEAN_OUTPUT", TRUE)
 SAVE_RAW_DATA_TABLES <- parse_env_logical("SLCPTAC_SAVE_RAW_DATA_TABLES", TRUE)
 SAVE_RESULT_OBJECTS <- parse_env_logical("SLCPTAC_SAVE_RESULT_OBJECTS", FALSE)
 ADD_SCRIPT_TITLES <- parse_env_logical("SLCPTAC_ADD_SCRIPT_TITLES", TRUE)
-STOP_IF_BULK_DATA_MISSING <- parse_env_logical("SLCPTAC_STOP_IF_DATA_MISSING", FALSE)
+SMOKE_TEST_MODE <- parse_env_logical("SLCPTAC_SMOKE_TEST", FALSE)
+SMOKE_TEST_SAMPLES_PER_CANCER <- parse_env_integer("SLCPTAC_SMOKE_SAMPLES_PER_CANCER", 24L)
+if (SMOKE_TEST_MODE &&
+    !nzchar(Sys.getenv("SL_BULK_DATA", unset = "")) &&
+    !nzchar(Sys.getenv("SLCPTAC_BULK_DATA", unset = ""))) {
+  SLCPTAC_BULK_DATA_ROOT <- file.path(TEMP_ROOT, "smoke_bulk_data")
+}
+STOP_IF_BULK_DATA_MISSING <- parse_env_logical("SLCPTAC_STOP_IF_DATA_MISSING", TRUE)
+AUTO_PREPARE_CPTAC_BULK <- parse_env_logical("SLCPTAC_AUTO_PREPARE_BULK", TRUE)
+LINKEDOMICS_RAW_ROOT <- file.path(DATA_ROOT, "raw_linkedomics")
+LINKEDOMICS_BULK_CONVERTER_VERSION <- "2026-06-08_sample_named_unlist_v2"
+LINKEDOMICS_BULK_MANIFEST_FILE <- file.path(DATA_ROOT, "bulk_data_manifest.csv")
 
-# 包安装控制。默认不在分析脚本中改动R库；如需自动尝试安装：
-# SLCPTAC_AUTO_INSTALL=1 Rscript scripts/CPTAC/00_slcptac_quick_analysis.R
-AUTO_INSTALL_SLCPTAC <- parse_env_logical("SLCPTAC_AUTO_INSTALL", FALSE)
+# 包安装控制。SLCPTAC 1.2.0 官方DESCRIPTION仍写着依赖qs，但本项目统一使用qs2；
+# 因此缺少SLCPTAC、或检测到已安装的SLCPTAC仍不是qs2版时，默认自动安装一个
+# 仅替换读取依赖的patched版。
+# 如需禁用自动安装：SLCPTAC_AUTO_INSTALL=0 Rscript scripts/quickanalysis/02_slcptac_quick_analysis.R
+slcptac_is_qs2_patched <- function() {
+  package_dir <- tryCatch(
+    find.package("SLCPTAC", quiet = TRUE),
+    error = function(error) character(0)
+  )
+  if (length(package_dir) == 0L || !nzchar(package_dir[1])) {
+    return(FALSE)
+  }
+
+  description_file <- file.path(package_dir[1], "DESCRIPTION")
+  if (!file.exists(description_file)) {
+    return(FALSE)
+  }
+
+  description_text <- paste(readLines(description_file, warn = FALSE), collapse = "\n")
+  grepl("Imports:.*qs2|\\n[[:space:]]+.*qs2", description_text)
+}
+
+AUTO_INSTALL_SLCPTAC <- parse_env_logical(
+  "SLCPTAC_AUTO_INSTALL",
+  !requireNamespace("SLCPTAC", quietly = TRUE) || !slcptac_is_qs2_patched()
+)
 
 # 并行配置。外层任务并行时，SLCPTAC内部GSEA worker会自动限制，避免过度抢核。
 MAX_PARALLEL_WORKERS <- parse_env_integer("SLCPTAC_PARALLEL_WORKERS", NA_integer_)
 ENRICHMENT_WORKERS <- parse_env_integer("SLCPTAC_ENRICHMENT_WORKERS", NA_integer_)
+ALLOW_FORK_PARALLEL <- parse_env_logical(
+  "SLCPTAC_ALLOW_FORK_PARALLEL",
+  !identical(Sys.info()[["sysname"]], "Darwin")
+)
 USE_SLCPTAC_TASK_CACHE <- parse_env_logical("SLCPTAC_USE_TASK_CACHE", TRUE)
 SLCPTAC_TASK_CACHE_MAX_AGE_DAYS <- parse_env_integer("SLCPTAC_TASK_CACHE_MAX_AGE_DAYS", 30L)
 
@@ -197,11 +234,12 @@ install_slcptac_if_requested <- function() {
   if (!AUTO_INSTALL_SLCPTAC) {
     return(invisible(FALSE))
   }
+
   if (!requireNamespace("remotes", quietly = TRUE)) {
-    stop(
-      "SLCPTAC is not installed, and package 'remotes' is unavailable. ",
-      "Please install remotes first or install SLCPTAC manually."
-    )
+    install.packages("remotes")
+  }
+  if (!requireNamespace("remotes", quietly = TRUE)) {
+    stop("SLCPTAC is not installed, and package 'remotes' could not be installed.")
   }
 
   install_cran_if_missing <- function(packages, repos = getOption("repos")) {
@@ -213,36 +251,92 @@ install_slcptac_if_requested <- function() {
     invisible(TRUE)
   }
 
-  ensure_qs_dependency <- function() {
-    if (requireNamespace("qs", quietly = TRUE)) {
+  ensure_qs2_dependency <- function() {
+    if (requireNamespace("qs2", quietly = TRUE)) {
       return(invisible(TRUE))
     }
 
-    # qs目前在部分新版R环境中无法从普通CRAN直接安装；按CRAN/r-universe/GitHub
-    # 的顺序尝试，失败时给出明确原因，避免后续SLCPTAC安装报错过长。
+    # 本项目缓存和大对象读写统一使用qs2。先走CRAN，再走qsbase r-universe。
     install_attempts <- list(
-      function() install.packages("qs"),
       function() install.packages(
-        "qs",
-        repos = c(qsbase = "https://qsbase.r-universe.dev", CRAN = "https://cloud.r-project.org")
+        "qs2",
+        repos = c(CRAN = "https://cloud.r-project.org")
       ),
-      function() remotes::install_github("qsbase/qs", upgrade = "never")
+      function() install.packages(
+        "qs2",
+        repos = c(qsbase = "https://qsbase.r-universe.dev", CRAN = "https://cloud.r-project.org")
+      )
     )
 
     for (attempt in install_attempts) {
       try(suppressWarnings(attempt()), silent = TRUE)
-      if (requireNamespace("qs", quietly = TRUE)) {
+      if (requireNamespace("qs2", quietly = TRUE)) {
         return(invisible(TRUE))
       }
     }
 
-    stop(
-      "Dependency package 'qs' could not be installed. ",
-      "SLCPTAC 1.2.0 imports qs, but qs 0.27.3 may fail to compile under R ",
-      as.character(getRversion()),
-      " because it uses R internal C API macros unavailable in this R build. ",
-      "Please run this script in an R 4.4/4.5 environment, or install a local patched qs build first."
+    stop("Dependency package 'qs2' could not be installed.")
+  }
+
+  prepare_slcptac_qs2_source <- function() {
+    source_candidates <- c(
+      file.path(PROJECT_ROOT, "temporary", "slcptac_source"),
+      file.path(TEMP_ROOT, "slcptac_source")
     )
+    existing_source <- source_candidates[
+      file.exists(file.path(source_candidates, "DESCRIPTION"))
+    ][1]
+
+    package_build_root <- file.path(TEMP_ROOT, "package_build")
+    patched_source <- file.path(package_build_root, "SLCPTAC_qs2")
+    unlink(package_build_root, recursive = TRUE, force = TRUE)
+    dir.create(package_build_root, recursive = TRUE, showWarnings = FALSE)
+
+    if (!is.na(existing_source) && nzchar(existing_source)) {
+      file.copy(existing_source, dirname(patched_source), recursive = TRUE)
+      copied_source <- file.path(dirname(patched_source), basename(existing_source))
+      if (!identical(normalizePath(copied_source, winslash = "/", mustWork = FALSE),
+                     normalizePath(patched_source, winslash = "/", mustWork = FALSE))) {
+        if (dir.exists(patched_source)) {
+          unlink(patched_source, recursive = TRUE, force = TRUE)
+        }
+        file.rename(copied_source, patched_source)
+      }
+    } else {
+      git_bin <- Sys.which("git")
+      if (!nzchar(git_bin)) {
+        stop(
+          "SLCPTAC source is not available locally and git is unavailable. ",
+          "Please clone https://github.com/SolvingLab/SLCPTAC to temporary/slcptac_source."
+        )
+      }
+      status <- system2(
+        git_bin,
+        c("clone", "--depth", "1", "https://github.com/SolvingLab/SLCPTAC.git", patched_source),
+        stdout = TRUE,
+        stderr = TRUE
+      )
+      if (!file.exists(file.path(patched_source, "DESCRIPTION"))) {
+        stop("Failed to clone SLCPTAC source: ", paste(status, collapse = "\n"))
+      }
+    }
+
+    description_file <- file.path(patched_source, "DESCRIPTION")
+    description_lines <- readLines(description_file, warn = FALSE)
+    description_lines <- gsub("qs \\(>= 0\\.25\\.0\\),\\s*", "qs2 (>= 0.2.0), ", description_lines)
+    description_lines <- gsub("Imports:\\s*qs,", "Imports: qs2,", description_lines)
+    writeLines(description_lines, description_file, useBytes = TRUE)
+
+    r_files <- list.files(file.path(patched_source, "R"), pattern = "\\.[Rr]$", full.names = TRUE)
+    for (r_file in r_files) {
+      code <- readLines(r_file, warn = FALSE)
+      patched_code <- gsub("qs::qread\\(", "qs2::qs_read(", code, fixed = FALSE)
+      if (!identical(code, patched_code)) {
+        writeLines(patched_code, r_file, useBytes = TRUE)
+      }
+    }
+
+    patched_source
   }
 
   if (!requireNamespace("BiocManager", quietly = TRUE)) {
@@ -250,7 +344,7 @@ install_slcptac_if_requested <- function() {
   }
 
   BiocManager::install(
-    c("fgsea", "ComplexHeatmap", "limma"),
+    c("fgsea", "ComplexHeatmap", "limma", "AnnotationDbi", "org.Hs.eg.db"),
     ask = FALSE,
     update = FALSE
   )
@@ -258,21 +352,29 @@ install_slcptac_if_requested <- function() {
   install_cran_if_missing(
     c("dplyr", "ggplot2", "survival", "patchwork", "jsonlite",
       "Hmisc", "tidyr", "ggnewscale", "ggrepel", "scales", "circlize",
-      "igraph", "ggraph", "Cairo", "png", "pdftools")
+      "igraph", "ggraph", "Cairo", "png", "pdftools", "qs2")
   )
-  ensure_qs_dependency()
+  ensure_qs2_dependency()
 
   remotes::install_github("GangLiLab/geneset", upgrade = "never")
+  if (!requireNamespace("genekitr", quietly = TRUE)) {
+    remotes::install_github("GangLiLab/genekitr", upgrade = "never")
+  }
   remotes::install_github("Zaoqu-Liu/genekitr2", upgrade = "never")
-  remotes::install_github("SolvingLab/SLCPTAC", upgrade = "never")
+  patched_source <- prepare_slcptac_qs2_source()
+  unlink(file.path(.libPaths()[1], "00LOCK-SLCPTAC"), recursive = TRUE, force = TRUE)
+  remotes::install_local(patched_source, upgrade = "never", dependencies = FALSE)
   invisible(TRUE)
 }
 
-if (!requireNamespace("SLCPTAC", quietly = TRUE)) {
+if (AUTO_INSTALL_SLCPTAC) {
   install_slcptac_if_requested()
 }
 
-required_packages <- c("SLCPTAC", "ggplot2", "grid", "Cairo", "png")
+required_packages <- c(
+  "SLCPTAC", "ggplot2", "grid", "Cairo", "png", "qs2", "genekitr",
+  "AnnotationDbi", "org.Hs.eg.db"
+)
 missing_packages <- required_packages[
   !vapply(
     required_packages,
@@ -289,7 +391,7 @@ if (length(missing_packages) > 0) {
     "Please install required R packages before running this script: ",
     paste(missing_packages, collapse = ", "),
     "\nOfficial install reference: remotes::install_github('SolvingLab/SLCPTAC')",
-    "\nIf qs is the missing package under R >= 4.6, use R 4.4/4.5 or install a patched qs build first."
+    "\nThis project uses a qs2-patched SLCPTAC install path because qs is not compatible with this R 4.6 build."
   )
 }
 
@@ -309,10 +411,567 @@ source(NETWORK_CACHE_FUNCTION_FILE)
 
 SCRIPT_START_TIME <- start_runtime_timer()
 
-PARALLEL_WORKERS <- if (is.na(MAX_PARALLEL_WORKERS)) {
+PARALLEL_WORKERS <- if (!ALLOW_FORK_PARALLEL) {
+  1L
+} else if (is.na(MAX_PARALLEL_WORKERS)) {
   get_available_worker_count()
 } else {
   max(1L, MAX_PARALLEL_WORKERS)
+}
+
+create_slcptac_smoke_bulk_data <- function(output_root) {
+  if (!SMOKE_TEST_MODE) {
+    return(invisible(FALSE))
+  }
+
+  if (!requireNamespace("qs2", quietly = TRUE)) {
+    stop("SLCPTAC smoke test requires package 'qs2'.")
+  }
+
+  set.seed(20260608)
+  output_root <- normalizePath(output_root, winslash = "/", mustWork = FALSE)
+  split_root <- file.path(output_root, "CPTAC_Omics_Split")
+
+  unlink(output_root, recursive = TRUE, force = TRUE)
+  dir.create(split_root, recursive = TRUE, showWarnings = FALSE)
+
+  cancers <- unique(PAN_CANCERS)
+  n_per_cancer <- max(SMOKE_TEST_SAMPLES_PER_CANCER, 16L)
+  sample_table <- do.call(rbind, lapply(cancers, function(cancer) {
+    data.frame(
+      sampleid = sprintf("%s_SMK%03d", cancer, seq_len(n_per_cancer)),
+      cancer = cancer,
+      sample_index = seq_len(n_per_cancer),
+      stringsAsFactors = FALSE
+    )
+  }))
+  rownames(sample_table) <- sample_table$sampleid
+
+  sample_table$type <- "Tumor"
+  sample_table$age <- 45 + (sample_table$sample_index %% 28) + match(sample_table$cancer, cancers)
+  sample_table$bmi <- 20 + (sample_table$sample_index %% 11) / 1.5
+  sample_table$gender <- ifelse(sample_table$sample_index %% 2 == 0, "Female", "Male")
+  sample_table$tumor_stage <- paste0("Stage ", c("I", "II", "III", "IV")[(sample_table$sample_index %% 4) + 1L])
+  sample_table$os_time <- 240 + sample_table$sample_index * 18 + match(sample_table$cancer, cancers) * 7
+  sample_table$os_event <- as.integer(sample_table$sample_index %% 3 == 0)
+  sample_table$pfs_time <- 160 + sample_table$sample_index * 13 + match(sample_table$cancer, cancers) * 5
+  sample_table$pfs_event <- as.integer(sample_table$sample_index %% 4 == 0)
+
+  required_gene_symbols <- unique(c(
+    TARGET_GENES,
+    CONTINUOUS_PANEL_GENES,
+    MUTATION_PANEL_GENES,
+    PRIMARY_MUTATION_GENE,
+    SECONDARY_MUTATION_GENES,
+    AUXILIARY_PHOSPHO_GENE,
+    "TP53"
+  ))
+  required_gene_symbols <- required_gene_symbols[nzchar(required_gene_symbols)]
+
+  geneset_symbols <- tryCatch({
+    gs <- SLCPTAC:::.load_geneset_df(enrich_type = "MsigDB", msigdb_category = MSIGDB_CATEGORY)
+    unique(as.character(gs$gene))
+  }, error = function(error) {
+    c(
+      "ABCA1", "ACADM", "ACLY", "AKT1", "ALDOA", "APOE", "ARAF", "BCL2",
+      "BCL2L13", "BRAF", "CASP3", "CCND1", "CDK1", "CDK2", "CDKN1A",
+      "CEBPB", "DDIT3", "EGFR", "EGR1", "EIF4E", "FOS", "GAPDH",
+      "HIF1A", "JUN", "KRAS", "MAPK1", "MDM2", "MTOR", "MYC", "NFKB1",
+      "PIK3CA", "PTEN", "RPS6", "STAT3", "TGFB1", "TP53", "VEGFA"
+    )
+  })
+  genome_gene_symbols <- unique(c(required_gene_symbols, geneset_symbols))
+  genome_gene_symbols <- genome_gene_symbols[nzchar(genome_gene_symbols)]
+
+  make_numeric_signal <- function(gene, modal_shift = 0) {
+    gene_id <- match(gene, genome_gene_symbols)
+    cancer_id <- match(sample_table$cancer, cancers)
+    index <- sample_table$sample_index
+    signal <- sin(index / 3 + gene_id / 7) +
+      cos(cancer_id / 2 + gene_id / 11) +
+      modal_shift +
+      rnorm(nrow(sample_table), sd = 0.35)
+    as.numeric(scale(signal))
+  }
+
+  make_mutation_status <- function(gene) {
+    gene_id <- match(gene, genome_gene_symbols)
+    is_mut <- (sample_table$sample_index + gene_id + match(sample_table$cancer, cancers)) %% 4 == 0
+    ifelse(is_mut, "Mutation", "WildType")
+  }
+
+  clinical_cols <- c(
+    "sampleid", "type", "age", "bmi", "gender", "tumor_stage",
+    "os_time", "os_event", "pfs_time", "pfs_event"
+  )
+
+  for (gene in required_gene_symbols) {
+    gene_data <- sample_table[, clinical_cols, drop = FALSE]
+    gene_data[[paste0(gene, "_RNAseq")]] <- make_numeric_signal(gene, modal_shift = 0)
+    gene_data[[paste0(gene, "_Protein")]] <- 0.55 * gene_data[[paste0(gene, "_RNAseq")]] +
+      make_numeric_signal(gene, modal_shift = 0.35) * 0.45
+    gene_data[[paste0(gene, "_logCNA")]] <- make_numeric_signal(gene, modal_shift = -0.15)
+    gene_data[[paste0(gene, "_Methylation")]] <- -0.4 * gene_data[[paste0(gene, "_RNAseq")]] +
+      make_numeric_signal(gene, modal_shift = 0.2) * 0.6
+    gene_data[[paste0(gene, "_Mutation")]] <- make_mutation_status(gene)
+
+    qs2::qs_save(
+      gene_data,
+      file.path(split_root, paste0(gene, "_cptac.qs"))
+    )
+  }
+
+  make_genome_matrix <- function(modal, modal_shift = 0) {
+    mat <- vapply(genome_gene_symbols, function(gene) {
+      make_numeric_signal(gene, modal_shift = modal_shift)
+    }, numeric(nrow(sample_table)))
+    mat <- as.data.frame(mat, check.names = FALSE)
+    rownames(mat) <- sample_table$sampleid
+    mat
+  }
+
+  protein_matrix <- make_genome_matrix("Protein", modal_shift = 0.3)
+  rna_matrix <- make_genome_matrix("RNAseq", modal_shift = 0)
+  logcna_matrix <- make_genome_matrix("logCNA", modal_shift = -0.2)
+  methylation_matrix <- make_genome_matrix("Methylation", modal_shift = 0.1)
+
+  kras_mut <- make_mutation_status(PRIMARY_MUTATION_GENE)
+  affected_genes <- intersect(colnames(protein_matrix), head(geneset_symbols, 80))
+  protein_matrix[kras_mut == "Mutation", affected_genes] <-
+    protein_matrix[kras_mut == "Mutation", affected_genes, drop = FALSE] + 1.2
+  rna_matrix[kras_mut == "Mutation", affected_genes] <-
+    rna_matrix[kras_mut == "Mutation", affected_genes, drop = FALSE] + 0.8
+
+  mutation_matrix <- as.data.frame(vapply(genome_gene_symbols, function(gene) {
+    make_mutation_status(gene)
+  }, character(nrow(sample_table))), check.names = FALSE)
+  rownames(mutation_matrix) <- sample_table$sampleid
+
+  phospho_matrix <- data.frame(.row_id = seq_len(nrow(sample_table)))
+  rownames(phospho_matrix) <- sample_table$sampleid
+  phospho_matrix$.row_id <- NULL
+  for (site in c("S124", "S126", "S129", "T308", "S473")) {
+    phospho_matrix[[paste0(site, "_", AUXILIARY_PHOSPHO_GENE)]] <-
+      make_numeric_signal(AUXILIARY_PHOSPHO_GENE, modal_shift = runif(1, -0.2, 0.2))
+  }
+
+  clinical_bulk <- sample_table[, clinical_cols, drop = FALSE]
+  qs2::qs_save(rna_matrix, file.path(output_root, "LinkedOmicsKB_PanCancer_RNAseq_RSEM.qs"))
+  qs2::qs_save(protein_matrix, file.path(output_root, "LinkedOmicsKB_PanCancer_Protein_Quantification.qs"))
+  qs2::qs_save(phospho_matrix, file.path(output_root, "LinkedOmicsKB_PanCancer_Phospho_Quantification.qs"))
+  qs2::qs_save(methylation_matrix, file.path(output_root, "LinkedOmicsKB_PanCancer_Methylation.qs"))
+  qs2::qs_save(logcna_matrix, file.path(output_root, "LinkedOmicsKB_PanCancer_CNV_logCNA.qs"))
+  qs2::qs_save(mutation_matrix, file.path(output_root, "LinkedOmicsKB_PanCancer_Mutation_Binary.qs"))
+  qs2::qs_save(clinical_bulk, file.path(output_root, "LinkedOmicsKB_PanCancer_Clin.qs"))
+
+  manifest <- data.frame(
+    Smoke_Test = TRUE,
+    Bulk_Data_Root = output_root,
+    Cancers = paste(cancers, collapse = ";"),
+    Samples = nrow(sample_table),
+    Gene_Files = length(required_gene_symbols),
+    Genome_Genes = length(genome_gene_symbols),
+    Generated_At = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+    stringsAsFactors = FALSE
+  )
+  dir.create(TABLE_ROOT, recursive = TRUE, showWarnings = FALSE)
+  utils::write.csv(
+    manifest,
+    file = file.path(TABLE_ROOT, "000_slcptac_smoke_test_bulk_manifest.csv"),
+    row.names = FALSE,
+    na = "NA"
+  )
+
+  invisible(TRUE)
+}
+
+LINKEDOMICS_BASE_URL <- "https://cptac-pancancer-data.s3.us-west-2.amazonaws.com/data_freeze_v1.2_reorganized"
+LINKEDOMICS_CANCER_CODES <- c(
+  BRCA = "BRCA", CCRCC = "CCRCC", COAD = "COAD", GBM = "GBM", HNSCC = "HNSCC",
+  LUAD = "LUAD", LUSC = "LSCC", OV = "OV", PDAC = "PDAC", UCEC = "UCEC"
+)
+LINKEDOMICS_RESOURCE_SUFFIX <- c(
+  RNAseq = "RNAseq_gene_RSEM_coding_UQ_1500_log2_Tumor.txt",
+  Protein = "proteomics_gene_abundance_log2_reference_intensity_normalized_Tumor.txt",
+  logCNA = "WES_CNV_gene_ratio_log2.txt",
+  Mutation = "somatic_mutation_gene_level_binary.txt",
+  Meta = "meta.txt",
+  Survival = "survival.txt"
+)
+
+get_required_gene_symbols_for_linkedomics <- function(tasks) {
+  genes <- unique(c(
+    TARGET_GENES,
+    CONTINUOUS_PANEL_GENES,
+    MUTATION_PANEL_GENES,
+    PRIMARY_MUTATION_GENE,
+    SECONDARY_MUTATION_GENES,
+    "TP53",
+    unlist(lapply(tasks, extract_task_genes), use.names = FALSE)
+  ))
+  genes <- unique(trimws(as.character(genes)))
+  genes[nzchar(genes)]
+}
+
+linkedomics_code_for_cancer <- function(cancer) {
+  code <- unname(LINKEDOMICS_CANCER_CODES[[cancer]])
+  if (is.null(code) || is.na(code)) {
+    stop("No LinkedOmicsKB download code configured for cancer: ", cancer)
+  }
+  code
+}
+
+linkedomics_url <- function(cancer, resource) {
+  code <- linkedomics_code_for_cancer(cancer)
+  suffix <- unname(LINKEDOMICS_RESOURCE_SUFFIX[[resource]])
+  if (is.null(suffix) || is.na(suffix)) {
+    stop("No LinkedOmicsKB resource suffix configured for: ", resource)
+  }
+  sprintf("%s/%s/%s_%s", LINKEDOMICS_BASE_URL, code, code, suffix)
+}
+
+linkedomics_raw_file <- function(cancer, resource) {
+  code <- linkedomics_code_for_cancer(cancer)
+  file.path(LINKEDOMICS_RAW_ROOT, code, basename(linkedomics_url(cancer, resource)))
+}
+
+download_linkedomics_file <- function(cancer, resource, overwrite = FALSE) {
+  destination <- linkedomics_raw_file(cancer, resource)
+  if (file.exists(destination) && file.info(destination)$size > 0 && !overwrite) {
+    return(destination)
+  }
+
+  dir.create(dirname(destination), recursive = TRUE, showWarnings = FALSE)
+  url <- linkedomics_url(cancer, resource)
+  cat("Downloading LinkedOmicsKB ", cancer, " ", resource, "...\n", sep = "")
+
+  ok <- FALSE
+  last_error <- NULL
+  for (attempt in seq_len(4L)) {
+    last_error <- tryCatch({
+      utils::download.file(
+        url = url,
+        destfile = destination,
+        mode = "wb",
+        method = "libcurl",
+        quiet = TRUE,
+        headers = c("User-Agent" = "Mozilla/5.0")
+      )
+      NULL
+    }, error = function(error) error)
+    ok <- is.null(last_error) && file.exists(destination) && file.info(destination)$size > 0
+    if (ok) {
+      break
+    }
+    Sys.sleep(1 + attempt)
+  }
+
+  if (!ok) {
+    unlink(destination, force = TRUE)
+    stop(
+      "Failed to download LinkedOmicsKB file: ", url,
+      if (!is.null(last_error)) paste0("\n", conditionMessage(last_error)) else ""
+    )
+  }
+
+  destination
+}
+
+.ensembl_symbol_cache <- new.env(parent = emptyenv())
+
+map_ensembl_to_symbol <- function(ensembl_ids) {
+  ensembl_base <- sub("\\..*$", "", as.character(ensembl_ids))
+  unique_ids <- unique(ensembl_base[nzchar(ensembl_base)])
+  missing_ids <- setdiff(unique_ids, ls(.ensembl_symbol_cache, all.names = TRUE))
+
+  if (length(missing_ids) > 0L) {
+    mapped <- suppressMessages(AnnotationDbi::select(
+      org.Hs.eg.db::org.Hs.eg.db,
+      keys = missing_ids,
+      keytype = "ENSEMBL",
+      columns = "SYMBOL"
+    ))
+    mapped <- mapped[!is.na(mapped$SYMBOL) & nzchar(mapped$SYMBOL), , drop = FALSE]
+    mapped <- mapped[!duplicated(mapped$ENSEMBL), , drop = FALSE]
+    symbol_map <- setNames(mapped$SYMBOL, mapped$ENSEMBL)
+
+    for (ensembl_id in missing_ids) {
+      symbol <- unname(symbol_map[ensembl_id])
+      if (length(symbol) == 0L || is.na(symbol)) {
+        symbol <- NA_character_
+      }
+      assign(
+        ensembl_id,
+        symbol,
+        envir = .ensembl_symbol_cache
+      )
+    }
+  }
+
+  unname(vapply(
+    ensembl_base,
+    function(ensembl_id) {
+      if (!nzchar(ensembl_id) || !exists(ensembl_id, envir = .ensembl_symbol_cache, inherits = FALSE)) {
+        return(NA_character_)
+      }
+      get(ensembl_id, envir = .ensembl_symbol_cache, inherits = FALSE)
+    },
+    character(1)
+  ))
+}
+
+read_linkedomics_matrix <- function(file, cancer, wanted_symbols = NULL, binary = FALSE) {
+  dat <- utils::read.delim(
+    file,
+    check.names = FALSE,
+    stringsAsFactors = FALSE,
+    quote = "",
+    comment.char = ""
+  )
+  if (ncol(dat) < 2L) {
+    stop("Downloaded matrix has too few columns: ", file)
+  }
+
+  row_ids <- dat[[1]]
+  symbols <- map_ensembl_to_symbol(row_ids)
+  keep <- !is.na(symbols) & nzchar(symbols)
+  if (!is.null(wanted_symbols)) {
+    keep <- keep & symbols %in% wanted_symbols
+  }
+  dat <- dat[keep, , drop = FALSE]
+  symbols <- symbols[keep]
+  if (nrow(dat) == 0L) {
+    return(data.frame(row.names = character(0)))
+  }
+
+  value_df <- dat[, -1, drop = FALSE]
+  value_df[] <- lapply(value_df, function(x) suppressWarnings(as.numeric(x)))
+  value_df$SYMBOL <- symbols
+  value_df <- stats::aggregate(. ~ SYMBOL, data = value_df, FUN = function(x) {
+    if (binary) {
+      as.numeric(any(x > 0, na.rm = TRUE))
+    } else {
+      mean(x, na.rm = TRUE)
+    }
+  })
+  rownames(value_df) <- value_df$SYMBOL
+  value_df$SYMBOL <- NULL
+
+  matrix_df <- as.data.frame(t(as.matrix(value_df)), check.names = FALSE)
+  rownames(matrix_df) <- paste0(cancer, "_", rownames(matrix_df))
+  matrix_df
+}
+
+read_linkedomics_meta <- function(file, cancer) {
+  meta <- utils::read.delim(
+    file,
+    check.names = FALSE,
+    stringsAsFactors = FALSE,
+    quote = "",
+    comment.char = ""
+  )
+  if ("case_id" %in% names(meta)) {
+    meta <- meta[meta$case_id != "data_type", , drop = FALSE]
+  }
+  sample_raw <- meta$case_id
+  out <- data.frame(
+    sampleid = paste0(cancer, "_", sample_raw),
+    type = "Tumor",
+    age = suppressWarnings(as.numeric(meta[["Age"]] %||% NA)),
+    bmi = suppressWarnings(as.numeric(meta[["BMI"]] %||% NA)),
+    gender = as.character(meta[["Sex"]] %||% NA),
+    tumor_stage = as.character((meta[["Stage"]] %||% meta[["tumor_stage"]] %||% NA)),
+    stringsAsFactors = FALSE
+  )
+  out
+}
+
+read_linkedomics_survival <- function(file, cancer) {
+  survival <- utils::read.delim(
+    file,
+    check.names = FALSE,
+    stringsAsFactors = FALSE,
+    quote = "",
+    comment.char = ""
+  )
+  data.frame(
+    sampleid = paste0(cancer, "_", survival$case_id),
+    os_time = suppressWarnings(as.numeric(survival$OS_days)),
+    os_event = suppressWarnings(as.integer(survival$OS_event)),
+    pfs_time = suppressWarnings(as.numeric(survival$PFS_days)),
+    pfs_event = suppressWarnings(as.integer(survival$PFS_event)),
+    stringsAsFactors = FALSE
+  )
+}
+
+merge_named_vector <- function(target, values, column) {
+  if (length(values) == 0L || is.null(names(values))) {
+    target[[column]] <- NA_real_
+    return(target)
+  }
+  target[[column]] <- unname(values[target$sampleid])
+  target
+}
+
+flatten_sample_named_values <- function(modal_value_list) {
+  # unlist() 会把外层癌种名拼进 names，导致 COAD_01CO001 变成 COAD.COAD_01CO001。
+  # SLCPTAC 原包按 sampleid 精确匹配，所以这里必须只保留内层样本名。
+  modal_value_list <- modal_value_list[lengths(modal_value_list) > 0L]
+  if (length(modal_value_list) == 0L) {
+    return(stats::setNames(numeric(0), character(0)))
+  }
+
+  values <- unlist(unname(modal_value_list), use.names = TRUE)
+  sample_names <- names(values)
+  if (is.null(sample_names)) {
+    return(values)
+  }
+
+  duplicated_samples <- duplicated(sample_names)
+  if (any(duplicated_samples)) {
+    values <- values[!duplicated_samples]
+  }
+  values
+}
+
+empty_omics_frame <- function() {
+  data.frame(check.names = FALSE)
+}
+
+prepare_linkedomics_bulk_data <- function(tasks) {
+  if (SMOKE_TEST_MODE || !AUTO_PREPARE_CPTAC_BULK) {
+    return(invisible(FALSE))
+  }
+
+  required_files <- make_required_file_table(tasks)
+  manifest_ok <- FALSE
+  if (file.exists(LINKEDOMICS_BULK_MANIFEST_FILE)) {
+    old_manifest <- tryCatch(
+      utils::read.csv(LINKEDOMICS_BULK_MANIFEST_FILE, stringsAsFactors = FALSE, check.names = FALSE),
+      error = function(error) data.frame()
+    )
+    manifest_ok <- nrow(old_manifest) > 0L &&
+      "Converter_Version" %in% colnames(old_manifest) &&
+      identical(old_manifest$Converter_Version[1], LINKEDOMICS_BULK_CONVERTER_VERSION)
+  }
+  if (nrow(required_files) > 0L && all(required_files$Exists) && manifest_ok) {
+    return(invisible(FALSE))
+  }
+
+  cat("\nPreparing SLCPTAC bulk data from LinkedOmicsKB public downloads...\n")
+  dir.create(SLCPTAC_BULK_DATA_ROOT, recursive = TRUE, showWarnings = FALSE)
+  dir.create(file.path(SLCPTAC_BULK_DATA_ROOT, "CPTAC_Omics_Split"), recursive = TRUE, showWarnings = FALSE)
+  dir.create(LINKEDOMICS_RAW_ROOT, recursive = TRUE, showWarnings = FALSE)
+
+  cancers_for_gene_files <- unique(c(PAN_CANCERS, TARGET_CANCERS))
+  cancers_for_gene_files <- intersect(cancers_for_gene_files, names(LINKEDOMICS_CANCER_CODES))
+  target_cancers_for_genome <- unique(TARGET_CANCERS)
+  required_genes <- get_required_gene_symbols_for_linkedomics(tasks)
+
+  clinical_list <- list()
+  survival_list <- list()
+  gene_modal_values <- setNames(vector("list", length(required_genes)), required_genes)
+  for (gene in required_genes) {
+    gene_modal_values[[gene]] <- list(RNAseq = list(), Protein = list(), logCNA = list(), Mutation = list())
+  }
+
+  coad_genome_matrices <- list()
+
+  for (cancer in cancers_for_gene_files) {
+    meta_file <- download_linkedomics_file(cancer, "Meta")
+    survival_file <- download_linkedomics_file(cancer, "Survival")
+    clinical_list[[cancer]] <- read_linkedomics_meta(meta_file, cancer)
+    survival_list[[cancer]] <- read_linkedomics_survival(survival_file, cancer)
+
+    for (modal in c("RNAseq", "Protein")) {
+      raw_file <- download_linkedomics_file(cancer, modal)
+      subset_matrix <- read_linkedomics_matrix(raw_file, cancer, wanted_symbols = required_genes)
+      for (gene in intersect(required_genes, colnames(subset_matrix))) {
+        gene_modal_values[[gene]][[modal]][[cancer]] <- setNames(subset_matrix[[gene]], rownames(subset_matrix))
+      }
+      if (cancer %in% target_cancers_for_genome) {
+        coad_genome_matrices[[modal]] <- read_linkedomics_matrix(raw_file, cancer)
+      }
+    }
+  }
+
+  for (cancer in target_cancers_for_genome) {
+    for (modal in c("logCNA", "Mutation")) {
+      raw_file <- download_linkedomics_file(cancer, modal)
+      matrix <- read_linkedomics_matrix(raw_file, cancer, wanted_symbols = if (modal == "Mutation") required_genes else NULL, binary = modal == "Mutation")
+      for (gene in intersect(required_genes, colnames(matrix))) {
+        gene_modal_values[[gene]][[modal]][[cancer]] <- setNames(matrix[[gene]], rownames(matrix))
+      }
+      coad_genome_matrices[[modal]] <- matrix
+    }
+  }
+
+  clinical <- do.call(rbind, unname(clinical_list))
+  survival <- do.call(rbind, unname(survival_list))
+  clinical <- merge(clinical, survival, by = "sampleid", all = TRUE)
+  clinical$type <- ifelse(is.na(clinical$type), "Tumor", clinical$type)
+
+  for (gene in required_genes) {
+    gene_data <- clinical
+    rna_values <- flatten_sample_named_values(gene_modal_values[[gene]]$RNAseq)
+    protein_values <- flatten_sample_named_values(gene_modal_values[[gene]]$Protein)
+    logcna_values <- flatten_sample_named_values(gene_modal_values[[gene]]$logCNA)
+    mutation_values <- flatten_sample_named_values(gene_modal_values[[gene]]$Mutation)
+
+    gene_data <- merge_named_vector(gene_data, rna_values, paste0(gene, "_RNAseq"))
+    gene_data <- merge_named_vector(gene_data, protein_values, paste0(gene, "_Protein"))
+    gene_data <- merge_named_vector(gene_data, logcna_values, paste0(gene, "_logCNA"))
+    gene_data[[paste0(gene, "_Methylation")]] <- NA_real_
+    mutation_status <- rep(NA_real_, nrow(gene_data))
+    if (length(mutation_values) > 0L && !is.null(names(mutation_values))) {
+      mutation_status <- unname(mutation_values[gene_data$sampleid])
+    }
+    mutation_label <- ifelse(
+      is.na(mutation_status),
+      NA_character_,
+      ifelse(as.numeric(mutation_status) > 0, "Mutation", "WildType")
+    )
+    target_sample <- grepl(
+      paste0("^(", paste(TARGET_CANCERS, collapse = "|"), ")_"),
+      gene_data$sampleid
+    )
+    mutation_label[target_sample & is.na(mutation_label)] <- "WildType"
+    gene_data[[paste0(gene, "_Mutation")]] <- mutation_label
+
+    qs2::qs_save(
+      gene_data,
+      file.path(SLCPTAC_BULK_DATA_ROOT, "CPTAC_Omics_Split", paste0(gene, "_cptac.qs"))
+    )
+  }
+
+  qs2::qs_save(coad_genome_matrices$RNAseq %||% empty_omics_frame(), bulk_genome_file("RNAseq"))
+  qs2::qs_save(coad_genome_matrices$Protein %||% empty_omics_frame(), bulk_genome_file("Protein"))
+  qs2::qs_save(empty_omics_frame(), bulk_genome_file("Phospho"))
+  qs2::qs_save(empty_omics_frame(), bulk_genome_file("Methylation"))
+  qs2::qs_save(coad_genome_matrices$logCNA %||% empty_omics_frame(), bulk_genome_file("logCNA"))
+  qs2::qs_save(coad_genome_matrices$Mutation %||% empty_omics_frame(), bulk_genome_file("Mutation"))
+  qs2::qs_save(clinical, bulk_genome_file("Clinical"))
+
+  manifest <- data.frame(
+    Source = "LinkedOmicsKB CPTAC pan-cancer public S3 downloads",
+    Source_Page = "https://kb.linkedomics.org/download",
+    Converter_Version = LINKEDOMICS_BULK_CONVERTER_VERSION,
+    Raw_Root = LINKEDOMICS_RAW_ROOT,
+    Bulk_Data_Root = SLCPTAC_BULK_DATA_ROOT,
+    Cancers = paste(cancers_for_gene_files, collapse = ";"),
+    Target_Cancers_For_Genome = paste(target_cancers_for_genome, collapse = ";"),
+    Gene_Files = length(required_genes),
+    Generated_At = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+    stringsAsFactors = FALSE
+  )
+  utils::write.csv(
+    manifest,
+    file = LINKEDOMICS_BULK_MANIFEST_FILE,
+    row.names = FALSE,
+    na = "NA"
+  )
+  write_table(manifest, TABLE_ROOT, "000_slcptac_linkedomics_bulk_manifest")
+  invisible(TRUE)
 }
 
 Sys.setenv(SL_BULK_DATA = normalizePath(SLCPTAC_BULK_DATA_ROOT, winslash = "/", mustWork = FALSE))
@@ -500,21 +1159,21 @@ make_analysis_catalog <- function(selected_analyses = character(0)) {
 
   add_row("data_summary", "cptac_load_modality", "数据审计", "包版本、数据根目录、组学覆盖、任务所需文件", "文件存在性检查", "CSV表", "本项目配置", "不调用SLCPTAC下载数据；只审计SL_BULK_DATA结构")
   add_row("modal_pair_grid", "cptac_correlation", "组学两两关联", "同一目标基因在可用组学层之间两两比较", "自动选择Pearson/Wilcoxon/Chi-square等", "Scatter/Lollipop/Box/Heatmap", "COAD及泛癌可用层", "覆盖7x7能力矩阵中的常用单基因组合")
-  add_row("scenario01", "cptac_correlation", "相关/关联场景1", "1 continuous vs 1 continuous", "Pearson/Spearman/Kendall", "CorPlot或LollipopPlot", "ATF3 RNAseq vs Protein", "")
-  add_row("scenario02", "cptac_correlation", "相关/关联场景2", "1 continuous vs multiple continuous", "相关分析+FDR", "LollipopPlot或DotPlot", "ATF3 Protein vs连续变量面板", "")
-  add_row("scenario03", "cptac_correlation", "相关/关联场景3", "multiple continuous vs multiple continuous", "相关矩阵+FDR", "DotPlot", "连续变量面板RNAseq vs Protein", "")
-  add_row("scenario04", "cptac_correlation", "相关/关联场景4", "1 categorical vs 1 continuous", "Wilcoxon或Kruskal-Wallis", "BoxPlot", "KRAS Mutation vs ATF3 Protein", "")
-  add_row("scenario05", "cptac_correlation", "相关/关联场景5", "1 continuous vs multiple categorical", "多组Wilcoxon/Kruskal-Wallis", "Multiple BoxPlots", "ATF3 Protein vs突变面板", "")
-  add_row("scenario06", "cptac_correlation", "相关/关联场景6", "multiple continuous vs 1 categorical", "多组Wilcoxon/Kruskal-Wallis", "Multiple BoxPlots", "连续变量面板Protein vs KRAS Mutation", "")
+  add_row("scenario01", "cptac_correlation", "相关/关联场景1", "1 continuous vs 1 continuous", "Pearson/Spearman/Kendall", "CorPlot或LollipopPlot", "ATF3 RNAseq vs logCNA", "当前LinkedOmicsKB COAD蛋白矩阵缺少ATF3蛋白，默认用ATF3 RNAseq/logCNA完成主线")
+  add_row("scenario02", "cptac_correlation", "相关/关联场景2", "1 continuous vs multiple continuous", "相关分析+FDR", "LollipopPlot或DotPlot", "ATF3 RNAseq vs连续变量logCNA面板", "")
+  add_row("scenario03", "cptac_correlation", "相关/关联场景3", "multiple continuous vs multiple continuous", "相关矩阵+FDR", "DotPlot", "连续变量面板RNAseq vs logCNA", "")
+  add_row("scenario04", "cptac_correlation", "相关/关联场景4", "1 categorical vs 1 continuous", "Wilcoxon或Kruskal-Wallis", "BoxPlot", "KRAS Mutation/Stage vs ATF3 RNAseq", "")
+  add_row("scenario05", "cptac_correlation", "相关/关联场景5", "1 continuous vs multiple categorical", "多组Wilcoxon/Kruskal-Wallis", "Multiple BoxPlots", "ATF3 RNAseq vs突变面板", "")
+  add_row("scenario06", "cptac_correlation", "相关/关联场景6", "multiple continuous vs 1 categorical", "多组Wilcoxon/Kruskal-Wallis", "Multiple BoxPlots", "连续变量RNAseq面板 vs KRAS Mutation", "")
   add_row("scenario07", "cptac_correlation", "相关/关联场景7", "categorical vs categorical", "Fisher或Chi-square+Odds Ratio", "BarPlot或Heatmap", "共突变/临床-突变关联", "")
   add_row("scenario08", "cptac_enrichment", "富集场景8", "1 categorical vs genome-wide", "limma DEA", "NetworkPlot", "KRAS Mutation驱动蛋白组扫描", "")
   add_row("scenario09", "cptac_enrichment", "富集场景9", "1 categorical vs pathways", "limma DEA -> fgsea", "GSEA DotPlot", "KRAS Mutation驱动通路富集", "")
   add_row("scenario10", "cptac_enrichment", "富集场景10", "multiple categorical vs genome-wide", "多变量limma DEA", "DotPlot Paired", "突变面板驱动蛋白组扫描", "")
   add_row("scenario11", "cptac_enrichment", "富集场景11", "multiple categorical vs pathways", "多变量DEA -> fgsea", "GSEA Matrix", "突变面板通路富集", "")
-  add_row("scenario12", "cptac_enrichment", "富集场景12", "1 continuous vs genome-wide", "相关排序", "NetworkPlot", "ATF3 Protein相关蛋白组扫描", "")
-  add_row("scenario13", "cptac_enrichment", "富集场景13", "1 continuous vs pathways", "相关排序 -> fgsea", "GSEA DotPlot", "ATF3 Protein相关通路富集", "")
-  add_row("scenario14", "cptac_enrichment", "富集场景14", "multiple continuous vs genome-wide", "多连续变量相关排序", "DotPlot Paired", "连续变量面板蛋白组扫描", "")
-  add_row("scenario15", "cptac_enrichment", "富集场景15", "multiple continuous vs pathways", "多连续变量相关排序 -> fgsea", "GSEA Matrix", "连续变量面板通路富集", "")
+  add_row("scenario12", "cptac_enrichment", "富集场景12", "1 continuous vs genome-wide", "相关排序", "NetworkPlot", "ATF3 RNAseq相关蛋白组扫描", "var1使用ATF3 RNAseq，genome_modal仍使用CPTAC COAD Protein矩阵")
+  add_row("scenario13", "cptac_enrichment", "富集场景13", "1 continuous vs pathways", "相关排序 -> fgsea", "GSEA DotPlot", "ATF3 RNAseq相关通路富集", "var1使用ATF3 RNAseq，GSEA排名来自Protein genome")
+  add_row("scenario14", "cptac_enrichment", "富集场景14", "multiple continuous vs genome-wide", "多连续变量相关排序", "DotPlot Paired", "连续变量RNAseq面板相关蛋白组扫描", "")
+  add_row("scenario15", "cptac_enrichment", "富集场景15", "multiple continuous vs pathways", "多连续变量相关排序 -> fgsea", "GSEA Matrix", "连续变量RNAseq面板通路富集", "")
   add_row("scenario16", "cptac_survival", "生存场景16", "1 variable vs survival", "KM + Cox", "KM+Cox combined", "ATF3单变量OS/PFS", "")
   add_row("scenario17", "cptac_survival", "生存场景17", "multiple variables vs survival", "Cox回归", "Forest plot", "ATF3泛癌或多基因OS/PFS", "")
 
@@ -530,11 +1189,22 @@ write_analysis_catalog <- function(selected_analyses) {
   exported_functions <- sort(getNamespaceExports("SLCPTAC"))
   cataloged_functions <- unique(catalog$Function)
   missing_from_catalog <- setdiff(exported_functions, cataloged_functions)
-  missing_table <- data.frame(
-    Function = missing_from_catalog,
-    Status = "SLCPTAC导出但不是单独分析场景函数，或已由上层场景间接覆盖",
-    stringsAsFactors = FALSE
-  )
+  missing_table <- if (length(missing_from_catalog) > 0L) {
+    data.frame(
+      Function = missing_from_catalog,
+      Status = rep(
+        "SLCPTAC导出但不是单独分析场景函数，或已由上层场景间接覆盖",
+        length(missing_from_catalog)
+      ),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    data.frame(
+      Function = character(0),
+      Status = character(0),
+      stringsAsFactors = FALSE
+    )
+  }
   write_table(missing_table, TABLE_ROOT, "000_slcptac_exported_functions_not_in_catalog")
 
   invisible(list(catalog = catalog, missing = missing_table))
@@ -605,8 +1275,8 @@ estimate_title_extra_height <- function(title) {
   if (is.null(title) || !nzchar(title) || !ADD_SCRIPT_TITLES) {
     return(0)
   }
-  line_count <- max(1L, ceiling(nchar(title, type = "width") / 70))
-  0.30 + 0.18 * (line_count - 1L)
+  line_count <- max(1L, ceiling(nchar(title, type = "width") / 68))
+  0.55 + 0.24 * (line_count - 1L)
 }
 
 adjust_task_plot_size <- function(task) {
@@ -863,17 +1533,17 @@ build_slcptac_tasks <- function(selected_analyses) {
         tasks <- add_correlation_task(
           tasks, "scenario01", 1L,
           gene, "RNAseq", cancer,
-          gene, "Protein", cancer,
+          gene, "logCNA", cancer,
           gene, cancer,
-          paste0(gene, " RNAseq vs Protein in CPTAC-", cancer),
+          paste0(gene, " RNAseq vs logCNA in CPTAC-", cancer),
           width = 5.4, height = 4.8
         )
         tasks <- add_correlation_task(
           tasks, "scenario01", 1L,
           gene, "RNAseq", pan_common,
-          gene, "Protein", pan_common,
-          gene, "pan_cancer_RNAseq_vs_Protein",
-          paste0(gene, " RNAseq vs Protein across CPTAC pan-cancer"),
+          PRIMARY_MUTATION_GENE, "RNAseq", pan_common,
+          gene, "pan_cancer_RNAseq_vs_KRAS_RNAseq",
+          paste0(gene, " RNAseq vs ", PRIMARY_MUTATION_GENE, " RNAseq across CPTAC pan-cancer"),
           width = 8, height = 4.5
         )
       }
@@ -881,10 +1551,10 @@ build_slcptac_tasks <- function(selected_analyses) {
       if ("scenario02" %in% selected_analyses) {
         tasks <- add_correlation_task(
           tasks, "scenario02", 2L,
-          gene, "Protein", cancer,
-          CONTINUOUS_PANEL_GENES, "RNAseq", cancer,
-          gene, paste0(cancer, "_Protein_vs_panel_RNAseq"),
-          paste0(gene, " Protein vs RNAseq panel in CPTAC-", cancer),
+          gene, "RNAseq", cancer,
+          CONTINUOUS_PANEL_GENES, "logCNA", cancer,
+          gene, paste0(cancer, "_RNAseq_vs_panel_logCNA"),
+          paste0(gene, " RNAseq vs logCNA panel in CPTAC-", cancer),
           width = 7, height = 4.8
         )
       }
@@ -893,9 +1563,9 @@ build_slcptac_tasks <- function(selected_analyses) {
         tasks <- add_correlation_task(
           tasks, "scenario03", 3L,
           CONTINUOUS_PANEL_GENES, "RNAseq", cancer,
-          CONTINUOUS_PANEL_GENES, "Protein", cancer,
-          gene, paste0(cancer, "_panel_RNAseq_vs_Protein"),
-          paste0("RNAseq vs Protein panel correlation in CPTAC-", cancer),
+          CONTINUOUS_PANEL_GENES, "logCNA", cancer,
+          gene, paste0(cancer, "_panel_RNAseq_vs_logCNA"),
+          paste0("RNAseq vs logCNA panel correlation in CPTAC-", cancer),
           width = 7, height = 5.6
         )
       }
@@ -904,17 +1574,17 @@ build_slcptac_tasks <- function(selected_analyses) {
         tasks <- add_correlation_task(
           tasks, "scenario04", 4L,
           PRIMARY_MUTATION_GENE, "Mutation", cancer,
-          gene, "Protein", cancer,
-          gene, paste0(cancer, "_", PRIMARY_MUTATION_GENE, "_Mutation_vs_Protein"),
-          paste0(PRIMARY_MUTATION_GENE, " Mutation vs ", gene, " Protein in CPTAC-", cancer),
+          gene, "RNAseq", cancer,
+          gene, paste0(cancer, "_", PRIMARY_MUTATION_GENE, "_Mutation_vs_RNAseq"),
+          paste0(PRIMARY_MUTATION_GENE, " Mutation vs ", gene, " RNAseq in CPTAC-", cancer),
           width = 5.2, height = 4.8
         )
         tasks <- add_correlation_task(
           tasks, "scenario04", 4L,
           PRIMARY_CLINICAL_VARIABLE, "Clinical", cancer,
-          gene, "Protein", cancer,
-          gene, paste0(cancer, "_", PRIMARY_CLINICAL_VARIABLE, "_vs_Protein"),
-          paste0(PRIMARY_CLINICAL_VARIABLE, " vs ", gene, " Protein in CPTAC-", cancer),
+          gene, "RNAseq", cancer,
+          gene, paste0(cancer, "_", PRIMARY_CLINICAL_VARIABLE, "_vs_RNAseq"),
+          paste0(PRIMARY_CLINICAL_VARIABLE, " vs ", gene, " RNAseq in CPTAC-", cancer),
           width = 5.2, height = 4.8
         )
       }
@@ -922,10 +1592,10 @@ build_slcptac_tasks <- function(selected_analyses) {
       if ("scenario05" %in% selected_analyses) {
         tasks <- add_correlation_task(
           tasks, "scenario05", 5L,
-          gene, "Protein", cancer,
+          gene, "RNAseq", cancer,
           MUTATION_PANEL_GENES, "Mutation", cancer,
-          gene, paste0(cancer, "_Protein_vs_mutation_panel"),
-          paste0(gene, " Protein vs mutation panel in CPTAC-", cancer),
+          gene, paste0(cancer, "_RNAseq_vs_mutation_panel"),
+          paste0(gene, " RNAseq vs mutation panel in CPTAC-", cancer),
           width = 9, height = 4.8
         )
       }
@@ -933,10 +1603,10 @@ build_slcptac_tasks <- function(selected_analyses) {
       if ("scenario06" %in% selected_analyses) {
         tasks <- add_correlation_task(
           tasks, "scenario06", 6L,
-          CONTINUOUS_PANEL_GENES, "Protein", cancer,
+          CONTINUOUS_PANEL_GENES, "RNAseq", cancer,
           PRIMARY_MUTATION_GENE, "Mutation", cancer,
-          gene, paste0(cancer, "_protein_panel_vs_", PRIMARY_MUTATION_GENE, "_Mutation"),
-          paste0("Protein panel vs ", PRIMARY_MUTATION_GENE, " Mutation in CPTAC-", cancer),
+          gene, paste0(cancer, "_RNAseq_panel_vs_", PRIMARY_MUTATION_GENE, "_Mutation"),
+          paste0("RNAseq panel vs ", PRIMARY_MUTATION_GENE, " Mutation in CPTAC-", cancer),
           width = 9, height = 4.8
         )
       }
@@ -984,20 +1654,20 @@ build_slcptac_tasks <- function(selected_analyses) {
         if ("scenario12" %in% selected_analyses) {
           tasks <- add_enrichment_task(
             tasks, "scenario12", 12L,
-            gene, "Protein", cancer,
+            gene, "RNAseq", cancer,
             "genome", genome_modal, "MsigDB",
-            gene, paste0(cancer, "_Protein_vs_", genome_modal, "_genome"),
-            paste0(gene, " Protein-related ", genome_modal, " genome scan in CPTAC-", cancer),
+            gene, paste0(cancer, "_RNAseq_vs_", genome_modal, "_genome"),
+            paste0(gene, " RNAseq-related ", genome_modal, " genome scan in CPTAC-", cancer),
             width = 8.5, height = 5.8
           )
         }
         if ("scenario14" %in% selected_analyses) {
           tasks <- add_enrichment_task(
             tasks, "scenario14", 14L,
-            CONTINUOUS_PANEL_GENES, "Protein", cancer,
+            CONTINUOUS_PANEL_GENES, "RNAseq", cancer,
             "genome", genome_modal, "MsigDB",
-            paste_compact(CONTINUOUS_PANEL_GENES), paste0(cancer, "_protein_panel_vs_", genome_modal, "_genome"),
-            paste0("Protein panel-related ", genome_modal, " genome scan in CPTAC-", cancer),
+            paste_compact(CONTINUOUS_PANEL_GENES), paste0(cancer, "_RNAseq_panel_vs_", genome_modal, "_genome"),
+            paste0("RNAseq panel-related ", genome_modal, " genome scan in CPTAC-", cancer),
             width = 9, height = 6
           )
         }
@@ -1027,20 +1697,20 @@ build_slcptac_tasks <- function(selected_analyses) {
         if ("scenario13" %in% selected_analyses) {
           tasks <- add_enrichment_task(
             tasks, "scenario13", 13L,
-            gene, "Protein", cancer,
+            gene, "RNAseq", cancer,
             "enrichment", "Protein", database,
-            gene, paste0(cancer, "_Protein_GSEA_", database),
-            paste0(gene, " Protein-related ", database, " GSEA in CPTAC-", cancer),
+            gene, paste0(cancer, "_RNAseq_GSEA_", database),
+            paste0(gene, " RNAseq-related ", database, " GSEA in CPTAC-", cancer),
             width = 8, height = 6.2
           )
         }
         if ("scenario15" %in% selected_analyses) {
           tasks <- add_enrichment_task(
             tasks, "scenario15", 15L,
-            CONTINUOUS_PANEL_GENES, "Protein", cancer,
+            CONTINUOUS_PANEL_GENES, "RNAseq", cancer,
             "enrichment", "Protein", database,
-            paste_compact(CONTINUOUS_PANEL_GENES), paste0(cancer, "_protein_panel_GSEA_", database),
-            paste0("Protein panel-related ", database, " GSEA in CPTAC-", cancer),
+            paste_compact(CONTINUOUS_PANEL_GENES), paste0(cancer, "_RNAseq_panel_GSEA_", database),
+            paste0("RNAseq panel-related ", database, " GSEA in CPTAC-", cancer),
             width = 9, height = 6.5
           )
         }
@@ -1057,9 +1727,9 @@ build_slcptac_tasks <- function(selected_analyses) {
           )
           tasks <- add_survival_task(
             tasks, "scenario16", 16L,
-            gene, "Protein", cancer,
-            surv_type, gene, paste0(cancer, "_Protein_", surv_type),
-            paste0(gene, " Protein ", surv_type, " survival in CPTAC-", cancer),
+            PRIMARY_MUTATION_GENE, "Protein", cancer,
+            surv_type, PRIMARY_MUTATION_GENE, paste0(cancer, "_", PRIMARY_MUTATION_GENE, "_Protein_", surv_type),
+            paste0(PRIMARY_MUTATION_GENE, " Protein ", surv_type, " survival in CPTAC-", cancer),
             width = 8.5, height = 4.8
           )
         }
@@ -1272,6 +1942,235 @@ make_required_file_table <- function(tasks) {
   table
 }
 
+.bulk_data_cache <- new.env(parent = emptyenv())
+
+read_bulk_gene_data <- function(gene) {
+  cache_key <- paste0("gene::", gene)
+  if (exists(cache_key, envir = .bulk_data_cache, inherits = FALSE)) {
+    return(get(cache_key, envir = .bulk_data_cache, inherits = FALSE))
+  }
+
+  file <- bulk_gene_file(gene)
+  dat <- if (file.exists(file)) {
+    tryCatch(qs2::qs_read(file), error = function(error) NULL)
+  } else {
+    NULL
+  }
+  assign(cache_key, dat, envir = .bulk_data_cache)
+  dat
+}
+
+read_bulk_genome_data <- function(modal) {
+  cache_key <- paste0("genome::", modal)
+  if (exists(cache_key, envir = .bulk_data_cache, inherits = FALSE)) {
+    return(get(cache_key, envir = .bulk_data_cache, inherits = FALSE))
+  }
+
+  file <- bulk_genome_file(modal)
+  dat <- if (file.exists(file)) {
+    tryCatch(qs2::qs_read(file), error = function(error) NULL)
+  } else {
+    NULL
+  }
+  assign(cache_key, dat, envir = .bulk_data_cache)
+  dat
+}
+
+get_cancer_prefix <- function(sample_ids) {
+  sapply(strsplit(as.character(sample_ids), "_", fixed = TRUE), `[`, 1)
+}
+
+subset_gene_data_by_cancers <- function(dat, cancers) {
+  if (is.null(dat) || !is.data.frame(dat) || !"sampleid" %in% colnames(dat)) {
+    return(data.frame())
+  }
+  cancer_type <- get_cancer_prefix(dat$sampleid)
+  keep <- cancer_type %in% cancers
+  if ("type" %in% colnames(dat)) {
+    keep <- keep & (is.na(dat$type) | dat$type == "Tumor")
+  }
+  dat[keep, , drop = FALSE]
+}
+
+has_enough_numeric_values <- function(values, min_non_na = 3L) {
+  values <- suppressWarnings(as.numeric(as.character(values)))
+  values <- values[!is.na(values)]
+  length(values) >= min_non_na && length(unique(values)) >= 2L
+}
+
+has_enough_categorical_values <- function(values, min_non_na = 3L) {
+  values <- values[!is.na(values) & nzchar(as.character(values))]
+  length(values) >= min_non_na && length(unique(values)) >= 2L
+}
+
+match_clinical_column_for_script <- function(search, available) {
+  search_lower <- tolower(search)
+  available_lower <- tolower(available)
+
+  direct <- which(available_lower == search_lower)
+  if (length(direct) > 0L) {
+    return(available[direct[1]])
+  }
+
+  aliases <- list(
+    age = c("age"),
+    bmi = c("bmi", "body_mass_index"),
+    gender = c("gender", "sex"),
+    sex = c("sex", "gender"),
+    tumor_stage = c("tumor_stage", "stage", "ajcc_pathologic_stage"),
+    stage = c("stage", "tumor_stage", "ajcc_pathologic_stage")
+  )
+  for (standard in names(aliases)) {
+    if (search_lower %in% aliases[[standard]]) {
+      hit <- which(available_lower %in% aliases[[standard]])
+      if (length(hit) > 0L) {
+        return(available[hit[1]])
+      }
+    }
+  }
+
+  NULL
+}
+
+has_usable_gene_modal <- function(gene, modal, cancers) {
+  dat <- subset_gene_data_by_cancers(read_bulk_gene_data(gene), cancers)
+  if (nrow(dat) == 0L) {
+    return(FALSE)
+  }
+
+  column <- paste0(gene, "_", modal)
+  if (!column %in% colnames(dat)) {
+    return(FALSE)
+  }
+
+  if (identical(modal, "Mutation")) {
+    return(has_enough_categorical_values(dat[[column]]))
+  }
+
+  has_enough_numeric_values(dat[[column]])
+}
+
+has_usable_clinical_variable <- function(variable, cancers) {
+  dat <- subset_gene_data_by_cancers(read_bulk_gene_data("TP53"), cancers)
+  if (nrow(dat) == 0L) {
+    return(FALSE)
+  }
+  clinical_columns <- setdiff(
+    colnames(dat),
+    grep(
+      "_RNAseq$|_Protein$|_Methylation$|_logCNA$|_Mutation$|^sampleid$|^type$|^os_|^pfs_",
+      colnames(dat),
+      value = TRUE
+    )
+  )
+  matched <- match_clinical_column_for_script(variable, clinical_columns)
+  if (is.null(matched)) {
+    return(FALSE)
+  }
+  has_enough_categorical_values(dat[[matched]])
+}
+
+has_usable_survival_data <- function(cancers, surv_type = "OS") {
+  dat <- subset_gene_data_by_cancers(read_bulk_gene_data("TP53"), cancers)
+  if (nrow(dat) == 0L) {
+    return(FALSE)
+  }
+  time_col <- if (identical(surv_type, "PFS")) "pfs_time" else "os_time"
+  event_col <- if (identical(surv_type, "PFS")) "pfs_event" else "os_event"
+  if (!all(c(time_col, event_col) %in% colnames(dat))) {
+    return(FALSE)
+  }
+  valid <- !is.na(dat[[time_col]]) & !is.na(dat[[event_col]])
+  sum(valid) >= 10L && length(unique(dat[[event_col]][valid])) >= 2L
+}
+
+has_usable_genome_modal <- function(modal, cancers) {
+  dat <- read_bulk_genome_data(modal)
+  if (is.null(dat) || !is.data.frame(dat) || nrow(dat) == 0L || ncol(dat) == 0L) {
+    return(FALSE)
+  }
+  cancer_type <- get_cancer_prefix(rownames(dat))
+  dat <- dat[cancer_type %in% cancers, , drop = FALSE]
+  if (nrow(dat) == 0L) {
+    return(FALSE)
+  }
+  usable_columns <- vapply(dat, has_enough_numeric_values, logical(1), min_non_na = 3L)
+  sum(usable_columns) >= 10L
+}
+
+has_usable_modal_set <- function(vars, modal, cancers, surv_type = "OS") {
+  if (identical(modal, "Clinical")) {
+    return(any(vapply(vars, has_usable_clinical_variable, logical(1), cancers = cancers)))
+  }
+  if (identical(modal, "Survival")) {
+    return(has_usable_survival_data(cancers, surv_type = surv_type))
+  }
+  if (modal %in% c("RNAseq", "Protein", "logCNA", "Methylation", "Mutation")) {
+    return(any(vapply(vars, has_usable_gene_modal, logical(1), modal = modal, cancers = cancers)))
+  }
+  if (identical(modal, "Phospho")) {
+    return(FALSE)
+  }
+  FALSE
+}
+
+get_actual_data_skip_reason <- function(task) {
+  args <- task$args
+  surv_type <- args$surv_type %||% "OS"
+
+  if (!has_usable_modal_set(args$var1, args$var1_modal, args$var1_cancers, surv_type = surv_type)) {
+    return(paste0(
+      "Skipped because local SLCPTAC bulk data has no usable ",
+      args$var1_modal,
+      " values for ",
+      paste(args$var1, collapse = ", "),
+      " in ",
+      paste(args$var1_cancers, collapse = ", "),
+      "."
+    ))
+  }
+
+  if (identical(task$function_name, "cptac_correlation")) {
+    if (!has_usable_modal_set(args$var2, args$var2_modal, args$var2_cancers, surv_type = surv_type)) {
+      return(paste0(
+        "Skipped because local SLCPTAC bulk data has no usable ",
+        args$var2_modal,
+        " values for ",
+        paste(args$var2, collapse = ", "),
+        " in ",
+        paste(args$var2_cancers, collapse = ", "),
+        "."
+      ))
+    }
+  }
+
+  if (identical(task$function_name, "cptac_enrichment")) {
+    if (!has_usable_genome_modal(args$genome_modal, args$var1_cancers)) {
+      return(paste0(
+        "Skipped because local SLCPTAC bulk data has no usable genome-wide ",
+        args$genome_modal,
+        " matrix for ",
+        paste(args$var1_cancers, collapse = ", "),
+        "."
+      ))
+    }
+  }
+
+  if (identical(task$function_name, "cptac_survival")) {
+    if (!has_usable_survival_data(args$var1_cancers, surv_type = surv_type)) {
+      return(paste0(
+        "Skipped because local SLCPTAC bulk data has no usable ",
+        surv_type,
+        " survival data for ",
+        paste(args$var1_cancers, collapse = ", "),
+        "."
+      ))
+    }
+  }
+
+  ""
+}
+
 run_data_summary <- function(tasks) {
   dir.create(TABLE_ROOT, recursive = TRUE, showWarnings = FALSE)
   dir.create(DATA_ROOT, recursive = TRUE, showWarnings = FALSE)
@@ -1286,6 +2185,7 @@ run_data_summary <- function(tasks) {
     Data_Root = DATA_ROOT,
     Temporary_Root = TEMP_ROOT,
     Result_Root = RESULT_ROOT,
+    Smoke_Test_Mode = SMOKE_TEST_MODE,
     stringsAsFactors = FALSE
   )
   write_table(package_info, TABLE_ROOT, "000_slcptac_package_info")
@@ -1304,7 +2204,9 @@ run_data_summary <- function(tasks) {
       "TARGET_GENES", "TARGET_CANCERS", "PAN_CANCERS", "CONTINUOUS_PANEL_GENES",
       "MUTATION_PANEL_GENES", "CLINICAL_VARIABLES", "ENRICH_DATABASES",
       "GENOME_SCAN_MODALS", "SURVIVAL_TYPES", "RUN_MODAL_PAIR_GRID",
-      "RUN_AUXILIARY_AVAILABLE_SCENARIOS"
+      "RUN_AUXILIARY_AVAILABLE_SCENARIOS", "SMOKE_TEST_MODE",
+      "SMOKE_TEST_SAMPLES_PER_CANCER", "STOP_IF_BULK_DATA_MISSING",
+      "ALLOW_FORK_PARALLEL", "PARALLEL_WORKERS"
     ),
     Value = c(
       paste(TARGET_GENES, collapse = ";"),
@@ -1317,7 +2219,12 @@ run_data_summary <- function(tasks) {
       paste(GENOME_SCAN_MODALS, collapse = ";"),
       paste(SURVIVAL_TYPES, collapse = ";"),
       as.character(RUN_MODAL_PAIR_GRID),
-      as.character(RUN_AUXILIARY_AVAILABLE_SCENARIOS)
+      as.character(RUN_AUXILIARY_AVAILABLE_SCENARIOS),
+      as.character(SMOKE_TEST_MODE),
+      as.character(SMOKE_TEST_SAMPLES_PER_CANCER),
+      as.character(STOP_IF_BULK_DATA_MISSING),
+      as.character(ALLOW_FORK_PARALLEL),
+      as.character(PARALLEL_WORKERS)
     ),
     stringsAsFactors = FALSE
   )
@@ -1497,32 +2404,41 @@ plot_has_title <- function(plot) {
   !is.null(title) && nzchar(as.character(title))
 }
 
-add_title_to_plot_if_needed <- function(plot, title) {
+format_outer_title <- function(title, width = 76L) {
+  if (is.null(title) || !nzchar(title)) {
+    return("")
+  }
+  paste(strwrap(title, width = width), collapse = "\n")
+}
+
+outer_title_line_count <- function(title) {
+  formatted <- format_outer_title(title)
+  if (!nzchar(formatted)) {
+    return(0L)
+  }
+  length(strsplit(formatted, "\n", fixed = TRUE)[[1]])
+}
+
+outer_title_top_fraction <- function(title) {
   if (!ADD_SCRIPT_TITLES || is.null(title) || !nzchar(title)) {
-    return(plot)
+    return(0)
   }
-
-  if (inherits(plot, "patchwork") && requireNamespace("patchwork", quietly = TRUE)) {
-    return(plot + patchwork::plot_annotation(title = title))
-  }
-
-  if (inherits(plot, "ggplot") && !plot_has_title(plot)) {
-    return(plot + ggplot2::ggtitle(title) +
-      ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5)))
-  }
-
-  plot
+  line_count <- outer_title_line_count(title)
+  min(0.25, 0.115 + 0.045 * max(0L, line_count - 1L))
 }
 
 draw_outer_title <- function(title) {
   if (!ADD_SCRIPT_TITLES || is.null(title) || !nzchar(title)) {
     return(invisible(FALSE))
   }
+  title_text <- format_outer_title(title)
+  top_fraction <- outer_title_top_fraction(title)
   grid::grid.text(
-    label = title,
+    label = title_text,
     x = grid::unit(0.5, "npc"),
-    y = grid::unit(0.985, "npc"),
-    gp = grid::gpar(fontface = "bold", fontsize = 13)
+    y = grid::unit(1 - top_fraction / 2, "npc"),
+    just = "center",
+    gp = grid::gpar(fontface = "bold", fontsize = 12, lineheight = 0.95)
   )
   invisible(TRUE)
 }
@@ -1534,18 +2450,17 @@ draw_in_title_viewport <- function(title, draw_fun) {
   }
 
   grid::grid.newpage()
+  top_fraction <- outer_title_top_fraction(title)
+  body_height <- max(0.70, 1 - top_fraction - 0.025)
   grid::pushViewport(grid::viewport(
     x = grid::unit(0.5, "npc"),
     y = grid::unit(0.0, "npc"),
     width = grid::unit(1, "npc"),
-    height = grid::unit(0.92, "npc"),
+    height = grid::unit(body_height, "npc"),
     just = c("center", "bottom")
   ))
-  on.exit({
-    try(grid::popViewport(), silent = TRUE)
-  }, add = TRUE)
   draw_fun()
-  grid::popViewport()
+  try(grid::popViewport(), silent = TRUE)
   draw_outer_title(title)
   invisible(NULL)
 }
@@ -1557,7 +2472,9 @@ render_slcptac_plot <- function(plot, title = NULL) {
   }
 
   if (inherits(plot, "ggplot") || inherits(plot, "patchwork")) {
-    print(add_title_to_plot_if_needed(plot, title))
+    draw_in_title_viewport(title, function() {
+      print(plot, newpage = FALSE)
+    })
     return(invisible(NULL))
   }
 
@@ -1854,6 +2771,11 @@ get_slcptac_task_skip_reason <- function(task) {
     ))
   }
 
+  actual_data_reason <- get_actual_data_skip_reason(task)
+  if (nzchar(actual_data_reason)) {
+    return(actual_data_reason)
+  }
+
   ""
 }
 
@@ -2029,7 +2951,11 @@ normalize_parallel_slcptac_results <- function(results, tasks) {
 }
 
 is_success_status <- function(status) {
-  status %in% c("success", "cached", "skipped")
+  status %in% c("success", "cached")
+}
+
+is_error_status <- function(status) {
+  !(status %in% c("success", "cached", "skipped"))
 }
 
 make_runtime_summary <- function(task_summary, start_time) {
@@ -2039,8 +2965,9 @@ make_runtime_summary <- function(task_summary, start_time) {
   data.frame(
     Section = c("slcptac_tasks", "total"),
     Tasks = c(nrow(task_summary), nrow(task_summary)),
-    Completed_Without_Error = c(sum(is_success_status(task_status)), sum(is_success_status(task_status))),
-    Failed = c(sum(!is_success_status(task_status)), sum(!is_success_status(task_status))),
+    Completed = c(sum(is_success_status(task_status)), sum(is_success_status(task_status))),
+    Skipped = c(sum(task_status == "skipped"), sum(task_status == "skipped")),
+    Failed = c(sum(is_error_status(task_status)), sum(is_error_status(task_status))),
     Runtime_Seconds = c(
       sum(suppressWarnings(as.numeric(task_summary$Runtime_Seconds)), na.rm = TRUE),
       total_runtime_seconds
@@ -2080,6 +3007,11 @@ dir.create(TEMP_ROOT, recursive = TRUE, showWarnings = FALSE)
 dir.create(SLCPTAC_REFERENCE_CACHE_ROOT, recursive = TRUE, showWarnings = FALSE)
 dir.create(SLCPTAC_TASK_CACHE_ROOT, recursive = TRUE, showWarnings = FALSE)
 
+if (SMOKE_TEST_MODE) {
+  cat("\nSLCPTAC smoke test mode is enabled. Generating temporary CPTAC-like bulk data...\n")
+  create_slcptac_smoke_bulk_data(SLCPTAC_BULK_DATA_ROOT)
+}
+
 selected_analyses <- resolve_requested_analyses()
 slcptac_tasks <- build_slcptac_tasks(selected_analyses)
 slcptac_tasks <- assign_task_indices(slcptac_tasks)
@@ -2108,6 +3040,8 @@ cat("Temporary root: ", TEMP_ROOT, "\n", sep = "")
 cat("SLCPTAC bulk data root: ", Sys.getenv("SL_BULK_DATA"), "\n", sep = "")
 cat("SLCPTAC data/cache root: ", DATA_ROOT, "\n", sep = "")
 
+prepare_linkedomics_bulk_data(slcptac_tasks)
+
 cat("\nWriting SLCPTAC analysis catalog and data audit...\n")
 write_analysis_catalog(selected_analyses)
 run_data_summary(slcptac_tasks)
@@ -2134,7 +3068,7 @@ task_summary <- if (length(slcptac_tasks) > 0L) {
 
 if (nrow(task_summary) > 0L) {
   write_table(task_summary, TABLE_ROOT, "000_slcptac_task_summary")
-  failed_tasks <- task_summary[!is_success_status(task_summary$Status), , drop = FALSE]
+  failed_tasks <- task_summary[is_error_status(task_summary$Status) | task_summary$Status == "skipped", , drop = FALSE]
   write_table(failed_tasks, TABLE_ROOT, "000_slcptac_failed_tasks")
 }
 
@@ -2143,8 +3077,9 @@ write_table(runtime_summary, TABLE_ROOT, "000_slcptac_runtime_summary")
 
 cat("\nSLCPTAC quick analysis finished.\n")
 if (nrow(task_summary) > 0L) {
-  cat("Completed without error: ", sum(is_success_status(task_summary$Status)), "\n", sep = "")
-  cat("Failed tasks: ", sum(!is_success_status(task_summary$Status)), "\n", sep = "")
+  cat("Completed tasks: ", sum(is_success_status(task_summary$Status)), "\n", sep = "")
+  cat("Skipped tasks: ", sum(task_summary$Status == "skipped"), "\n", sep = "")
+  cat("Failed tasks: ", sum(is_error_status(task_summary$Status)), "\n", sep = "")
   cat("Task summary: ", file.path(TABLE_ROOT, "000_slcptac_task_summary.csv"), "\n", sep = "")
   cat("Failed task summary: ", file.path(TABLE_ROOT, "000_slcptac_failed_tasks.csv"), "\n", sep = "")
 }
