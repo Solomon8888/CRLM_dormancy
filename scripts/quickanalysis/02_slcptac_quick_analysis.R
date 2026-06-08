@@ -226,6 +226,7 @@ ALLOW_FORK_PARALLEL <- parse_env_logical(
 )
 QUICKANALYSIS_VERBOSE <- parse_env_logical("SLCPTAC_VERBOSE", FALSE)
 DISABLE_FORK_PARALLEL <- parse_env_logical("SLCPTAC_DISABLE_FORK", interactive() || !ALLOW_FORK_PARALLEL)
+PARALLEL_BACKEND <- Sys.getenv("SLCPTAC_PARALLEL_BACKEND", unset = "auto")
 USE_SLCPTAC_TASK_CACHE <- parse_env_logical("SLCPTAC_USE_TASK_CACHE", TRUE)
 SLCPTAC_TASK_CACHE_MAX_AGE_DAYS <- parse_env_integer("SLCPTAC_TASK_CACHE_MAX_AGE_DAYS", 30L)
 
@@ -235,6 +236,7 @@ options(quickanalysis_verbose = QUICKANALYSIS_VERBOSE)
 options(parallel_runtime_force_single_line_progress = TRUE)
 options(parallel_runtime_quiet_strategy = !QUICKANALYSIS_VERBOSE)
 options(parallel_runtime_disable_fork = DISABLE_FORK_PARALLEL)
+options(parallel_runtime_backend = PARALLEL_BACKEND)
 
 
 # 2. 加载R包和项目共用函数 ----------------------------------------------------
@@ -420,9 +422,7 @@ source(NETWORK_CACHE_FUNCTION_FILE)
 
 SCRIPT_START_TIME <- start_runtime_timer()
 
-PARALLEL_WORKERS <- if (!ALLOW_FORK_PARALLEL || DISABLE_FORK_PARALLEL) {
-  1L
-} else if (is.na(MAX_PARALLEL_WORKERS)) {
+PARALLEL_WORKERS <- if (is.na(MAX_PARALLEL_WORKERS)) {
   get_available_worker_count()
 } else {
   max(1L, MAX_PARALLEL_WORKERS)
@@ -2217,9 +2217,10 @@ run_data_summary <- function(tasks) {
       "TARGET_GENES", "TARGET_CANCERS", "PAN_CANCERS", "CONTINUOUS_PANEL_GENES",
       "MUTATION_PANEL_GENES", "CLINICAL_VARIABLES", "ENRICH_DATABASES",
       "GENOME_SCAN_MODALS", "SURVIVAL_TYPES", "RUN_MODAL_PAIR_GRID",
-      "RUN_AUXILIARY_AVAILABLE_SCENARIOS", "SMOKE_TEST_MODE",
-      "SMOKE_TEST_SAMPLES_PER_CANCER", "STOP_IF_BULK_DATA_MISSING",
-      "ALLOW_FORK_PARALLEL", "PARALLEL_WORKERS"
+	      "RUN_AUXILIARY_AVAILABLE_SCENARIOS", "SMOKE_TEST_MODE",
+	      "SMOKE_TEST_SAMPLES_PER_CANCER", "STOP_IF_BULK_DATA_MISSING",
+	      "ALLOW_FORK_PARALLEL", "DISABLE_FORK_PARALLEL",
+	      "PARALLEL_BACKEND", "PARALLEL_WORKERS"
     ),
     Value = c(
       paste(TARGET_GENES, collapse = ";"),
@@ -2234,10 +2235,12 @@ run_data_summary <- function(tasks) {
       as.character(RUN_MODAL_PAIR_GRID),
       as.character(RUN_AUXILIARY_AVAILABLE_SCENARIOS),
       as.character(SMOKE_TEST_MODE),
-      as.character(SMOKE_TEST_SAMPLES_PER_CANCER),
-      as.character(STOP_IF_BULK_DATA_MISSING),
-      as.character(ALLOW_FORK_PARALLEL),
-      as.character(PARALLEL_WORKERS)
+	      as.character(SMOKE_TEST_SAMPLES_PER_CANCER),
+	      as.character(STOP_IF_BULK_DATA_MISSING),
+	      as.character(ALLOW_FORK_PARALLEL),
+	      as.character(DISABLE_FORK_PARALLEL),
+	      as.character(PARALLEL_BACKEND),
+	      as.character(PARALLEL_WORKERS)
     ),
     stringsAsFactors = FALSE
   )

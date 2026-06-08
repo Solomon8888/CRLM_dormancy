@@ -273,6 +273,7 @@ CLEAR_PREVIOUS_RUN_OUTPUTS <- parse_env_logical("GTEX_CORRELATION_CLEAR_PREVIOUS
 MAX_PARALLEL_WORKERS <- parse_env_integer("GTEX_CORRELATION_PARALLEL_WORKERS", NA_integer_)
 QUICKANALYSIS_VERBOSE <- parse_env_logical("GTEX_CORRELATION_VERBOSE", FALSE)
 DISABLE_FORK_PARALLEL <- parse_env_logical("GTEX_CORRELATION_DISABLE_FORK", interactive())
+PARALLEL_BACKEND <- Sys.getenv("GTEX_CORRELATION_PARALLEL_BACKEND", unset = "auto")
 
 options(width = 200)
 options(lifecycle_verbosity = "quiet")
@@ -281,6 +282,7 @@ options(quickanalysis_verbose = QUICKANALYSIS_VERBOSE)
 options(parallel_runtime_force_single_line_progress = TRUE)
 options(parallel_runtime_quiet_strategy = !QUICKANALYSIS_VERBOSE)
 options(parallel_runtime_disable_fork = DISABLE_FORK_PARALLEL)
+options(parallel_runtime_backend = PARALLEL_BACKEND)
 
 
 # 4. 加载包和项目共用函数 ------------------------------------------------------

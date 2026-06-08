@@ -185,6 +185,7 @@ CLEAN_TASK_OUTPUT_DIR <- parse_env_logical("TCGAPLOT_CLEAN_OUTPUT", TRUE)
 MAX_PARALLEL_WORKERS <- parse_env_integer("TCGAPLOT_PARALLEL_WORKERS", NA_integer_)
 QUICKANALYSIS_VERBOSE <- parse_env_logical("TCGAPLOT_VERBOSE", FALSE)
 DISABLE_FORK_PARALLEL <- parse_env_logical("TCGAPLOT_DISABLE_FORK", interactive())
+PARALLEL_BACKEND <- Sys.getenv("TCGAPLOT_PARALLEL_BACKEND", unset = "auto")
 
 # 对网络/富集类TCGAplot任务启用任务输出缓存。
 # 这不会改变正式结果目录，只是在data/tcgaplot/reference_cache下保存输出manifest，
@@ -207,6 +208,7 @@ options(quickanalysis_verbose = QUICKANALYSIS_VERBOSE)
 options(parallel_runtime_force_single_line_progress = TRUE)
 options(parallel_runtime_quiet_strategy = !QUICKANALYSIS_VERBOSE)
 options(parallel_runtime_disable_fork = DISABLE_FORK_PARALLEL)
+options(parallel_runtime_backend = PARALLEL_BACKEND)
 
 
 # 2. 加载R包和项目共用函数 ----------------------------------------------------
