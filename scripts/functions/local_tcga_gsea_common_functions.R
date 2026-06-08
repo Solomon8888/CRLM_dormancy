@@ -53,6 +53,24 @@ qa_sanitize_file_name <- function(x, default = "analysis") {
   x
 }
 
+qa_quickanalysis_verbose <- function() {
+  isTRUE(getOption("quickanalysis_verbose", FALSE))
+}
+
+qa_log <- function(...) {
+  if (qa_quickanalysis_verbose()) {
+    cat(...)
+  }
+  invisible(NULL)
+}
+
+qa_print <- function(...) {
+  if (qa_quickanalysis_verbose()) {
+    print(...)
+  }
+  invisible(NULL)
+}
+
 
 # 1. 项目路径与依赖 -----------------------------------------------------------
 
@@ -885,7 +903,7 @@ qa_run_traditional_volcano_plots <- function(
     nested_label = "Nested workers"
   )
 
-  cat("\nRunning traditional volcano plot generation...\n")
+  qa_log("\nRunning traditional volcano plot generation...\n")
   summary_list <- run_parallel_tasks_with_progress(
     task_ids = seq_len(nrow(ranked_file_info)),
     task_function = run_one_volcano_plot,
@@ -908,8 +926,8 @@ qa_run_traditional_volcano_plots <- function(
     n_rows = 21
   )
 
-  cat("\nTraditional volcano plot summary:\n")
-  print(
+  qa_log("\nTraditional volcano plot summary:\n")
+  qa_print(
     summary_table[
       ,
       c(
@@ -938,7 +956,7 @@ qa_make_gsea_geneset_cache <- function() {
     genesets_to_run = runtime_genesets
   )
 
-  cat("\nLoading MSigDB gene sets...\n")
+  qa_log("\nLoading MSigDB gene sets...\n")
   geneset_cache <- lapply(names(geneset_config), function(geneset_name) {
     config <- geneset_config[[geneset_name]]
     terms <- load_msigdb_terms(geneset_name, config)
@@ -966,7 +984,9 @@ qa_make_gsea_geneset_cache <- function() {
       )
     })
   )
-  print(geneset_summary, row.names = FALSE)
+  if (qa_quickanalysis_verbose()) {
+    print(geneset_summary, row.names = FALSE)
+  }
 
   geneset_cache
 }
@@ -1189,7 +1209,7 @@ qa_run_gsea_compute_and_plot <- function(
     )
   }
 
-  cat("\nRunning GSEA compute and plotting tasks...\n")
+  qa_log("\nRunning GSEA compute and plotting tasks...\n")
   task_ids <- seq_len(total_tasks)
   summary_records <- run_parallel_tasks_with_progress(
     task_ids = task_ids,
@@ -1214,8 +1234,8 @@ qa_run_gsea_compute_and_plot <- function(
     n_rows = 21
   )
 
-  cat("\nGSEA summary:\n")
-  print(
+  qa_log("\nGSEA summary:\n")
+  qa_print(
     summary_table[
       ,
       c(

@@ -224,11 +224,17 @@ ALLOW_FORK_PARALLEL <- parse_env_logical(
   "SLCPTAC_ALLOW_FORK_PARALLEL",
   !identical(Sys.info()[["sysname"]], "Darwin")
 )
+QUICKANALYSIS_VERBOSE <- parse_env_logical("SLCPTAC_VERBOSE", FALSE)
+DISABLE_FORK_PARALLEL <- parse_env_logical("SLCPTAC_DISABLE_FORK", interactive() || !ALLOW_FORK_PARALLEL)
 USE_SLCPTAC_TASK_CACHE <- parse_env_logical("SLCPTAC_USE_TASK_CACHE", TRUE)
 SLCPTAC_TASK_CACHE_MAX_AGE_DAYS <- parse_env_integer("SLCPTAC_TASK_CACHE_MAX_AGE_DAYS", 30L)
 
 options(width = 200)
 options(bitmapType = "cairo")
+options(quickanalysis_verbose = QUICKANALYSIS_VERBOSE)
+options(parallel_runtime_force_single_line_progress = TRUE)
+options(parallel_runtime_quiet_strategy = !QUICKANALYSIS_VERBOSE)
+options(parallel_runtime_disable_fork = DISABLE_FORK_PARALLEL)
 
 
 # 2. 加载R包和项目共用函数 ----------------------------------------------------
@@ -414,7 +420,7 @@ source(NETWORK_CACHE_FUNCTION_FILE)
 
 SCRIPT_START_TIME <- start_runtime_timer()
 
-PARALLEL_WORKERS <- if (!ALLOW_FORK_PARALLEL) {
+PARALLEL_WORKERS <- if (!ALLOW_FORK_PARALLEL || DISABLE_FORK_PARALLEL) {
   1L
 } else if (is.na(MAX_PARALLEL_WORKERS)) {
   get_available_worker_count()
@@ -646,7 +652,9 @@ download_linkedomics_file <- function(cancer, resource, overwrite = FALSE) {
 
   dir.create(dirname(destination), recursive = TRUE, showWarnings = FALSE)
   url <- linkedomics_url(cancer, resource)
-  cat("Downloading LinkedOmicsKB ", cancer, " ", resource, "...\n", sep = "")
+  if (QUICKANALYSIS_VERBOSE) {
+    cat("Downloading LinkedOmicsKB ", cancer, " ", resource, "...\n", sep = "")
+  }
 
   ok <- FALSE
   last_error <- NULL
@@ -861,7 +869,9 @@ prepare_linkedomics_bulk_data <- function(tasks) {
     return(invisible(FALSE))
   }
 
-  cat("\nPreparing SLCPTAC bulk data from LinkedOmicsKB public downloads...\n")
+  if (QUICKANALYSIS_VERBOSE) {
+    cat("\nPreparing SLCPTAC bulk data from LinkedOmicsKB public downloads...\n")
+  }
   dir.create(SLCPTAC_BULK_DATA_ROOT, recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(SLCPTAC_BULK_DATA_ROOT, "CPTAC_Omics_Split"), recursive = TRUE, showWarnings = FALSE)
   dir.create(LINKEDOMICS_RAW_ROOT, recursive = TRUE, showWarnings = FALSE)
@@ -3010,7 +3020,9 @@ dir.create(SLCPTAC_REFERENCE_CACHE_ROOT, recursive = TRUE, showWarnings = FALSE)
 dir.create(SLCPTAC_TASK_CACHE_ROOT, recursive = TRUE, showWarnings = FALSE)
 
 if (SMOKE_TEST_MODE) {
-  cat("\nSLCPTAC smoke test mode is enabled. Generating temporary CPTAC-like bulk data...\n")
+  if (QUICKANALYSIS_VERBOSE) {
+    cat("\nSLCPTAC smoke test mode is enabled. Generating temporary CPTAC-like bulk data...\n")
+  }
   create_slcptac_smoke_bulk_data(SLCPTAC_BULK_DATA_ROOT)
 }
 
@@ -3030,25 +3042,31 @@ slcptac_tasks <- assign_runtime_workers_to_tasks(
 )
 validate_slcptac_tasks(slcptac_tasks)
 
-cat("\nSLCPTAC quick analysis configuration:\n")
-cat("SLCPTAC version: ", as.character(utils::packageVersion("SLCPTAC")), "\n", sep = "")
-cat("Target genes: ", paste(TARGET_GENES, collapse = ", "), "\n", sep = "")
-cat("Target cancers: ", paste(TARGET_CANCERS, collapse = ", "), "\n", sep = "")
-cat("Pan-cancer cancers: ", paste(PAN_CANCERS, collapse = ", "), "\n", sep = "")
-cat("Selected analyses: ", paste(selected_analyses, collapse = ", "), "\n", sep = "")
-cat("Prepared tasks: ", length(slcptac_tasks), "\n", sep = "")
-cat("Result root: ", RESULT_ROOT, "\n", sep = "")
-cat("Temporary root: ", TEMP_ROOT, "\n", sep = "")
-cat("SLCPTAC bulk data root: ", Sys.getenv("SL_BULK_DATA"), "\n", sep = "")
-cat("SLCPTAC data/cache root: ", DATA_ROOT, "\n", sep = "")
+if (QUICKANALYSIS_VERBOSE) {
+  cat("\nSLCPTAC quick analysis configuration:\n")
+  cat("SLCPTAC version: ", as.character(utils::packageVersion("SLCPTAC")), "\n", sep = "")
+  cat("Target genes: ", paste(TARGET_GENES, collapse = ", "), "\n", sep = "")
+  cat("Target cancers: ", paste(TARGET_CANCERS, collapse = ", "), "\n", sep = "")
+  cat("Pan-cancer cancers: ", paste(PAN_CANCERS, collapse = ", "), "\n", sep = "")
+  cat("Selected analyses: ", paste(selected_analyses, collapse = ", "), "\n", sep = "")
+  cat("Prepared tasks: ", length(slcptac_tasks), "\n", sep = "")
+  cat("Result root: ", RESULT_ROOT, "\n", sep = "")
+  cat("Temporary root: ", TEMP_ROOT, "\n", sep = "")
+  cat("SLCPTAC bulk data root: ", Sys.getenv("SL_BULK_DATA"), "\n", sep = "")
+  cat("SLCPTAC data/cache root: ", DATA_ROOT, "\n", sep = "")
+}
 
 prepare_linkedomics_bulk_data(slcptac_tasks)
 
-cat("\nWriting SLCPTAC analysis catalog and data audit...\n")
+if (QUICKANALYSIS_VERBOSE) {
+  cat("\nWriting SLCPTAC analysis catalog and data audit...\n")
+}
 write_analysis_catalog(selected_analyses)
 run_data_summary(slcptac_tasks)
 
-cat("\nSLCPTAC plotting/statistical tasks: ", length(slcptac_tasks), "\n", sep = "")
+if (QUICKANALYSIS_VERBOSE) {
+  cat("\nSLCPTAC plotting/statistical tasks: ", length(slcptac_tasks), "\n", sep = "")
+}
 
 task_summary <- if (length(slcptac_tasks) > 0L) {
   raw_task_results <- run_indexed_tasks_with_progress(
@@ -3077,16 +3095,20 @@ if (nrow(task_summary) > 0L) {
 runtime_summary <- make_runtime_summary(task_summary = task_summary, start_time = SCRIPT_START_TIME)
 write_table(runtime_summary, TABLE_ROOT, "000_slcptac_runtime_summary")
 
-cat("\nSLCPTAC quick analysis finished.\n")
-if (nrow(task_summary) > 0L) {
-  cat("Completed tasks: ", sum(is_success_status(task_summary$Status)), "\n", sep = "")
-  cat("Skipped tasks: ", sum(task_summary$Status == "skipped"), "\n", sep = "")
-  cat("Failed tasks: ", sum(is_error_status(task_summary$Status)), "\n", sep = "")
-  cat("Task summary: ", file.path(TABLE_ROOT, "000_slcptac_task_summary.csv"), "\n", sep = "")
-  cat("Failed task summary: ", file.path(TABLE_ROOT, "000_slcptac_failed_tasks.csv"), "\n", sep = "")
+if (QUICKANALYSIS_VERBOSE) {
+  cat("\nSLCPTAC quick analysis finished.\n")
+  if (nrow(task_summary) > 0L) {
+    cat("Completed tasks: ", sum(is_success_status(task_summary$Status)), "\n", sep = "")
+    cat("Skipped tasks: ", sum(task_summary$Status == "skipped"), "\n", sep = "")
+    cat("Failed tasks: ", sum(is_error_status(task_summary$Status)), "\n", sep = "")
+    cat("Task summary: ", file.path(TABLE_ROOT, "000_slcptac_task_summary.csv"), "\n", sep = "")
+    cat("Failed task summary: ", file.path(TABLE_ROOT, "000_slcptac_failed_tasks.csv"), "\n", sep = "")
+  }
+  cat("Analysis catalog: ", file.path(TABLE_ROOT, "000_slcptac_analysis_catalog.csv"), "\n", sep = "")
+  cat("Task design: ", file.path(TABLE_ROOT, "000_slcptac_task_design.csv"), "\n", sep = "")
+  cat("Required file audit: ", file.path(TABLE_ROOT, "000_slcptac_required_files.csv"), "\n", sep = "")
+  cat("Runtime summary: ", file.path(TABLE_ROOT, "000_slcptac_runtime_summary.csv"), "\n", sep = "")
+  print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
 }
-cat("Analysis catalog: ", file.path(TABLE_ROOT, "000_slcptac_analysis_catalog.csv"), "\n", sep = "")
-cat("Task design: ", file.path(TABLE_ROOT, "000_slcptac_task_design.csv"), "\n", sep = "")
-cat("Required file audit: ", file.path(TABLE_ROOT, "000_slcptac_required_files.csv"), "\n", sep = "")
-cat("Runtime summary: ", file.path(TABLE_ROOT, "000_slcptac_runtime_summary.csv"), "\n", sep = "")
-print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
+
+cat("\n02 SLCPTAC quick analysis finished: ", RESULT_ROOT, "\n", sep = "")

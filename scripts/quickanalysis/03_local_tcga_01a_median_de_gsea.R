@@ -120,7 +120,7 @@ GSEA_PARAMS <- list(
   maxGSSize = parse_env_integer("TCGA_MEDIAN_DE_GSEA_MAX_GS_SIZE", 500L),
   pvalueCutoff = GSEA_SIGNIFICANCE_CUTOFF,
   pAdjustMethod = "BH",
-  verbose = TRUE,
+  verbose = parse_env_logical("TCGA_MEDIAN_DE_VERBOSE", FALSE),
   nPerm = 1000,
   method = "multilevel",
   adaptive = FALSE,
@@ -271,9 +271,15 @@ MSIGDB_REFERENCE_DIR <- file.path(PROJECT_ROOT, "data", "reference", "msigdb")
 # 不会删除同一ATF3_deg目录中的GTEx结果、本地SE对象或MSigDB参考缓存。
 CLEAR_PREVIOUS_RUN_OUTPUTS <- parse_env_logical("TCGA_MEDIAN_DE_CLEAR_PREVIOUS", TRUE)
 MAX_PARALLEL_WORKERS <- parse_env_integer("TCGA_MEDIAN_DE_PARALLEL_WORKERS", NA_integer_)
+QUICKANALYSIS_VERBOSE <- parse_env_logical("TCGA_MEDIAN_DE_VERBOSE", FALSE)
+DISABLE_FORK_PARALLEL <- parse_env_logical("TCGA_MEDIAN_DE_DISABLE_FORK", interactive())
 options(width = 200)
 options(lifecycle_verbosity = "quiet")
 options(bitmapType = "cairo")
+options(quickanalysis_verbose = QUICKANALYSIS_VERBOSE)
+options(parallel_runtime_force_single_line_progress = TRUE)
+options(parallel_runtime_quiet_strategy = !QUICKANALYSIS_VERBOSE)
+options(parallel_runtime_disable_fork = DISABLE_FORK_PARALLEL)
 
 
 # 4. 加载包和项目共用函数 ------------------------------------------------------
@@ -344,16 +350,18 @@ dir.create(VOLCANO_PLOT_ROOT, recursive = TRUE, showWarnings = FALSE)
 dir.create(PLOT_ROOT, recursive = TRUE, showWarnings = FALSE)
 dir.create(TEMP_ROOT, recursive = TRUE, showWarnings = FALSE)
 
-cat("\nLocal TCGA 01A median-expression DE + GSEA configuration:\n")
-cat("Target genes: ", paste(TARGET_GENES, collapse = ", "), "\n", sep = "")
-cat("Target cancers: ", paste(TARGET_CANCERS, collapse = ", "), "\n", sep = "")
-cat("Sample filter: ", paste(SAMPLE_DETAIL_FILTER, collapse = ", "), "\n", sep = "")
-cat("Gene biotype filter: protein-coding\n")
-cat("Grouping assay: ", TARGET_EXPRESSION_ASSAY, if (TARGET_EXPRESSION_LOG2) " log2(x + 1)" else "", "\n", sep = "")
-cat("DE assay: ", COUNT_ASSAY_NAME, "\n", sep = "")
-cat("GSEA rank column: ", RANK_METRIC_COLUMN, "\n", sep = "")
-cat("Result root: ", OUTPUT_ROOT, "\n", sep = "")
-cat("Prepared analyses: ", nrow(analysis_task_table), "\n", sep = "")
+if (QUICKANALYSIS_VERBOSE) {
+  cat("\nLocal TCGA 01A median-expression DE + GSEA configuration:\n")
+  cat("Target genes: ", paste(TARGET_GENES, collapse = ", "), "\n", sep = "")
+  cat("Target cancers: ", paste(TARGET_CANCERS, collapse = ", "), "\n", sep = "")
+  cat("Sample filter: ", paste(SAMPLE_DETAIL_FILTER, collapse = ", "), "\n", sep = "")
+  cat("Gene biotype filter: protein-coding\n")
+  cat("Grouping assay: ", TARGET_EXPRESSION_ASSAY, if (TARGET_EXPRESSION_LOG2) " log2(x + 1)" else "", "\n", sep = "")
+  cat("DE assay: ", COUNT_ASSAY_NAME, "\n", sep = "")
+  cat("GSEA rank column: ", RANK_METRIC_COLUMN, "\n", sep = "")
+  cat("Result root: ", OUTPUT_ROOT, "\n", sep = "")
+  cat("Prepared analyses: ", nrow(analysis_task_table), "\n", sep = "")
+}
 
 
 # 6. 单个目标基因/癌种差异分析 -------------------------------------------------
@@ -602,7 +610,7 @@ parallel_strategy <- setup_parallel_strategy(
   nested_label = "GSEA workers"
 )
 
-cat("\nRunning median-split differential expression analyses...\n")
+qa_log("\nRunning median-split differential expression analyses...\n")
 analysis_results <- run_parallel_tasks_with_progress(
   task_ids = analysis_task_table$Task_ID,
   task_function = run_one_median_de_analysis,
@@ -635,18 +643,20 @@ ranked_input_csv <- write_csv_with_report_previews(
   na = "NA"
 )
 
-cat("\nMedian-split DE summary:\n")
-print(
-  analysis_summaries[
-    ,
-    c(
-      "Cancer", "Target_Gene", "Samples_Used", "High_Group_N",
-      "Low_Group_N", "Ranked_Genes", "Up", "Down",
-      "Total_Significant_Genes"
-    )
-  ],
-  row.names = FALSE
-)
+if (QUICKANALYSIS_VERBOSE) {
+  cat("\nMedian-split DE summary:\n")
+  print(
+    analysis_summaries[
+      ,
+      c(
+        "Cancer", "Target_Gene", "Samples_Used", "High_Group_N",
+        "Low_Group_N", "Ranked_Genes", "Up", "Down",
+        "Total_Significant_Genes"
+      )
+    ],
+    row.names = FALSE
+  )
+}
 
 
 # 8. 绘制传统火山图 ------------------------------------------------------------
@@ -679,15 +689,17 @@ gsea_result <- qa_run_gsea_compute_and_plot(
   run_plots = RUN_GSEA_PLOTS
 )
 
-cat("\nOutput summary:\n")
-cat("DE summary table:    ", summary_csv, "\n", sep = "")
-cat("Volcano summary:     ", volcano_result$summary_csv_file, "\n", sep = "")
-cat("GSEA input table:    ", ranked_input_csv, "\n", sep = "")
-cat("GSEA summary table:  ", gsea_result$summary_csv_file, "\n", sep = "")
-cat("DEG table root:      ", DEG_TABLE_ROOT, "\n", sep = "")
-cat("GSEA table root:     ", file.path(TABLE_ROOT, "GSEA"), "\n", sep = "")
-cat("DEG plot root:       ", VOLCANO_PLOT_ROOT, "\n", sep = "")
-cat("GSEA plot root:      ", PLOT_ROOT, "\n", sep = "")
-print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
+if (QUICKANALYSIS_VERBOSE) {
+  cat("\nOutput summary:\n")
+  cat("DE summary table:    ", summary_csv, "\n", sep = "")
+  cat("Volcano summary:     ", volcano_result$summary_csv_file, "\n", sep = "")
+  cat("GSEA input table:    ", ranked_input_csv, "\n", sep = "")
+  cat("GSEA summary table:  ", gsea_result$summary_csv_file, "\n", sep = "")
+  cat("DEG table root:      ", DEG_TABLE_ROOT, "\n", sep = "")
+  cat("GSEA table root:     ", file.path(TABLE_ROOT, "GSEA"), "\n", sep = "")
+  cat("DEG plot root:       ", VOLCANO_PLOT_ROOT, "\n", sep = "")
+  cat("GSEA plot root:      ", PLOT_ROOT, "\n", sep = "")
+  print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
+}
 
-cat("\nLocal TCGA median-expression DE + GSEA analysis finished.\n")
+cat("\n03 local TCGA DEG + GSEA finished: ", OUTPUT_ROOT, "\n", sep = "")

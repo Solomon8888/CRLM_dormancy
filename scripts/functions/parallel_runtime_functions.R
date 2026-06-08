@@ -30,6 +30,25 @@ get_available_worker_count <- function() {
   max(1L, parallel::detectCores(logical = TRUE))
 }
 
+is_parallel_fork_allowed <- function() {
+  # 交互式source()时，macOS/RStudio/部分R终端中的fork并行容易触发进程级崩溃。
+  # quickanalysis默认在交互式会话禁用fork；Rscript运行仍可按配置并行。
+  if (isTRUE(getOption("parallel_runtime_disable_fork", FALSE))) {
+    return(FALSE)
+  }
+
+  if (.Platform$OS.type == "windows") {
+    return(FALSE)
+  }
+
+  if (interactive() &&
+      !isTRUE(getOption("parallel_runtime_allow_interactive_fork", FALSE))) {
+    return(FALSE)
+  }
+
+  TRUE
+}
+
 make_parallel_execution_strategy <- function(total_tasks, max_workers = NULL) {
   # 默认策略：
   # 1. 任务数充足时优先做外层任务级并行，让CPU持续满负荷；
@@ -41,14 +60,22 @@ make_parallel_execution_strategy <- function(total_tasks, max_workers = NULL) {
   }
   max_workers <- max(as.integer(max_workers), 1L)
 
-  task_workers <- if (.Platform$OS.type != "windows") {
+  fork_allowed <- is_parallel_fork_allowed()
+
+  task_workers <- if (fork_allowed) {
     min(max_workers, total_tasks)
   } else {
     1L
   }
 
-  inner_workers <- max(1L, floor(max_workers / task_workers))
-  nested_workers <- if (task_workers > 1L) {
+  inner_workers <- if (fork_allowed) {
+    max(1L, floor(max_workers / task_workers))
+  } else {
+    1L
+  }
+  nested_workers <- if (!fork_allowed) {
+    1L
+  } else if (task_workers > 1L) {
     1L
   } else {
     max_workers
@@ -81,10 +108,14 @@ configure_parallel_runtime <- function(
   }
 
   if (requireNamespace("BiocParallel", quietly = TRUE)) {
-    BiocParallel::register(
-      BiocParallel::MulticoreParam(workers = inner_workers),
-      default = TRUE
-    )
+    if (is_parallel_fork_allowed() && inner_workers > 1L) {
+      BiocParallel::register(
+        BiocParallel::MulticoreParam(workers = inner_workers),
+        default = TRUE
+      )
+    } else {
+      BiocParallel::register(BiocParallel::SerialParam(), default = TRUE)
+    }
   }
 
   invisible(list(
@@ -99,6 +130,10 @@ configure_parallel_runtime <- function(
 is_progress_terminal <- function() {
   # Rscript在VSCode/终端中运行时通常为TTY，可用单行覆盖式进度条；
   # 若输出被日志系统捕获，则降频打印，避免形成大量重复进度行。
+  if (isTRUE(getOption("parallel_runtime_force_single_line_progress", FALSE))) {
+    return(TRUE)
+  }
+
   tryCatch(isatty(stdout()), error = function(error) FALSE)
 }
 
@@ -269,6 +304,10 @@ setup_parallel_strategy <- function(
     inner_workers = strategy$inner_workers,
     qs2_threads = strategy$qs2_threads_per_task
   )
+
+  if (print_strategy) {
+    print_strategy <- !isTRUE(getOption("parallel_runtime_quiet_strategy", FALSE))
+  }
 
   if (print_strategy) {
     print_parallel_execution_strategy(

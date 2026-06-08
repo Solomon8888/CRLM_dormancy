@@ -183,6 +183,8 @@ CLEAN_TASK_OUTPUT_DIR <- parse_env_logical("TCGAPLOT_CLEAN_OUTPUT", TRUE)
 # 如需限制CPU占用，可在终端设置：
 # TCGAPLOT_PARALLEL_WORKERS=4 Rscript scripts/quickanalysis/01_tcgaplot_quick_analysis.R
 MAX_PARALLEL_WORKERS <- parse_env_integer("TCGAPLOT_PARALLEL_WORKERS", NA_integer_)
+QUICKANALYSIS_VERBOSE <- parse_env_logical("TCGAPLOT_VERBOSE", FALSE)
+DISABLE_FORK_PARALLEL <- parse_env_logical("TCGAPLOT_DISABLE_FORK", interactive())
 
 # 对网络/富集类TCGAplot任务启用任务输出缓存。
 # 这不会改变正式结果目录，只是在data/tcgaplot/reference_cache下保存输出manifest，
@@ -201,6 +203,10 @@ DISABLE_PROCESS_ISOLATION <- parse_env_logical("TCGAPLOT_DISABLE_PROCESS_ISOLATI
 
 options(width = 200)
 options(bitmapType = "cairo")
+options(quickanalysis_verbose = QUICKANALYSIS_VERBOSE)
+options(parallel_runtime_force_single_line_progress = TRUE)
+options(parallel_runtime_quiet_strategy = !QUICKANALYSIS_VERBOSE)
+options(parallel_runtime_disable_fork = DISABLE_FORK_PARALLEL)
 
 
 # 2. 加载R包和项目共用函数 ----------------------------------------------------
@@ -2741,22 +2747,25 @@ parallel_strategy <- setup_parallel_strategy(
   nested_label = "Nested workers"
 )
 
-cat("\nTCGAplot quick analysis configuration:\n")
-cat("TCGAplot version: ", as.character(utils::packageVersion("TCGAplot")), "\n", sep = "")
-cat("Target genes: ", paste(TARGET_GENES, collapse = ", "), "\n", sep = "")
-cat("Target cancers: ", paste(TARGET_CANCERS, collapse = ", "), "\n", sep = "")
-cat("Selected analyses: ", paste(selected_analyses, collapse = ", "), "\n", sep = "")
-cat("Prepared special tasks: ", length(special_task_names), "\n", sep = "")
-cat("Prepared plotting/statistical tasks: ", length(tcgaplot_tasks), "\n", sep = "")
-cat("Result root: ", RESULT_ROOT, "\n", sep = "")
-cat("Temporary root: ", TEMP_ROOT, "\n", sep = "")
-cat("TCGAplot data/cache root: ", DATA_ROOT, "\n", sep = "")
-
-cat("\nWriting TCGAplot analysis catalog...\n")
+if (QUICKANALYSIS_VERBOSE) {
+  cat("\nTCGAplot quick analysis configuration:\n")
+  cat("TCGAplot version: ", as.character(utils::packageVersion("TCGAplot")), "\n", sep = "")
+  cat("Target genes: ", paste(TARGET_GENES, collapse = ", "), "\n", sep = "")
+  cat("Target cancers: ", paste(TARGET_CANCERS, collapse = ", "), "\n", sep = "")
+  cat("Selected analyses: ", paste(selected_analyses, collapse = ", "), "\n", sep = "")
+  cat("Prepared special tasks: ", length(special_task_names), "\n", sep = "")
+  cat("Prepared plotting/statistical tasks: ", length(tcgaplot_tasks), "\n", sep = "")
+  cat("Result root: ", RESULT_ROOT, "\n", sep = "")
+  cat("Temporary root: ", TEMP_ROOT, "\n", sep = "")
+  cat("TCGAplot data/cache root: ", DATA_ROOT, "\n", sep = "")
+  cat("\nWriting TCGAplot analysis catalog...\n")
+}
 write_analysis_catalog(selected_analyses)
 
 special_task_summary <- if (length(special_task_names) > 0L) {
-  cat("\nRunning TCGAplot setup/data tasks...\n")
+  if (QUICKANALYSIS_VERBOSE) {
+    cat("\nRunning TCGAplot setup/data tasks...\n")
+  }
   special_results <- run_indexed_tasks_with_progress(
     total_tasks = length(special_task_names),
     task_function = function(task_id) {
@@ -2778,7 +2787,9 @@ if (nrow(special_task_summary) > 0L) {
   write_table(special_task_summary, SUMMARY_ROOT, "000_tcgaplot_special_task_summary")
 }
 
-cat("\nTCGAplot plotting/statistical tasks: ", length(tcgaplot_tasks), "\n", sep = "")
+if (QUICKANALYSIS_VERBOSE) {
+  cat("\nTCGAplot plotting/statistical tasks: ", length(tcgaplot_tasks), "\n", sep = "")
+}
 
 task_summary <- if (length(tcgaplot_tasks) > 0L) {
   raw_task_results <- run_indexed_tasks_with_progress(
@@ -2811,20 +2822,24 @@ runtime_summary <- make_runtime_summary(
 )
 write_table(runtime_summary, SUMMARY_ROOT, "000_tcgaplot_runtime_summary")
 
-cat("\nTCGAplot quick analysis finished.\n")
-if (nrow(special_task_summary) > 0) {
-  cat("Special tasks successful: ", sum(is_success_status(special_task_summary$Status)), "\n", sep = "")
-  cat("Special tasks failed: ", sum(!is_success_status(special_task_summary$Status)), "\n", sep = "")
-  cat("Special task summary: ", file.path(SUMMARY_ROOT, "000_tcgaplot_special_task_summary.csv"), "\n", sep = "")
+if (QUICKANALYSIS_VERBOSE) {
+  cat("\nTCGAplot quick analysis finished.\n")
+  if (nrow(special_task_summary) > 0) {
+    cat("Special tasks successful: ", sum(is_success_status(special_task_summary$Status)), "\n", sep = "")
+    cat("Special tasks failed: ", sum(!is_success_status(special_task_summary$Status)), "\n", sep = "")
+    cat("Special task summary: ", file.path(SUMMARY_ROOT, "000_tcgaplot_special_task_summary.csv"), "\n", sep = "")
+  }
+  if (nrow(task_summary) > 0) {
+    cat("Completed without error: ", sum(is_success_status(task_summary$Status)), "\n", sep = "")
+    cat("Failed tasks: ", sum(!is_success_status(task_summary$Status)), "\n", sep = "")
+    cat("Task summary: ", file.path(SUMMARY_ROOT, "000_tcgaplot_task_summary.csv"), "\n", sep = "")
+    cat("Failed task summary: ", file.path(SUMMARY_ROOT, "000_tcgaplot_failed_tasks.csv"), "\n", sep = "")
+  }
+  if ("sample_audit" %in% selected_analyses) {
+    cat("Sample audit summary: ", file.path(SUMMARY_ROOT, "000_sample_audit_summary.csv"), "\n", sep = "")
+  }
+  cat("Runtime summary: ", file.path(SUMMARY_ROOT, "000_tcgaplot_runtime_summary.csv"), "\n", sep = "")
+  print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
 }
-if (nrow(task_summary) > 0) {
-  cat("Completed without error: ", sum(is_success_status(task_summary$Status)), "\n", sep = "")
-  cat("Failed tasks: ", sum(!is_success_status(task_summary$Status)), "\n", sep = "")
-  cat("Task summary: ", file.path(SUMMARY_ROOT, "000_tcgaplot_task_summary.csv"), "\n", sep = "")
-  cat("Failed task summary: ", file.path(SUMMARY_ROOT, "000_tcgaplot_failed_tasks.csv"), "\n", sep = "")
-}
-if ("sample_audit" %in% selected_analyses) {
-  cat("Sample audit summary: ", file.path(SUMMARY_ROOT, "000_sample_audit_summary.csv"), "\n", sep = "")
-}
-cat("Runtime summary: ", file.path(SUMMARY_ROOT, "000_tcgaplot_runtime_summary.csv"), "\n", sep = "")
-print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
+
+cat("\n01 TCGAplot quick analysis finished: ", RESULT_ROOT, "\n", sep = "")
