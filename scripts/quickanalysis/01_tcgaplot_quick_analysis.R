@@ -182,10 +182,22 @@ CLEAN_TASK_OUTPUT_DIR <- parse_env_logical("TCGAPLOT_CLEAN_OUTPUT", TRUE)
 # 并行配置。默认使用parallel_runtime_functions.R自动识别的可用核心数；
 # 如需限制CPU占用，可在终端设置：
 # TCGAPLOT_PARALLEL_WORKERS=4 Rscript scripts/quickanalysis/01_tcgaplot_quick_analysis.R
-MAX_PARALLEL_WORKERS <- parse_env_integer("TCGAPLOT_PARALLEL_WORKERS", NA_integer_)
+MAX_PARALLEL_WORKERS <- parse_env_integer(
+  "TCGAPLOT_PARALLEL_WORKERS",
+  parse_env_integer(
+    "QUICKANALYSIS_PARALLEL_WORKERS",
+    parse_env_integer("PARALLEL_RUNTIME_WORKERS", NA_integer_)
+  )
+)
 QUICKANALYSIS_VERBOSE <- parse_env_logical("TCGAPLOT_VERBOSE", FALSE)
 DISABLE_FORK_PARALLEL <- parse_env_logical("TCGAPLOT_DISABLE_FORK", interactive())
-PARALLEL_BACKEND <- Sys.getenv("TCGAPLOT_PARALLEL_BACKEND", unset = "auto")
+PARALLEL_BACKEND <- Sys.getenv(
+  "TCGAPLOT_PARALLEL_BACKEND",
+  unset = Sys.getenv(
+    "QUICKANALYSIS_PARALLEL_BACKEND",
+    unset = Sys.getenv("PARALLEL_RUNTIME_BACKEND", unset = "auto")
+  )
+)
 
 # 对网络/富集类TCGAplot任务启用任务输出缓存。
 # 这不会改变正式结果目录，只是在data/tcgaplot/reference_cache下保存输出manifest，
@@ -2841,7 +2853,7 @@ if (QUICKANALYSIS_VERBOSE) {
     cat("Sample audit summary: ", file.path(SUMMARY_ROOT, "000_sample_audit_summary.csv"), "\n", sep = "")
   }
   cat("Runtime summary: ", file.path(SUMMARY_ROOT, "000_tcgaplot_runtime_summary.csv"), "\n", sep = "")
-  print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
 }
 
 cat("\n01 TCGAplot quick analysis finished: ", RESULT_ROOT, "\n", sep = "")
+print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")

@@ -270,10 +270,22 @@ MSIGDB_REFERENCE_DIR <- file.path(PROJECT_ROOT, "data", "reference", "msigdb")
 # 这只删除当前GTEx相关性分析名和gtex_前缀对应的旧文件，以及本脚本TEMP_ROOT；
 # 不会删除同一ATF3_correlation目录中的TCGA结果、本地SE对象或MSigDB参考缓存。
 CLEAR_PREVIOUS_RUN_OUTPUTS <- parse_env_logical("GTEX_CORRELATION_CLEAR_PREVIOUS", TRUE)
-MAX_PARALLEL_WORKERS <- parse_env_integer("GTEX_CORRELATION_PARALLEL_WORKERS", NA_integer_)
+MAX_PARALLEL_WORKERS <- parse_env_integer(
+  "GTEX_CORRELATION_PARALLEL_WORKERS",
+  parse_env_integer(
+    "QUICKANALYSIS_PARALLEL_WORKERS",
+    parse_env_integer("PARALLEL_RUNTIME_WORKERS", NA_integer_)
+  )
+)
 QUICKANALYSIS_VERBOSE <- parse_env_logical("GTEX_CORRELATION_VERBOSE", FALSE)
 DISABLE_FORK_PARALLEL <- parse_env_logical("GTEX_CORRELATION_DISABLE_FORK", interactive())
-PARALLEL_BACKEND <- Sys.getenv("GTEX_CORRELATION_PARALLEL_BACKEND", unset = "auto")
+PARALLEL_BACKEND <- Sys.getenv(
+  "GTEX_CORRELATION_PARALLEL_BACKEND",
+  unset = Sys.getenv(
+    "QUICKANALYSIS_PARALLEL_BACKEND",
+    unset = Sys.getenv("PARALLEL_RUNTIME_BACKEND", unset = "auto")
+  )
+)
 
 options(width = 200)
 options(lifecycle_verbosity = "quiet")
@@ -707,7 +719,7 @@ if (QUICKANALYSIS_VERBOSE) {
   cat("Correlation table root:    ", CORRELATION_TABLE_ROOT, "\n", sep = "")
   cat("GSEA table root:           ", file.path(TABLE_ROOT, "GSEA"), "\n", sep = "")
   cat("GSEA plot root:            ", PLOT_ROOT, "\n", sep = "")
-  print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
 }
 
 cat("\n06 local GTEx correlation + GSEA finished: ", OUTPUT_ROOT, "\n", sep = "")
+print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")

@@ -218,7 +218,13 @@ AUTO_INSTALL_SLCPTAC <- parse_env_logical(
 )
 
 # 并行配置。外层任务并行时，SLCPTAC内部GSEA worker会自动限制，避免过度抢核。
-MAX_PARALLEL_WORKERS <- parse_env_integer("SLCPTAC_PARALLEL_WORKERS", NA_integer_)
+MAX_PARALLEL_WORKERS <- parse_env_integer(
+  "SLCPTAC_PARALLEL_WORKERS",
+  parse_env_integer(
+    "QUICKANALYSIS_PARALLEL_WORKERS",
+    parse_env_integer("PARALLEL_RUNTIME_WORKERS", NA_integer_)
+  )
+)
 ENRICHMENT_WORKERS <- parse_env_integer("SLCPTAC_ENRICHMENT_WORKERS", NA_integer_)
 ALLOW_FORK_PARALLEL <- parse_env_logical(
   "SLCPTAC_ALLOW_FORK_PARALLEL",
@@ -226,7 +232,13 @@ ALLOW_FORK_PARALLEL <- parse_env_logical(
 )
 QUICKANALYSIS_VERBOSE <- parse_env_logical("SLCPTAC_VERBOSE", FALSE)
 DISABLE_FORK_PARALLEL <- parse_env_logical("SLCPTAC_DISABLE_FORK", interactive() || !ALLOW_FORK_PARALLEL)
-PARALLEL_BACKEND <- Sys.getenv("SLCPTAC_PARALLEL_BACKEND", unset = "auto")
+PARALLEL_BACKEND <- Sys.getenv(
+  "SLCPTAC_PARALLEL_BACKEND",
+  unset = Sys.getenv(
+    "QUICKANALYSIS_PARALLEL_BACKEND",
+    unset = Sys.getenv("PARALLEL_RUNTIME_BACKEND", unset = "auto")
+  )
+)
 USE_SLCPTAC_TASK_CACHE <- parse_env_logical("SLCPTAC_USE_TASK_CACHE", TRUE)
 SLCPTAC_TASK_CACHE_MAX_AGE_DAYS <- parse_env_integer("SLCPTAC_TASK_CACHE_MAX_AGE_DAYS", 30L)
 
@@ -3111,7 +3123,7 @@ if (QUICKANALYSIS_VERBOSE) {
   cat("Task design: ", file.path(TABLE_ROOT, "000_slcptac_task_design.csv"), "\n", sep = "")
   cat("Required file audit: ", file.path(TABLE_ROOT, "000_slcptac_required_files.csv"), "\n", sep = "")
   cat("Runtime summary: ", file.path(TABLE_ROOT, "000_slcptac_runtime_summary.csv"), "\n", sep = "")
-  print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
 }
 
 cat("\n02 SLCPTAC quick analysis finished: ", RESULT_ROOT, "\n", sep = "")
+print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")

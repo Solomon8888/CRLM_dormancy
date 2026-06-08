@@ -270,10 +270,22 @@ MSIGDB_REFERENCE_DIR <- file.path(PROJECT_ROOT, "data", "reference", "msigdb")
 # 这只删除当前TCGA差异分析名和tcga_前缀对应的旧文件，以及本脚本TEMP_ROOT；
 # 不会删除同一ATF3_deg目录中的GTEx结果、本地SE对象或MSigDB参考缓存。
 CLEAR_PREVIOUS_RUN_OUTPUTS <- parse_env_logical("TCGA_MEDIAN_DE_CLEAR_PREVIOUS", TRUE)
-MAX_PARALLEL_WORKERS <- parse_env_integer("TCGA_MEDIAN_DE_PARALLEL_WORKERS", NA_integer_)
+MAX_PARALLEL_WORKERS <- parse_env_integer(
+  "TCGA_MEDIAN_DE_PARALLEL_WORKERS",
+  parse_env_integer(
+    "QUICKANALYSIS_PARALLEL_WORKERS",
+    parse_env_integer("PARALLEL_RUNTIME_WORKERS", NA_integer_)
+  )
+)
 QUICKANALYSIS_VERBOSE <- parse_env_logical("TCGA_MEDIAN_DE_VERBOSE", FALSE)
 DISABLE_FORK_PARALLEL <- parse_env_logical("TCGA_MEDIAN_DE_DISABLE_FORK", interactive())
-PARALLEL_BACKEND <- Sys.getenv("TCGA_MEDIAN_DE_PARALLEL_BACKEND", unset = "auto")
+PARALLEL_BACKEND <- Sys.getenv(
+  "TCGA_MEDIAN_DE_PARALLEL_BACKEND",
+  unset = Sys.getenv(
+    "QUICKANALYSIS_PARALLEL_BACKEND",
+    unset = Sys.getenv("PARALLEL_RUNTIME_BACKEND", unset = "auto")
+  )
+)
 options(width = 200)
 options(lifecycle_verbosity = "quiet")
 options(bitmapType = "cairo")
@@ -701,7 +713,7 @@ if (QUICKANALYSIS_VERBOSE) {
   cat("GSEA table root:     ", file.path(TABLE_ROOT, "GSEA"), "\n", sep = "")
   cat("DEG plot root:       ", VOLCANO_PLOT_ROOT, "\n", sep = "")
   cat("GSEA plot root:      ", PLOT_ROOT, "\n", sep = "")
-  print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
 }
 
 cat("\n03 local TCGA DEG + GSEA finished: ", OUTPUT_ROOT, "\n", sep = "")
+print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
