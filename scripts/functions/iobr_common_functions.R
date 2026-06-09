@@ -76,6 +76,166 @@ iobr_sanitize <- function(x, default = "analysis") {
   x
 }
 
+iobr_format_p_value <- function(p_value, digits = 3L) {
+  p_value <- suppressWarnings(as.numeric(p_value))
+  vapply(p_value, function(p) {
+    if (!is.finite(p)) {
+      return("NA")
+    }
+    if (p < 0.001) {
+      return("<0.001")
+    }
+    formatC(p, format = "f", digits = digits)
+  }, character(1))
+}
+
+iobr_significance_stars <- function(p_value) {
+  p_value <- suppressWarnings(as.numeric(p_value))
+  ifelse(
+    !is.finite(p_value), "",
+    ifelse(
+      p_value < 0.001, "***",
+      ifelse(p_value < 0.01, "**", ifelse(p_value < 0.05, "*", "ns"))
+    )
+  )
+}
+
+iobr_make_p_label <- function(p_value, prefix = "p = ") {
+  formatted <- iobr_format_p_value(p_value)
+  formatted <- ifelse(grepl("^<", formatted), sub("^<", "< ", formatted), formatted)
+  p_prefix <- ifelse(grepl("^<", formatted), "p ", prefix)
+  stars <- iobr_significance_stars(p_value)
+  label <- paste0(p_prefix, formatted)
+  ifelse(nzchar(stars), paste(label, stars), label)
+}
+
+iobr_dataset_family <- function(dataset_id) {
+  dataset_id <- as.character(dataset_id)[1]
+  if (grepl("^TCGA_", dataset_id)) {
+    return("TCGA")
+  }
+  if (grepl("^GTEx_", dataset_id)) {
+    return("GTEX")
+  }
+  if (identical(dataset_id, "GSE114012") || grepl("^GSE114012", dataset_id)) {
+    return("GSE114012")
+  }
+  "OTHER"
+}
+
+iobr_extract_design_from_stem <- function(file_stem) {
+  stem <- iobr_sanitize(file_stem)
+  if (grepl("_Target_Group($|_)", stem)) {
+    return("Target_Group")
+  }
+  if (grepl("(^|_)analysis_", stem)) {
+    design <- sub("^.*?(analysis_)", "\\1", stem)
+    known_designs <- c(
+      "analysis_DLD1_HCT15_SW48", "analysis_DLD1_HCT15",
+      "analysis_SW948", "analysis_HCT15", "analysis_DLD1",
+      "analysis_HT55", "analysis_SW48", "analysis_ALL", "analysis_RKO"
+    )
+    known_designs <- known_designs[order(nchar(known_designs), decreasing = TRUE)]
+    matched_design <- known_designs[vapply(known_designs, function(candidate) {
+      grepl(paste0("^", candidate, "($|_)"), design)
+    }, logical(1))]
+    if (length(matched_design) > 0L) {
+      return(iobr_sanitize(matched_design[1], default = "analysis"))
+    }
+    design <- sub(
+      "_(target_correlation|group_difference|group_tests|boxplot|pca|heatmap|all_features_heatmap|cell_barplot|scores|sig_gsea|batch_survival|target_group_roc|tme_cluster|cluster_composition|survival_forest|outlier_samples).*$",
+      "",
+      design
+    )
+    design <- sub("_(H|C[0-9]+|C[0-9]+_CP|C[0-9]+_CGP)$", "", design)
+    return(iobr_sanitize(design, default = "analysis"))
+  }
+  "Target_Group"
+}
+
+iobr_extract_method_from_rest <- function(rest, module) {
+  rest <- iobr_sanitize(rest)
+  candidates <- c(
+    "cibersort_abs", "mcpcounter", "quantiseq", "cibersort",
+    "estimate", "timer", "xcell", "epic", "ips", "svr", "lsei",
+    "integration", "ssgsea", "zscore", "pca",
+    "C2_CGP", "C2_CP", "H", "C2", "C5"
+  )
+  candidates <- candidates[order(nchar(candidates), decreasing = TRUE)]
+  matched <- candidates[vapply(candidates, function(candidate) {
+    grepl(paste0("^", candidate, "($|_)"), rest)
+  }, logical(1))]
+  if (length(matched) > 0L) {
+    return(iobr_sanitize(matched[1]))
+  }
+  parts <- strsplit(rest, "_", fixed = TRUE)[[1]]
+  if (length(parts) > 0L && nzchar(parts[1])) {
+    return(iobr_sanitize(parts[1], default = module))
+  }
+  iobr_sanitize(module)
+}
+
+iobr_parse_output_context <- function(file_stem, module) {
+  stem <- iobr_sanitize(file_stem)
+  module <- iobr_sanitize(module)
+
+  if (module %in% c("run_summary", "capability_catalog")) {
+    return(list(
+      is_global = TRUE,
+      dataset_family = "00_metadata",
+      dataset_id = "00_metadata",
+      target_block = "global",
+      design = "global",
+      method = module
+    ))
+  }
+
+  dataset_id <- "OTHER"
+  target_gene <- NA_character_
+  method <- module
+  target_block <- "GENE_unknown"
+
+  if (grepl("^TCGA_[A-Za-z0-9]+_01A_", stem)) {
+    dataset_id <- sub("^(TCGA_[A-Za-z0-9]+_01A)_.*$", "\\1", stem)
+    rest <- sub("^TCGA_[A-Za-z0-9]+_01A_", "", stem)
+    parts <- strsplit(rest, "_", fixed = TRUE)[[1]]
+    target_gene <- parts[1]
+    method <- iobr_extract_method_from_rest(sub(paste0("^", target_gene, "_?"), "", rest), module)
+    target_block <- paste0("GENE_", iobr_sanitize(target_gene))
+  } else if (grepl("^GTEx_[A-Za-z0-9]+_", stem)) {
+    dataset_id <- sub("^(GTEx_[A-Za-z0-9]+)_.*$", "\\1", stem)
+    rest <- sub("^GTEx_[A-Za-z0-9]+_", "", stem)
+    parts <- strsplit(rest, "_", fixed = TRUE)[[1]]
+    target_gene <- parts[1]
+    method <- iobr_extract_method_from_rest(sub(paste0("^", target_gene, "_?"), "", rest), module)
+    target_block <- paste0("GENE_", iobr_sanitize(target_gene))
+  } else if (grepl("^GSE114012_", stem)) {
+    dataset_id <- "GSE114012"
+    rest <- sub("^GSE114012_", "", stem)
+    parts <- strsplit(rest, "_", fixed = TRUE)[[1]]
+    if (length(parts) >= 2L && !identical(parts[1], "analysis")) {
+      target_gene <- parts[1]
+      method <- iobr_extract_method_from_rest(sub(paste0("^", target_gene, "_?"), "", rest), module)
+      target_block <- paste0("GENE_", iobr_sanitize(target_gene))
+    } else {
+      target_block <- "DEG"
+      method <- sub("^.*_([A-Z][A-Za-z0-9]*)_sig_gsea.*$", "\\1", stem)
+      if (identical(method, stem)) {
+        method <- module
+      }
+    }
+  }
+
+  list(
+    is_global = FALSE,
+    dataset_family = iobr_dataset_family(dataset_id),
+    dataset_id = iobr_sanitize(dataset_id),
+    target_block = iobr_sanitize(target_block),
+    design = iobr_extract_design_from_stem(stem),
+    method = iobr_sanitize(method, default = module)
+  )
+}
+
 
 # 1. 包安装、能力目录与输出 ----------------------------------------------------
 
@@ -175,16 +335,16 @@ iobr_dynamic_plot_size <- function(
   size <- switch(
     plot_type,
     bar = list(
-      width = iobr_clamp(5.4 + 0.050 * max_label_chars, 6.8, 14.5, 8.2),
-      height = iobr_clamp(2.8 + 0.28 * n_items + title_extra, 4.8, 18.0, 6.0)
+      width = iobr_clamp(7.0 + 0.080 * max_label_chars, 8.8, 22.0, 10.0),
+      height = iobr_clamp(3.4 + 0.42 * n_items + title_extra, 5.8, 24.0, 7.0)
     ),
     box = list(
-      width = iobr_clamp(4.8 + 0.70 * n_groups + 0.018 * max_label_chars, 5.4, 12.0, 6.2),
-      height = iobr_clamp(4.4 + title_extra, 5.0, 8.0, 5.4)
+      width = iobr_clamp(5.4 + 0.86 * n_groups + 0.028 * max_label_chars, 6.4, 14.0, 7.2),
+      height = iobr_clamp(5.2 + title_extra, 6.0, 9.5, 6.4)
     ),
     pca = list(
-      width = iobr_clamp(6.0 + 0.18 * n_groups + 0.010 * max_label_chars, 6.4, 10.5, 7.0),
-      height = iobr_clamp(5.2 + title_extra, 5.6, 8.6, 6.0)
+      width = iobr_clamp(6.5 + 0.22 * n_groups + 0.012 * max_label_chars, 7.2, 12.0, 7.8),
+      height = iobr_clamp(5.8 + title_extra, 6.4, 9.5, 6.8)
     ),
     heatmap = list(
       width = if (n_samples > 140) {
@@ -211,16 +371,16 @@ iobr_dynamic_plot_size <- function(
       height = iobr_clamp(3.8 + 0.260 * n_items + title_extra, 7.2, 18.0, 10.0)
     ),
     cell_bar = list(
-      width = iobr_clamp(6.8 + 0.030 * max_label_chars, 7.8, 14.0, 9.0),
-      height = iobr_clamp(4.2 + 0.28 * n_items + title_extra, 5.8, 14.0, 6.5)
+      width = iobr_clamp(7.4 + 0.040 * max_label_chars, 8.6, 15.5, 9.5),
+      height = iobr_clamp(4.8 + 0.38 * n_items + title_extra, 6.4, 18.0, 7.2)
     ),
     forest = list(
-      width = iobr_clamp(6.8 + 0.035 * max_label_chars, 7.2, 13.0, 8.0),
-      height = iobr_clamp(3.2 + 0.34 * n_items + title_extra, 5.4, 18.0, 7.0)
+      width = iobr_clamp(7.4 + 0.045 * max_label_chars, 8.2, 15.5, 9.0),
+      height = iobr_clamp(3.8 + 0.44 * n_items + title_extra, 6.2, 24.0, 8.0)
     ),
     composition = list(
-      width = iobr_clamp(4.8 + 0.58 * n_groups + 0.010 * max_label_chars, 5.8, 10.5, 6.5),
-      height = iobr_clamp(4.6 + title_extra, 5.0, 7.5, 5.4)
+      width = iobr_clamp(5.6 + 0.70 * n_groups + 0.018 * max_label_chars, 6.8, 12.5, 7.2),
+      height = iobr_clamp(5.0 + title_extra, 5.8, 8.5, 6.0)
     ),
     list(
       width = iobr_clamp(7.2 + 0.015 * max_label_chars, 6.0, 14.0, 8.0),
@@ -996,7 +1156,14 @@ iobr_batch_cor <- function(dat, target, features, method = "spearman") {
 }
 
 iobr_group_test <- function(dat, group_col, features) {
-  groups <- unique(dat[[group_col]][!is.na(dat[[group_col]]) & dat[[group_col]] != ""])
+  prepared <- iobr_prepare_group_data(
+    dat = dat,
+    group_col = group_col,
+    require_two_groups = iobr_is_gse_analysis_group(group_col)
+  )
+  dat <- prepared$data
+  test_group_col <- prepared$group_col
+  groups <- prepared$levels
   if (length(groups) < 2L) {
     return(data.frame())
   }
@@ -1004,20 +1171,21 @@ iobr_group_test <- function(dat, group_col, features) {
   if (requireNamespace("IOBR", quietly = TRUE)) {
     res <- tryCatch({
       if (length(groups) == 2L) {
-        IOBR::batch_wilcoxon(data = dat, target = group_col, feature = features)
+        IOBR::batch_wilcoxon(data = dat, target = test_group_col, feature = features)
       } else {
-        IOBR::batch_kruskal(data = dat, group = group_col, feature = features)
+        IOBR::batch_kruskal(data = dat, group = test_group_col, feature = features)
       }
     }, error = function(error) error)
     if (!inherits(res, "error")) {
       res <- as.data.frame(res, stringsAsFactors = FALSE)
       res$Method_Source <- if (length(groups) == 2L) "IOBR::batch_wilcoxon" else "IOBR::batch_kruskal"
+      res$Comparison <- paste(groups, collapse = " vs ")
       return(res)
     }
   }
 
   rows <- lapply(features, function(feature) {
-    formula <- stats::as.formula(paste0("`", feature, "` ~ `", group_col, "`"))
+    formula <- stats::as.formula(paste0("`", feature, "` ~ `", test_group_col, "`"))
     if (length(groups) == 2L) {
       test <- suppressWarnings(wilcox.test(formula, data = dat))
       stat <- unname(test$statistic)
@@ -1027,43 +1195,120 @@ iobr_group_test <- function(dat, group_col, features) {
       stat <- unname(test$statistic)
       source <- "stats::kruskal.test"
     }
-    data.frame(sig_names = feature, p.value = test$p.value, statistic = stat, Method_Source = source)
+    data.frame(
+      sig_names = feature,
+      p.value = test$p.value,
+      statistic = stat,
+      Comparison = paste(groups, collapse = " vs "),
+      Method_Source = source,
+      stringsAsFactors = FALSE
+    )
   })
   res <- do.call(rbind, rows)
   res$p.adj <- p.adjust(res$p.value, method = "BH")
   res[order(res$p.value), , drop = FALSE]
 }
 
-iobr_make_top_barplot <- function(dat, feature_col, value_col, title, xlab = NULL, top_n = 30) {
+iobr_make_top_barplot <- function(
+    dat,
+    feature_col,
+    value_col,
+    title,
+    xlab = NULL,
+    top_n = 30,
+    label_col = NULL,
+    ylab = value_col) {
   dat <- dat[is.finite(dat[[value_col]]), , drop = FALSE]
   dat <- dat[order(abs(dat[[value_col]]), decreasing = TRUE), , drop = FALSE]
   dat <- head(dat, top_n)
   dat[[feature_col]] <- factor(dat[[feature_col]], levels = rev(dat[[feature_col]]))
+  if (!is.null(label_col) && label_col %in% colnames(dat)) {
+    dat$IOBR_Bar_Label <- as.character(dat[[label_col]])
+  } else {
+    dat$IOBR_Bar_Label <- ""
+  }
 
   ggplot2::ggplot(dat, ggplot2::aes(x = .data[[feature_col]], y = .data[[value_col]])) +
     ggplot2::geom_col(fill = "#2166AC", alpha = 0.86) +
-    ggplot2::coord_flip() +
-    ggplot2::scale_x_discrete(labels = function(x) wrap_label(x, width = 38)) +
-    ggplot2::labs(x = xlab, y = value_col, title = title) +
+    ggplot2::geom_text(
+      ggplot2::aes(
+        label = IOBR_Bar_Label,
+        hjust = ifelse(.data[[value_col]] >= 0, -0.03, 1.03)
+      ),
+      size = 4.2,
+      family = TEXT_FONT_FAMILY,
+      fontface = TEXT_FONT_FACE,
+      color = TEXT_COLOR,
+      na.rm = TRUE
+    ) +
+    ggplot2::coord_flip(clip = "off") +
+    ggplot2::scale_x_discrete(labels = function(x) wrap_label_by_underscore(x, width = 30)) +
+    ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0.14, 0.48))) +
+    ggplot2::labs(x = xlab, y = ylab, title = title) +
     iobr_common_ggplot_theme(
       base_size = BASE_FONT_SIZE,
-      axis_text_size = 10.5,
-      axis_title_size = 13,
-      title_size = 13
+      axis_text_size = 12,
+      axis_title_size = 14,
+      title_size = 15,
+      margin = ggplot2::margin(12, 70, 12, 18, unit = "pt")
     )
 }
 
 iobr_make_feature_boxplot <- function(dat, feature, group_col, title) {
-  ggplot2::ggplot(dat, ggplot2::aes(x = .data[[group_col]], y = .data[[feature]], fill = .data[[group_col]])) +
+  prepared <- iobr_prepare_group_data(
+    dat = dat,
+    group_col = group_col,
+    require_two_groups = iobr_is_gse_analysis_group(group_col)
+  )
+  dat <- prepared$data
+  plot_group_col <- prepared$group_col
+  groups <- prepared$levels
+  if (nrow(dat) == 0L || length(groups) < 2L) {
+    stop("No valid groups for boxplot: ", group_col)
+  }
+
+  dat[[feature]] <- suppressWarnings(as.numeric(dat[[feature]]))
+  dat <- dat[is.finite(dat[[feature]]) & !is.na(dat[[plot_group_col]]), , drop = FALSE]
+  if (nrow(dat) == 0L) {
+    stop("No finite values for boxplot feature: ", feature)
+  }
+
+  formula <- stats::as.formula(paste0("`", feature, "` ~ `", plot_group_col, "`"))
+  p_value <- if (length(groups) == 2L) {
+    suppressWarnings(stats::wilcox.test(formula, data = dat)$p.value)
+  } else {
+    suppressWarnings(stats::kruskal.test(formula, data = dat)$p.value)
+  }
+  p_label <- iobr_make_p_label(p_value)
+  y_range <- range(dat[[feature]], na.rm = TRUE)
+  y_span <- diff(y_range)
+  if (!is.finite(y_span) || y_span == 0) {
+    y_span <- max(abs(y_range), 1, na.rm = TRUE)
+  }
+  y_pos <- y_range[2] + y_span * 0.12
+
+  ggplot2::ggplot(dat, ggplot2::aes(x = .data[[plot_group_col]], y = .data[[feature]], fill = .data[[plot_group_col]])) +
     ggplot2::geom_boxplot(outlier.shape = NA, width = 0.62, alpha = 0.82) +
     ggplot2::geom_jitter(width = 0.12, size = 1.8, alpha = 0.78) +
-    ggplot2::labs(x = group_col, y = feature, title = title) +
+    ggplot2::annotate(
+      "text",
+      x = mean(seq_along(groups)),
+      y = y_pos,
+      label = p_label,
+      family = TEXT_FONT_FAMILY,
+      fontface = TEXT_FONT_FACE,
+      size = 4.8,
+      color = TEXT_COLOR
+    ) +
+    ggplot2::expand_limits(y = y_pos + y_span * 0.10) +
+    ggplot2::labs(x = iobr_group_axis_label(group_col), y = feature, title = title) +
     ggplot2::scale_x_discrete(labels = function(x) wrap_label(x, width = 18)) +
     iobr_common_ggplot_theme(
-      base_size = BASE_FONT_SIZE,
-      axis_text_size = 10,
-      axis_title_size = 12.5,
-      title_size = 13
+      base_size = BASE_FONT_SIZE + 1,
+      axis_text_size = 12,
+      axis_title_size = 14,
+      title_size = 15,
+      margin = ggplot2::margin(16, 18, 14, 18, unit = "pt")
     ) +
     ggplot2::theme(
       legend.position = "none"
@@ -1333,15 +1578,50 @@ iobr_make_cache_file <- function(cache_root, file_stem) {
   file.path(cache_root, paste0(iobr_sanitize(file_stem), extension))
 }
 
-iobr_table_dir <- function(output_root, module) {
-  path <- file.path(output_root, "tables", iobr_sanitize(module))
+iobr_table_dir <- function(output_root, module, file_stem = NULL) {
+  module <- iobr_sanitize(module)
+  if (is.null(file_stem) || module %in% c("run_summary", "capability_catalog")) {
+    path <- file.path(output_root, "tables", module)
+    dir.create(path, recursive = TRUE, showWarnings = FALSE)
+    return(path)
+  }
+
+  context <- iobr_parse_output_context(file_stem, module)
+  path <- file.path(
+    output_root,
+    context$dataset_family,
+    context$dataset_id,
+    context$target_block,
+    context$design,
+    module,
+    context$method,
+    "tables"
+  )
   dir.create(path, recursive = TRUE, showWarnings = FALSE)
   path
 }
 
-iobr_plot_dir <- function(output_root, module, format = c("pdf", "png")) {
+iobr_plot_dir <- function(output_root, module, format = c("pdf", "png"), file_stem = NULL) {
   format <- match.arg(format)
-  path <- file.path(output_root, "plots", iobr_sanitize(module), format)
+  module <- iobr_sanitize(module)
+  if (is.null(file_stem) || module %in% c("run_summary", "capability_catalog")) {
+    path <- file.path(output_root, "plots", module, format)
+    dir.create(path, recursive = TRUE, showWarnings = FALSE)
+    return(path)
+  }
+
+  context <- iobr_parse_output_context(file_stem, module)
+  path <- file.path(
+    output_root,
+    context$dataset_family,
+    context$dataset_id,
+    context$target_block,
+    context$design,
+    module,
+    context$method,
+    "plots",
+    format
+  )
   dir.create(path, recursive = TRUE, showWarnings = FALSE)
   path
 }
@@ -1349,7 +1629,7 @@ iobr_plot_dir <- function(output_root, module, format = c("pdf", "png")) {
 iobr_write_module_csv <- function(dat, output_root, module, file_stem, n_rows = 21) {
   iobr_write_csv(
     dat,
-    file.path(iobr_table_dir(output_root, module), paste0(iobr_sanitize(file_stem), ".csv")),
+    file.path(iobr_table_dir(output_root, module, file_stem), paste0(iobr_sanitize(file_stem), ".csv")),
     n_rows = n_rows,
     na = "NA"
   )
@@ -1369,7 +1649,7 @@ iobr_save_module_plot <- function(
     max_label_chars = NA_integer_,
     title = file_stem) {
   pdf_file <- file.path(
-    iobr_plot_dir(output_root, module, "pdf"),
+    iobr_plot_dir(output_root, module, "pdf", file_stem),
     paste0(iobr_sanitize(file_stem), ".pdf")
   )
   size <- iobr_dynamic_plot_size(
@@ -1391,10 +1671,13 @@ iobr_append_title <- function(plot, title) {
       plot +
         ggplot2::ggtitle(title) +
         iobr_common_ggplot_theme(
-          base_size = BASE_FONT_SIZE,
-          axis_text_size = 10,
-          axis_title_size = 12.5,
-          title_size = 13
+          base_size = BASE_FONT_SIZE + 1,
+          axis_text_size = 12,
+          axis_title_size = 14,
+          title_size = 15,
+          legend_text_size = 11,
+          legend_title_size = 12,
+          margin = ggplot2::margin(14, 18, 14, 18, unit = "pt")
         )
     )
   }
@@ -1410,6 +1693,65 @@ iobr_empty_feature_result <- function() {
     Method_Source = character(0),
     stringsAsFactors = FALSE
   )
+}
+
+iobr_is_gse_analysis_group <- function(group_col) {
+  grepl("^analysis_", as.character(group_col)[1])
+}
+
+iobr_group_design_name <- function(group_col) {
+  group_col <- as.character(group_col)[1]
+  if (iobr_is_gse_analysis_group(group_col)) {
+    return(iobr_sanitize(group_col))
+  }
+  iobr_sanitize(group_col)
+}
+
+iobr_group_axis_label <- function(group_col) {
+  if (iobr_is_gse_analysis_group(group_col)) {
+    return("BULK vs LRC")
+  }
+  if (identical(as.character(group_col)[1], "Target_Group")) {
+    return("Target expression group")
+  }
+  iobr_sanitize(group_col)
+}
+
+iobr_prepare_group_data <- function(dat, group_col, require_two_groups = FALSE) {
+  dat <- as.data.frame(dat, stringsAsFactors = FALSE, check.names = FALSE)
+  if (!group_col %in% colnames(dat)) {
+    return(list(data = dat[0, , drop = FALSE], group_col = group_col, levels = character(0)))
+  }
+
+  raw_values <- trimws(as.character(dat[[group_col]]))
+  keep <- !is.na(raw_values) & raw_values != ""
+  dat <- dat[keep, , drop = FALSE]
+  raw_values <- raw_values[keep]
+
+  display_col <- paste0(group_col, "__IOBR_Display")
+  if (iobr_is_gse_analysis_group(group_col)) {
+    display_values <- ifelse(toupper(raw_values) == "BULK", "BULK", "LRC")
+    levels <- intersect(c("BULK", "LRC"), unique(display_values))
+  } else if (identical(group_col, "Target_Group")) {
+    display_values <- raw_values
+    levels <- intersect(c("Low", "High"), unique(display_values))
+    if (length(levels) == 0L) {
+      levels <- sort(unique(display_values))
+    }
+  } else {
+    display_values <- raw_values
+    levels <- sort(unique(display_values))
+  }
+
+  dat[[display_col]] <- factor(display_values, levels = levels)
+  dat <- dat[!is.na(dat[[display_col]]), , drop = FALSE]
+  levels <- levels(dat[[display_col]])[levels(dat[[display_col]]) %in% as.character(dat[[display_col]])]
+
+  if (require_two_groups && length(levels) != 2L) {
+    return(list(data = dat[0, , drop = FALSE], group_col = display_col, levels = levels))
+  }
+
+  list(data = dat, group_col = display_col, levels = levels)
 }
 
 iobr_standardize_test_result <- function(dat, feature_col = NULL) {
@@ -1458,6 +1800,10 @@ iobr_standardize_test_result <- function(dat, feature_col = NULL) {
   dat$p.value <- suppressWarnings(as.numeric(dat$p.value))
   dat$statistic <- suppressWarnings(as.numeric(dat$statistic))
   dat$p.adj <- suppressWarnings(as.numeric(dat$p.adj))
+  dat$p.value.label <- iobr_format_p_value(dat$p.value)
+  dat$p.adj.label <- iobr_format_p_value(dat$p.adj)
+  dat$Significance <- iobr_significance_stars(dat$p.value)
+  dat$Adjusted_Significance <- iobr_significance_stars(dat$p.adj)
   dat[order(dat$p.value, na.last = TRUE), , drop = FALSE]
 }
 
@@ -1622,9 +1968,12 @@ iobr_get_group_columns <- function(input, include_target_group = TRUE, gse_desig
   }
 
   unique(group_columns[vapply(group_columns, function(column) {
-    values <- pdata[[column]]
-    values <- values[!is.na(values) & trimws(as.character(values)) != ""]
-    length(unique(values)) >= 2L
+    prepared <- iobr_prepare_group_data(
+      dat = pdata,
+      group_col = column,
+      require_two_groups = iobr_is_gse_analysis_group(column)
+    )
+    length(prepared$levels) >= 2L
   }, logical(1))])
 }
 
@@ -1641,6 +1990,8 @@ iobr_make_group_test_table <- function(feature_table, group_columns, features) {
       return(NULL)
     }
     res$Group_Column <- group_col
+    res$Group_Display <- iobr_group_axis_label(group_col)
+    res$Analysis_Design <- iobr_group_design_name(group_col)
     res
   })
 
@@ -1684,13 +2035,16 @@ iobr_save_feature_summary_plots <- function(
       top_n
     )
     if (nrow(plot_data) > 0L) {
+      plot_data$P_Label <- iobr_make_p_label(plot_data$p.value)
       p <- iobr_make_top_barplot(
         plot_data,
         feature_col = "sig_names",
         value_col = "statistic",
         title = paste0(file_prefix, " correlation with target gene"),
         xlab = NULL,
-        top_n = top_n
+        top_n = top_n,
+        label_col = "P_Label",
+        ylab = "Correlation statistic"
       )
       files <- iobr_save_module_plot(
         p,
@@ -1708,10 +2062,20 @@ iobr_save_feature_summary_plots <- function(
   }, silent = TRUE)
 
   try({
-  if (nrow(group_test_table) > 0L) {
-    for (group_col in unique(group_test_table$Group_Column)) {
-      current <- group_test_table[group_test_table$Group_Column == group_col, , drop = FALSE]
-      current$minus_log10_p <- -log10(pmax(current$p.value, .Machine$double.xmin))
+	  if (nrow(group_test_table) > 0L) {
+	    for (group_col in unique(group_test_table$Group_Column)) {
+	      current <- group_test_table[group_test_table$Group_Column == group_col, , drop = FALSE]
+	      try(
+	        iobr_write_module_csv(
+	          current,
+	          output_root = output_root,
+	          module = module,
+	          file_stem = paste0(file_prefix, "_", group_col, "_group_tests")
+	        ),
+	        silent = TRUE
+	      )
+	      current$minus_log10_p <- -log10(pmax(current$p.value, .Machine$double.xmin))
+	      current$P_Label <- iobr_make_p_label(current$p.value)
       current <- head(current[order(current$p.value, na.last = TRUE), , drop = FALSE], top_n)
       if (nrow(current) == 0L) {
         next
@@ -1721,9 +2085,11 @@ iobr_save_feature_summary_plots <- function(
         current,
         feature_col = "sig_names",
         value_col = "minus_log10_p",
-        title = paste0(file_prefix, " group differences: ", group_col),
+        title = paste0(file_prefix, " group differences: ", iobr_group_axis_label(group_col)),
         xlab = NULL,
-        top_n = top_n
+        top_n = top_n,
+        label_col = "P_Label",
+        ylab = "-log10(p value)"
       )
       iobr_save_module_plot(
         p,
@@ -1733,45 +2099,38 @@ iobr_save_feature_summary_plots <- function(
         plot_type = "bar",
         n_items = nrow(current),
         max_label_chars = max(nchar(as.character(current$sig_names)), na.rm = TRUE),
-        title = paste0(file_prefix, " group differences: ", group_col)
+        title = paste0(file_prefix, " group differences: ", iobr_group_axis_label(group_col))
       )
 
       box_features <- intersect(current$sig_names, features)
       if (length(box_features) > 0L) {
         for (feature in head(box_features, min(6L, length(box_features)))) {
           p_box <- try(
-            IOBR::sig_box(
-              data = feature_table,
-              signature = feature,
-              variable = group_col,
-              jitter = TRUE,
-              point_size = 1.8,
-              size_of_font = 10,
-              size_of_pvalue = 4.5,
-              show_pairwise_p = TRUE,
-              show_overall_p = FALSE
+            iobr_make_feature_boxplot(
+              feature_table,
+              feature = feature,
+              group_col = group_col,
+              title = paste(file_prefix, feature, "by", iobr_group_axis_label(group_col))
             ),
             silent = TRUE
           )
           if (inherits(p_box, "try-error") || !inherits(p_box, "ggplot")) {
-            p_box <- iobr_make_feature_boxplot(
-              feature_table,
-              feature = feature,
-              group_col = group_col,
-              title = paste(file_prefix, feature, "by", group_col)
-            )
-          } else {
-            p_box <- iobr_append_title(p_box, paste(file_prefix, feature, "by", group_col))
+            next
           }
+          prepared_box <- iobr_prepare_group_data(
+            feature_table,
+            group_col = group_col,
+            require_two_groups = iobr_is_gse_analysis_group(group_col)
+          )
           iobr_save_module_plot(
             p_box,
             output_root = output_root,
             module = module,
             file_stem = paste0(file_prefix, "_", group_col, "_", feature, "_boxplot"),
             plot_type = "box",
-            n_groups = length(unique(feature_table[[group_col]][!is.na(feature_table[[group_col]])])),
-            max_label_chars = max(nchar(c(as.character(feature_table[[group_col]]), feature)), na.rm = TRUE),
-            title = paste(file_prefix, feature, "by", group_col)
+            n_groups = length(prepared_box$levels),
+            max_label_chars = max(nchar(c(prepared_box$levels, feature)), na.rm = TRUE),
+            title = paste(file_prefix, feature, "by", iobr_group_axis_label(group_col))
           )
         }
       }
@@ -1796,15 +2155,25 @@ iobr_save_feature_summary_plots <- function(
   try({
   if (length(pca_features) >= 2L && length(group_columns) > 0L) {
     group_col <- group_columns[1]
+    prepared_group <- iobr_prepare_group_data(
+      feature_table,
+      group_col = group_col,
+      require_two_groups = iobr_is_gse_analysis_group(group_col)
+    )
+    feature_table_for_group <- prepared_group$data
+    plot_group_col <- prepared_group$group_col
+    if (nrow(feature_table_for_group) == 0L || length(prepared_group$levels) < 2L) {
+      stop("No valid group data for PCA/heatmap: ", group_col)
+    }
     p_pca <- try(
       IOBR::iobr_pca(
-        data = t(as.matrix(feature_table[, pca_features, drop = FALSE])),
+        data = t(as.matrix(feature_table_for_group[, pca_features, drop = FALSE])),
         is.matrix = TRUE,
         scale = TRUE,
         is.log = FALSE,
-        pdata = feature_table[, c("ID", group_col), drop = FALSE],
+        pdata = feature_table_for_group[, c("ID", plot_group_col), drop = FALSE],
         id_pdata = "ID",
-        group = group_col,
+        group = plot_group_col,
         repel = FALSE,
         addEllipses = FALSE
       ),
@@ -1812,9 +2181,9 @@ iobr_save_feature_summary_plots <- function(
     )
     if (inherits(p_pca, "try-error") || !inherits(p_pca, "ggplot")) {
       p_pca <- iobr_make_pca_plot(
-        feature_table,
+        feature_table_for_group,
         features = pca_features,
-        color_col = group_col,
+        color_col = plot_group_col,
         title = paste0(file_prefix, " PCA")
       )
     } else {
@@ -1826,14 +2195,14 @@ iobr_save_feature_summary_plots <- function(
       module = module,
       file_stem = paste0(file_prefix, "_", group_col, "_pca"),
       plot_type = "pca",
-      n_groups = length(unique(feature_table[[group_col]][!is.na(feature_table[[group_col]])])),
+      n_groups = length(prepared_group$levels),
       max_label_chars = max(nchar(c(as.character(feature_table[[group_col]]), pca_features)), na.rm = TRUE),
       title = paste0(file_prefix, " PCA")
     )
 
-    sample_order <- feature_table$ID[order(feature_table[[group_col]], feature_table$Target_Expression)]
+    sample_order <- feature_table_for_group$ID[order(feature_table_for_group[[plot_group_col]], feature_table_for_group$Target_Expression)]
     p_heat <- iobr_make_heatmap_plot(
-      feature_table,
+      feature_table_for_group,
       features = pca_features,
       sample_order = sample_order,
       title = paste0(file_prefix, " top feature heatmap")
@@ -1869,9 +2238,19 @@ iobr_save_feature_summary_plots <- function(
 
     if (length(heat_features) >= 2L) {
       group_col <- group_columns[1]
-      sample_order <- feature_table$ID[order(feature_table[[group_col]], feature_table$Target_Expression)]
-      p_all_heat <- iobr_make_heatmap_plot(
+      prepared_group <- iobr_prepare_group_data(
         feature_table,
+        group_col = group_col,
+        require_two_groups = iobr_is_gse_analysis_group(group_col)
+      )
+      feature_table_for_group <- prepared_group$data
+      plot_group_col <- prepared_group$group_col
+      if (nrow(feature_table_for_group) == 0L || length(prepared_group$levels) < 2L) {
+        stop("No valid group data for all-feature heatmap: ", group_col)
+      }
+      sample_order <- feature_table_for_group$ID[order(feature_table_for_group[[plot_group_col]], feature_table_for_group$Target_Expression)]
+      p_all_heat <- iobr_make_heatmap_plot(
+        feature_table_for_group,
         features = heat_features,
         sample_order = sample_order,
         title = paste0(file_prefix, " all IOBR features heatmap")
@@ -1902,7 +2281,7 @@ iobr_save_feature_summary_plots <- function(
             sprintf("%03d", length(heat_feature_chunks))
           )
           p_chunk_heat <- iobr_make_heatmap_plot(
-            feature_table,
+            feature_table_for_group,
             features = chunk_features,
             sample_order = sample_order,
             title = chunk_title

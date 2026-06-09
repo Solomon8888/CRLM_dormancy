@@ -173,7 +173,7 @@ copy_iobr_generated_outputs <- function(from_dir, module, file_prefix) {
   table_files <- files[tolower(tools::file_ext(files)) %in% c("csv", "txt", "tsv")]
   for (file in table_files) {
     target <- file.path(
-      iobr_table_dir(OUTPUT_ROOT, module),
+      iobr_table_dir(OUTPUT_ROOT, module, file_prefix),
       paste0(iobr_sanitize(file_prefix), "_", iobr_sanitize(basename(file)))
     )
     file.copy(file, target, overwrite = TRUE)
@@ -183,7 +183,7 @@ copy_iobr_generated_outputs <- function(from_dir, module, file_prefix) {
   pdf_files <- files[tolower(tools::file_ext(files)) == "pdf"]
   for (file in pdf_files) {
     target <- file.path(
-      iobr_plot_dir(OUTPUT_ROOT, module, "pdf"),
+      iobr_plot_dir(OUTPUT_ROOT, module, "pdf", file_prefix),
       paste0(iobr_sanitize(file_prefix), "_", iobr_sanitize(basename(file)))
     )
     file.copy(file, target, overwrite = TRUE)
@@ -191,7 +191,7 @@ copy_iobr_generated_outputs <- function(from_dir, module, file_prefix) {
 
     if (requireNamespace("pdftools", quietly = TRUE)) {
       png_target <- file.path(
-        iobr_plot_dir(OUTPUT_ROOT, module, "png"),
+        iobr_plot_dir(OUTPUT_ROOT, module, "png", file_prefix),
         paste0(tools::file_path_sans_ext(basename(target)), ".png")
       )
       try(pdftools::pdf_convert(target, format = "png", dpi = 300, filenames = png_target), silent = TRUE)
@@ -201,7 +201,7 @@ copy_iobr_generated_outputs <- function(from_dir, module, file_prefix) {
   png_files <- files[tolower(tools::file_ext(files)) == "png"]
   for (file in png_files) {
     target <- file.path(
-      iobr_plot_dir(OUTPUT_ROOT, module, "png"),
+      iobr_plot_dir(OUTPUT_ROOT, module, "png", file_prefix),
       paste0(iobr_sanitize(file_prefix), "_", iobr_sanitize(basename(file)))
     )
     file.copy(file, target, overwrite = TRUE)
@@ -212,13 +212,20 @@ copy_iobr_generated_outputs <- function(from_dir, module, file_prefix) {
 }
 
 read_core_feature_files <- function() {
-  files <- c(
-    list.files(file.path(CORE_OUTPUT_ROOT, "tables", "signature_score"), pattern = "_scores\\.csv$", full.names = TRUE),
-    list.files(file.path(CORE_OUTPUT_ROOT, "tables", "deconvolution"), pattern = "_scores\\.csv$", full.names = TRUE)
+  files <- list.files(
+    CORE_OUTPUT_ROOT,
+    pattern = "_scores[.]csv$",
+    recursive = TRUE,
+    full.names = TRUE
   )
+  files <- files[!grepl("/tables/(run_summary|capability_catalog)/", files)]
   data.frame(
     Feature_File = files,
-    Module_Source = basename(dirname(files)),
+    Module_Source = ifelse(
+      grepl("/signature_score/", files),
+      "signature_score",
+      ifelse(grepl("/deconvolution/", files), "deconvolution", basename(dirname(files)))
+    ),
     File_Stem = tools::file_path_sans_ext(basename(files)),
     stringsAsFactors = FALSE
   )
@@ -226,6 +233,14 @@ read_core_feature_files <- function() {
 
 select_numeric_features <- function(dat, top_n = TOP_FEATURE_N) {
   features <- iobr_feature_columns(dat)
+  metadata_patterns <- c(
+    "^days_to_", "^age_", "^OS_", "^DSS_", "^DFI_", "^PFI_",
+    "^vital_status$", "^gender$", "^sex$", "^stage", "^grade",
+    "_clinical$", "^Target_", "^Sample_", "^Dataset_", "^ProjectID$",
+    "^time$", "^status$"
+  )
+  metadata_regex <- paste(metadata_patterns, collapse = "|")
+  features <- features[!grepl(metadata_regex, features, ignore.case = TRUE)]
   features <- features[vapply(features, function(feature) {
     values <- suppressWarnings(as.numeric(dat[[feature]]))
     sum(is.finite(values)) >= 6L && stats::sd(values, na.rm = TRUE) > 0
@@ -472,14 +487,21 @@ run_sig_gsea_task <- function(task) {
       plot_table <- plot_table[is.finite(plot_table$Plot_Value), , drop = FALSE]
       plot_table <- head(plot_table[order(abs(plot_table$Plot_Value), decreasing = TRUE), , drop = FALSE], TOP_FEATURE_N)
       if (nrow(plot_table) > 0L) {
+        if (!is.na(p_col)) {
+          plot_table$P_Label <- iobr_make_p_label(plot_table[[p_col]])
+        } else {
+          plot_table$P_Label <- ""
+        }
         p_gsea <- iobr_make_top_barplot(
           plot_table,
           feature_col = term_col,
           value_col = "Plot_Value",
           title = paste(task$File_Stem, task$Category, "IOBR sig_gsea"),
           xlab = NULL,
-          top_n = nrow(plot_table)
-        ) + ggplot2::labs(y = y_label)
+          top_n = nrow(plot_table),
+          label_col = "P_Label",
+          ylab = y_label
+        )
         iobr_save_module_plot(
           p_gsea,
           OUTPUT_ROOT,
