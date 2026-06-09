@@ -100,12 +100,11 @@ options(parallel_runtime_worker_packages = c(
   "IOBR", "ggplot2", "dplyr", "survival", "pROC", "qs2", "Cairo"
 ))
 
-if (CLEAR_PREVIOUS_RUN_OUTPUTS) {
-  unlink(OUTPUT_ROOT, recursive = TRUE, force = TRUE)
-  unlink(TEMP_ROOT, recursive = TRUE, force = TRUE)
-}
-dir.create(OUTPUT_ROOT, recursive = TRUE, showWarnings = FALSE)
-dir.create(TEMP_ROOT, recursive = TRUE, showWarnings = FALSE)
+iobr_prepare_output_tree(
+  output_root = OUTPUT_ROOT,
+  temporary_root = TEMP_ROOT,
+  clear_previous = CLEAR_PREVIOUS_RUN_OUTPUTS
+)
 
 iobr_setup_runtime(
   project_root = PROJECT_ROOT,
@@ -127,6 +126,35 @@ PARALLEL_WORKERS <- if (is.na(MAX_PARALLEL_WORKERS)) {
 } else {
   max(1L, MAX_PARALLEL_WORKERS)
 }
+
+explore_config <- data.frame(
+  Key = c(
+    "Target_genes", "Run_survival", "Run_roc", "Run_cluster",
+    "Run_outlier", "Run_sig_gsea", "Top_feature_n",
+    "Sig_gsea_categories", "Sig_gsea_max_designs",
+    "Clear_previous_run_outputs", "Parallel_backend", "Parallel_workers",
+    "Core_output_root", "Output_root", "Temporary_root"
+  ),
+  Value = c(
+    paste(TARGET_GENES, collapse = ", "),
+    RUN_SURVIVAL,
+    RUN_ROC,
+    RUN_CLUSTER,
+    RUN_OUTLIER,
+    RUN_SIG_GSEA,
+    TOP_FEATURE_N,
+    paste(SIG_GSEA_CATEGORIES, collapse = ", "),
+    SIG_GSEA_MAX_DESIGNS,
+    CLEAR_PREVIOUS_RUN_OUTPUTS,
+    PARALLEL_BACKEND,
+    PARALLEL_WORKERS,
+    CORE_OUTPUT_ROOT,
+    OUTPUT_ROOT,
+    TEMP_ROOT
+  ),
+  stringsAsFactors = FALSE
+)
+iobr_write_module_csv(explore_config, OUTPUT_ROOT, "run_summary", "000_iobr_exploratory_run_configuration")
 
 
 # 2. 小工具 --------------------------------------------------------------------
@@ -205,6 +233,21 @@ select_numeric_features <- function(dat, top_n = TOP_FEATURE_N) {
   head(features, min(length(features), top_n))
 }
 
+extract_sig_gsea_table <- function(x) {
+  if (is.data.frame(x)) {
+    return(as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE))
+  }
+  if (is.list(x)) {
+    for (item in x) {
+      found <- extract_sig_gsea_table(item)
+      if (is.data.frame(found) && nrow(found) > 0L) {
+        return(found)
+      }
+    }
+  }
+  data.frame()
+}
+
 run_survival_task <- function(task) {
   module <- "survival"
   dat <- read_report_csv(task$Feature_File)
@@ -246,8 +289,10 @@ run_survival_task <- function(task) {
       OUTPUT_ROOT,
       module,
       paste0(task$File_Stem, "_survival_forest"),
-      width = 7.5,
-      height = max(5.5, 0.3 * nrow(res) + 2)
+      plot_type = "forest",
+      n_items = nrow(res),
+      max_label_chars = max(nchar(apply(res, 1, paste, collapse = " ")), na.rm = TRUE),
+      title = paste0(task$File_Stem, " survival forest")
     )
   }
 
@@ -301,8 +346,10 @@ run_roc_task <- function(task) {
     OUTPUT_ROOT,
     module,
     paste0(task$File_Stem, "_target_group_roc_auc"),
-    width = 7.5,
-    height = max(5.5, 0.28 * min(TOP_FEATURE_N, nrow(roc_table)) + 2)
+    plot_type = "bar",
+    n_items = min(TOP_FEATURE_N, nrow(roc_table)),
+    max_label_chars = max(nchar(as.character(roc_table$Feature)), na.rm = TRUE),
+    title = paste0(task$File_Stem, " Target_Group ROC")
   )
 
   iobr_status_row(task$Dataset_ID, module, task$File_Stem, "success", output_file = out_file, n_rows = nrow(roc_table), n_cols = ncol(roc_table))
@@ -333,9 +380,22 @@ run_cluster_task <- function(task) {
     p <- ggplot2::ggplot(plot_data, ggplot2::aes(x = cluster, fill = Target_Group)) +
       ggplot2::geom_bar(position = "fill") +
       ggplot2::labs(x = "Cluster", y = "Proportion", title = paste0(task$File_Stem, " cluster composition")) +
-      ggplot2::theme_bw(base_size = BASE_FONT_SIZE, base_family = TEXT_FONT_FAMILY) +
-      ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5, face = TEXT_FONT_FACE))
-    iobr_save_module_plot(p, OUTPUT_ROOT, module, paste0(task$File_Stem, "_cluster_composition"), width = 6, height = 5)
+      iobr_common_ggplot_theme(
+        base_size = BASE_FONT_SIZE,
+        axis_text_size = 10,
+        axis_title_size = 12.5,
+        title_size = 13
+      )
+    iobr_save_module_plot(
+      p,
+      OUTPUT_ROOT,
+      module,
+      paste0(task$File_Stem, "_cluster_composition"),
+      plot_type = "composition",
+      n_groups = length(unique(plot_data$cluster)),
+      max_label_chars = max(nchar(c(as.character(plot_data$cluster), as.character(plot_data$Target_Group))), na.rm = TRUE),
+      title = paste0(task$File_Stem, " cluster composition")
+    )
   }
 
   iobr_status_row(task$Dataset_ID, module, task$File_Stem, "success", output_file = out_file, n_rows = nrow(clustered), n_cols = ncol(clustered))
@@ -380,7 +440,7 @@ run_sig_gsea_task <- function(task) {
     category = task$Category,
     project = task$File_Stem,
     show_plot = FALSE,
-    print_bar = TRUE,
+    print_bar = FALSE,
     plot_single_sig = FALSE,
     fig.type = "pdf",
     verbose = FALSE,
@@ -390,8 +450,48 @@ run_sig_gsea_task <- function(task) {
     return(iobr_status_row(task$Dataset_ID, module, task$File_Stem, "failed", as.character(res)))
   }
 
-  if (is.data.frame(res)) {
-    out_file <- iobr_write_module_csv(res, OUTPUT_ROOT, module, paste0(task$File_Stem, "_", task$Category, "_sig_gsea_result"))
+  sig_gsea_table <- extract_sig_gsea_table(res)
+  if (nrow(sig_gsea_table) > 0L) {
+    out_file <- iobr_write_module_csv(sig_gsea_table, OUTPUT_ROOT, module, paste0(task$File_Stem, "_", task$Category, "_sig_gsea_result"))
+
+    term_col <- intersect(c("Description", "ID", "pathway", "term", "Term"), colnames(sig_gsea_table))[1]
+    value_col <- intersect(c("NES", "enrichmentScore", "score"), colnames(sig_gsea_table))[1]
+    p_col <- intersect(c("p.adjust", "pvalue", "p.value", "qvalue"), colnames(sig_gsea_table))[1]
+    if (!is.na(term_col)) {
+      plot_table <- sig_gsea_table
+      if (!is.na(value_col)) {
+        plot_table$Plot_Value <- suppressWarnings(as.numeric(plot_table[[value_col]]))
+        y_label <- value_col
+      } else if (!is.na(p_col)) {
+        plot_table$Plot_Value <- -log10(pmax(suppressWarnings(as.numeric(plot_table[[p_col]])), .Machine$double.xmin))
+        y_label <- paste0("-log10(", p_col, ")")
+      } else {
+        plot_table$Plot_Value <- seq_len(nrow(plot_table))
+        y_label <- "Rank"
+      }
+      plot_table <- plot_table[is.finite(plot_table$Plot_Value), , drop = FALSE]
+      plot_table <- head(plot_table[order(abs(plot_table$Plot_Value), decreasing = TRUE), , drop = FALSE], TOP_FEATURE_N)
+      if (nrow(plot_table) > 0L) {
+        p_gsea <- iobr_make_top_barplot(
+          plot_table,
+          feature_col = term_col,
+          value_col = "Plot_Value",
+          title = paste(task$File_Stem, task$Category, "IOBR sig_gsea"),
+          xlab = NULL,
+          top_n = nrow(plot_table)
+        ) + ggplot2::labs(y = y_label)
+        iobr_save_module_plot(
+          p_gsea,
+          OUTPUT_ROOT,
+          module,
+          paste0(task$File_Stem, "_", task$Category, "_sig_gsea_top", TOP_FEATURE_N),
+          plot_type = "bar",
+          n_items = nrow(plot_table),
+          max_label_chars = max(nchar(as.character(plot_table[[term_col]])), na.rm = TRUE),
+          title = paste(task$File_Stem, task$Category, "IOBR sig_gsea")
+        )
+      }
+    }
   } else {
     out_file <- iobr_write_module_csv(
       data.frame(Result_Class = class(res), stringsAsFactors = FALSE),
@@ -470,7 +570,7 @@ if (length(task_list) == 0L) {
     data.frame(Message = "No exploratory IOBR tasks were prepared.", stringsAsFactors = FALSE),
     OUTPUT_ROOT,
     "run_summary",
-    "000_no_tasks"
+    "001_no_tasks"
   )
   cat("\n02 IOBR exploratory analysis finished with no tasks: ", OUTPUT_ROOT, "\n", sep = "")
   quit(save = "no", status = 0)
@@ -478,7 +578,7 @@ if (length(task_list) == 0L) {
 
 explore_task_table <- dplyr::bind_rows(task_list)
 explore_task_table$Task_ID <- seq_len(nrow(explore_task_table))
-iobr_write_module_csv(explore_task_table, OUTPUT_ROOT, "run_summary", "000_iobr_exploratory_task_table")
+iobr_write_module_csv(explore_task_table, OUTPUT_ROOT, "run_summary", "001_iobr_exploratory_task_table")
 
 
 # 4. 并行运行探索任务 ----------------------------------------------------------
@@ -522,10 +622,10 @@ task_results <- run_parallel_tasks_with_progress(
 )
 
 status_table <- iobr_bind_rows(task_results)
-iobr_write_module_csv(status_table, OUTPUT_ROOT, "run_summary", "001_iobr_exploratory_task_status")
+iobr_write_module_csv(status_table, OUTPUT_ROOT, "run_summary", "002_iobr_exploratory_task_status")
 failed <- status_table[status_table$Status %in% c("failed"), , drop = FALSE]
 if (nrow(failed) > 0L) {
-  iobr_write_module_csv(failed, OUTPUT_ROOT, "run_summary", "002_iobr_exploratory_failed_tasks")
+  iobr_write_module_csv(failed, OUTPUT_ROOT, "run_summary", "003_iobr_exploratory_failed_tasks")
 }
 
 runtime_seconds <- print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
@@ -536,6 +636,6 @@ runtime_table <- data.frame(
   Output_Root = OUTPUT_ROOT,
   stringsAsFactors = FALSE
 )
-iobr_write_module_csv(runtime_table, OUTPUT_ROOT, "run_summary", "003_iobr_exploratory_runtime")
+iobr_write_module_csv(runtime_table, OUTPUT_ROOT, "run_summary", "004_iobr_exploratory_runtime")
 
 cat("\n02 IOBR exploratory analysis finished: ", OUTPUT_ROOT, "\n", sep = "")

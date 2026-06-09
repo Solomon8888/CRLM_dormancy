@@ -145,7 +145,298 @@ iobr_write_csv <- function(dat, file, n_rows = 21, na = "NA") {
   write_csv_with_report_previews(dat, file, n_rows = n_rows, na = na)
 }
 
-iobr_save_ggplot <- function(plot, plot_root, module, file_stem, width = 7.2, height = 5.4) {
+iobr_clamp <- function(x, lower, upper, default) {
+  x <- suppressWarnings(as.numeric(x)[1])
+  if (!is.finite(x)) {
+    x <- default
+  }
+  min(max(x, lower), upper)
+}
+
+iobr_dynamic_plot_size <- function(
+    plot_type = "generic",
+    n_items = NA_integer_,
+    n_samples = NA_integer_,
+    n_groups = NA_integer_,
+    max_label_chars = NA_integer_,
+    title = "",
+    width = NULL,
+    height = NULL) {
+  plot_type <- iobr_sanitize(plot_type, default = "generic")
+  n_items <- iobr_clamp(n_items, 1, 5000, 8)
+  n_samples <- iobr_clamp(n_samples, 1, 5000, 20)
+  n_groups <- iobr_clamp(n_groups, 1, 200, 2)
+  max_label_chars <- iobr_clamp(max_label_chars, 1, 200, 24)
+
+  title <- paste(as.character(title), collapse = " ")
+  title_lines <- max(1L, length(strwrap(title, width = 64)))
+  title_extra <- 0.25 + 0.30 * max(0L, title_lines - 1L)
+
+  size <- switch(
+    plot_type,
+    bar = list(
+      width = iobr_clamp(5.4 + 0.050 * max_label_chars, 6.8, 14.5, 8.2),
+      height = iobr_clamp(2.8 + 0.28 * n_items + title_extra, 4.8, 18.0, 6.0)
+    ),
+    box = list(
+      width = iobr_clamp(4.8 + 0.70 * n_groups + 0.018 * max_label_chars, 5.4, 12.0, 6.2),
+      height = iobr_clamp(4.4 + title_extra, 5.0, 8.0, 5.4)
+    ),
+    pca = list(
+      width = iobr_clamp(6.0 + 0.18 * n_groups + 0.010 * max_label_chars, 6.4, 10.5, 7.0),
+      height = iobr_clamp(5.2 + title_extra, 5.6, 8.6, 6.0)
+    ),
+    heatmap = list(
+      width = if (n_samples > 140) {
+        iobr_clamp(8.0 + 0.018 * n_samples, 10.0, 22.0, 14.0)
+      } else {
+        iobr_clamp(5.8 + 0.075 * n_samples + 0.010 * max_label_chars, 7.0, 18.0, 10.0)
+      },
+      height = iobr_clamp(3.6 + 0.190 * n_items + title_extra, 5.8, 46.0, 8.0)
+    ),
+    all_signature_heatmap = list(
+      width = if (n_samples > 140) {
+        iobr_clamp(8.6 + 0.016 * n_samples, 11.0, 22.0, 15.0)
+      } else {
+        iobr_clamp(6.4 + 0.070 * n_samples + 0.010 * max_label_chars, 8.0, 18.0, 12.0)
+      },
+      height = iobr_clamp(4.4 + 0.095 * n_items + title_extra, 8.0, 52.0, 18.0)
+    ),
+    heatmap_chunk = list(
+      width = if (n_samples > 140) {
+        iobr_clamp(8.4 + 0.016 * n_samples, 10.5, 21.0, 14.0)
+      } else {
+        iobr_clamp(6.2 + 0.070 * n_samples + 0.010 * max_label_chars, 8.0, 18.0, 11.0)
+      },
+      height = iobr_clamp(3.8 + 0.260 * n_items + title_extra, 7.2, 18.0, 10.0)
+    ),
+    cell_bar = list(
+      width = iobr_clamp(6.8 + 0.030 * max_label_chars, 7.8, 14.0, 9.0),
+      height = iobr_clamp(4.2 + 0.28 * n_items + title_extra, 5.8, 14.0, 6.5)
+    ),
+    forest = list(
+      width = iobr_clamp(6.8 + 0.035 * max_label_chars, 7.2, 13.0, 8.0),
+      height = iobr_clamp(3.2 + 0.34 * n_items + title_extra, 5.4, 18.0, 7.0)
+    ),
+    composition = list(
+      width = iobr_clamp(4.8 + 0.58 * n_groups + 0.010 * max_label_chars, 5.8, 10.5, 6.5),
+      height = iobr_clamp(4.6 + title_extra, 5.0, 7.5, 5.4)
+    ),
+    list(
+      width = iobr_clamp(7.2 + 0.015 * max_label_chars, 6.0, 14.0, 8.0),
+      height = iobr_clamp(5.0 + title_extra, 4.8, 10.0, 5.8)
+    )
+  )
+
+  if (!is.null(width)) {
+    size$width <- iobr_clamp(width, 3.5, 30.0, size$width)
+  }
+  if (!is.null(height)) {
+    size$height <- iobr_clamp(height, 3.5, 60.0, size$height)
+  }
+
+  size
+}
+
+iobr_common_ggplot_theme <- function(
+    base_size = BASE_FONT_SIZE,
+    axis_text_size = NULL,
+    axis_title_size = NULL,
+    title_size = NULL,
+    legend_text_size = NULL,
+    legend_title_size = NULL,
+    rotate_x = FALSE,
+    hide_x_text = FALSE,
+    hide_y_text = FALSE,
+    margin = ggplot2::margin(10, 12, 10, 10, unit = "pt")) {
+  if (is.null(axis_text_size)) {
+    axis_text_size <- base_size
+  }
+  if (is.null(axis_title_size)) {
+    axis_title_size <- base_size + 1
+  }
+  if (is.null(title_size)) {
+    title_size <- base_size + 1
+  }
+  if (is.null(legend_text_size)) {
+    legend_text_size <- max(base_size - 1, 7)
+  }
+  if (is.null(legend_title_size)) {
+    legend_title_size <- base_size
+  }
+
+  x_text <- if (hide_x_text) {
+    ggplot2::element_blank()
+  } else {
+    ggplot2::element_text(
+      color = TEXT_COLOR,
+      face = TEXT_FONT_FACE,
+      size = axis_text_size,
+      angle = if (rotate_x) 90 else 0,
+      hjust = if (rotate_x) 1 else 0.5,
+      vjust = if (rotate_x) 0.5 else 0.5
+    )
+  }
+
+  y_text <- if (hide_y_text) {
+    ggplot2::element_blank()
+  } else {
+    ggplot2::element_text(
+      color = TEXT_COLOR,
+      face = TEXT_FONT_FACE,
+      size = axis_text_size
+    )
+  }
+
+  ggplot2::theme_bw(base_size = base_size, base_family = TEXT_FONT_FAMILY) +
+    ggplot2::theme(
+      text = ggplot2::element_text(
+        color = TEXT_COLOR,
+        family = TEXT_FONT_FAMILY,
+        face = TEXT_FONT_FACE
+      ),
+      plot.title = ggplot2::element_text(
+        hjust = 0.5,
+        face = TEXT_FONT_FACE,
+        size = title_size,
+        margin = ggplot2::margin(b = 10, unit = "pt")
+      ),
+      axis.text.x = x_text,
+      axis.text.y = y_text,
+      axis.title = ggplot2::element_text(
+        color = TEXT_COLOR,
+        face = TEXT_FONT_FACE,
+        size = axis_title_size
+      ),
+      axis.line = ggplot2::element_line(color = TEXT_COLOR, linewidth = AXIS_LINE_WIDTH),
+      axis.ticks = ggplot2::element_line(color = TEXT_COLOR, linewidth = AXIS_LINE_WIDTH * 0.7),
+      panel.border = ggplot2::element_rect(color = TEXT_COLOR, fill = NA, linewidth = AXIS_LINE_WIDTH),
+      panel.grid.major = ggplot2::element_line(color = "#E6E6E6", linewidth = 0.25),
+      panel.grid.minor = ggplot2::element_blank(),
+      legend.title = ggplot2::element_text(
+        color = TEXT_COLOR,
+        face = TEXT_FONT_FACE,
+        size = legend_title_size
+      ),
+      legend.text = ggplot2::element_text(
+        color = TEXT_COLOR,
+        face = TEXT_FONT_FACE,
+        size = legend_text_size
+      ),
+      legend.key = ggplot2::element_rect(fill = "white", color = NA),
+      strip.text = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
+      plot.margin = margin
+    )
+}
+
+iobr_evenly_spaced_values <- function(values, max_labels) {
+  values <- unique(as.character(values))
+  n <- length(values)
+  max_labels <- suppressWarnings(as.integer(max_labels)[1])
+  if (!is.finite(max_labels) || max_labels <= 0L) {
+    return(character(0))
+  }
+
+  if (n <= max_labels) {
+    return(values)
+  }
+
+  unique(values[round(seq(1, n, length.out = max_labels))])
+}
+
+iobr_make_sparse_axis_breaks <- function(values, max_labels = 25L) {
+  values <- as.character(values)
+  n <- length(values)
+  max_labels <- suppressWarnings(as.integer(max_labels)[1])
+  if (!is.finite(max_labels) || max_labels <= 0L) {
+    return(character(0))
+  }
+  if (n <= max_labels) {
+    return(unique(values))
+  }
+
+  unique(values[round(seq(1, n, length.out = max_labels))])
+}
+
+iobr_max_sample_axis_labels <- function(n_samples, max_label_chars = 20L) {
+  n_samples <- suppressWarnings(as.integer(n_samples)[1])
+  max_label_chars <- suppressWarnings(as.integer(max_label_chars)[1])
+  if (!is.finite(n_samples)) {
+    n_samples <- 1L
+  }
+  if (!is.finite(max_label_chars)) {
+    max_label_chars <- 20L
+  }
+  n_samples <- max(n_samples, 1L)
+  max_label_chars <- max(max_label_chars, 1L)
+  base <- if (n_samples <= 60L) {
+    60L
+  } else if (n_samples <= 90L) {
+    32L
+  } else if (n_samples <= 140L) {
+    18L
+  } else {
+    0L
+  }
+
+  if (max_label_chars > 24L) {
+    base <- if (base <= 0L) 0L else max(6L, floor(base * 0.65))
+  }
+  base
+}
+
+iobr_max_feature_axis_labels <- function(n_features, max_label_chars = 24L) {
+  n_features <- suppressWarnings(as.integer(n_features)[1])
+  max_label_chars <- suppressWarnings(as.integer(max_label_chars)[1])
+  if (!is.finite(n_features)) {
+    n_features <- 1L
+  }
+  if (!is.finite(max_label_chars)) {
+    max_label_chars <- 24L
+  }
+  n_features <- max(n_features, 1L)
+  max_label_chars <- max(max_label_chars, 1L)
+  base <- if (n_features <= 45L) {
+    n_features
+  } else if (n_features <= 90L) {
+    42L
+  } else if (n_features <= 180L) {
+    34L
+  } else {
+    28L
+  }
+
+  if (max_label_chars > 34L) {
+    base <- max(18L, floor(base * 0.75))
+  }
+  base
+}
+
+iobr_heatmap_feature_chunk_size <- function(n_samples) {
+  n_samples <- suppressWarnings(as.integer(n_samples)[1])
+  if (!is.finite(n_samples)) {
+    n_samples <- 1L
+  }
+  n_samples <- max(n_samples, 1L)
+  if (n_samples > 140L) {
+    return(35L)
+  }
+  42L
+}
+
+iobr_save_ggplot <- function(
+    plot,
+    plot_root,
+    module,
+    file_stem,
+    width = NULL,
+    height = NULL,
+    plot_type = "generic",
+    n_items = NA_integer_,
+    n_samples = NA_integer_,
+    n_groups = NA_integer_,
+    max_label_chars = NA_integer_,
+    title = file_stem) {
   pdf_dir <- file.path(plot_root, module, "pdf")
   png_dir <- file.path(plot_root, module, "png")
   dir.create(pdf_dir, recursive = TRUE, showWarnings = FALSE)
@@ -153,7 +444,17 @@ iobr_save_ggplot <- function(plot, plot_root, module, file_stem, width = 7.2, he
 
   file_stem <- iobr_sanitize(file_stem)
   pdf_file <- file.path(pdf_dir, paste0(file_stem, ".pdf"))
-  save_ggplot_pdf_png(plot, pdf_file = pdf_file, width = width, height = height)
+  size <- iobr_dynamic_plot_size(
+    plot_type = plot_type,
+    n_items = n_items,
+    n_samples = n_samples,
+    n_groups = n_groups,
+    max_label_chars = max_label_chars,
+    title = title,
+    width = width,
+    height = height
+  )
+  save_ggplot_pdf_png(plot, pdf_file = pdf_file, width = size$width, height = size$height)
 }
 
 iobr_empty_result <- function(module, task, status, message = "", output_file = "") {
@@ -742,12 +1043,13 @@ iobr_make_top_barplot <- function(dat, feature_col, value_col, title, xlab = NUL
   ggplot2::ggplot(dat, ggplot2::aes(x = .data[[feature_col]], y = .data[[value_col]])) +
     ggplot2::geom_col(fill = "#2166AC", alpha = 0.86) +
     ggplot2::coord_flip() +
+    ggplot2::scale_x_discrete(labels = function(x) wrap_label(x, width = 38)) +
     ggplot2::labs(x = xlab, y = value_col, title = title) +
-    ggplot2::theme_bw(base_size = BASE_FONT_SIZE, base_family = TEXT_FONT_FAMILY) +
-    ggplot2::theme(
-      plot.title = ggplot2::element_text(hjust = 0.5, face = TEXT_FONT_FACE),
-      axis.text = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
-      axis.title = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE)
+    iobr_common_ggplot_theme(
+      base_size = BASE_FONT_SIZE,
+      axis_text_size = 10.5,
+      axis_title_size = 13,
+      title_size = 13
     )
 }
 
@@ -755,13 +1057,16 @@ iobr_make_feature_boxplot <- function(dat, feature, group_col, title) {
   ggplot2::ggplot(dat, ggplot2::aes(x = .data[[group_col]], y = .data[[feature]], fill = .data[[group_col]])) +
     ggplot2::geom_boxplot(outlier.shape = NA, width = 0.62, alpha = 0.82) +
     ggplot2::geom_jitter(width = 0.12, size = 1.8, alpha = 0.78) +
-    ggplot2::labs(x = NULL, y = feature, title = title) +
-    ggplot2::theme_bw(base_size = BASE_FONT_SIZE, base_family = TEXT_FONT_FAMILY) +
+    ggplot2::labs(x = group_col, y = feature, title = title) +
+    ggplot2::scale_x_discrete(labels = function(x) wrap_label(x, width = 18)) +
+    iobr_common_ggplot_theme(
+      base_size = BASE_FONT_SIZE,
+      axis_text_size = 10,
+      axis_title_size = 12.5,
+      title_size = 13
+    ) +
     ggplot2::theme(
-      legend.position = "none",
-      plot.title = ggplot2::element_text(hjust = 0.5, face = TEXT_FONT_FACE),
-      axis.text = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
-      axis.title = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE)
+      legend.position = "none"
     )
 }
 
@@ -797,17 +1102,61 @@ iobr_make_pca_plot <- function(dat, features, color_col, title) {
       y = paste0("PC2 (", var_exp[2], "%)"),
       title = title
     ) +
-    ggplot2::theme_bw(base_size = BASE_FONT_SIZE, base_family = TEXT_FONT_FAMILY) +
-    ggplot2::theme(
-      plot.title = ggplot2::element_text(hjust = 0.5, face = TEXT_FONT_FACE),
-      axis.text = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
-      axis.title = ggplot2::element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE)
+    iobr_common_ggplot_theme(
+      base_size = BASE_FONT_SIZE,
+      axis_text_size = 10.5,
+      axis_title_size = 13,
+      title_size = 13
     )
 }
 
 iobr_make_heatmap_plot <- function(dat, features, sample_order, title) {
   features <- features[features %in% colnames(dat)]
   dat <- dat[match(sample_order, dat$ID), c("ID", features), drop = FALSE]
+  sample_label_count <- iobr_max_sample_axis_labels(
+    length(sample_order),
+    max(nchar(as.character(sample_order)), na.rm = TRUE)
+  )
+  sample_breaks <- iobr_make_sparse_axis_breaks(
+    dat$ID,
+    max_labels = sample_label_count
+  )
+  feature_label_count <- iobr_max_feature_axis_labels(
+    length(features),
+    max(nchar(as.character(features)), na.rm = TRUE)
+  )
+  feature_breaks <- iobr_make_sparse_axis_breaks(
+    features,
+    max_labels = feature_label_count
+  )
+  show_sample_labels <- length(sample_breaks) > 0L
+  show_feature_labels <- length(feature_breaks) > 0L
+  row_text_size <- iobr_clamp(
+    9.2 - 0.030 * length(feature_breaks),
+    4.8,
+    8.4,
+    6.8
+  )
+  col_text_size <- iobr_clamp(
+    8.0 - 0.030 * length(sample_breaks),
+    5.2,
+    7.4,
+    6.2
+  )
+  x_axis_note <- if (!show_sample_labels) {
+    "; sample IDs hidden to avoid overlap"
+  } else if (length(sample_breaks) < length(sample_order)) {
+    "; sample IDs shown sparsely"
+  } else {
+    ""
+  }
+  y_axis_note <- if (length(feature_breaks) < length(features)) {
+    "; feature labels shown sparsely"
+  } else {
+    ""
+  }
+  bottom_margin <- if (show_sample_labels) 42 else 18
+  left_margin <- if (show_feature_labels) 24 else 16
   long <- reshape(
     dat,
     varying = features,
@@ -821,14 +1170,130 @@ iobr_make_heatmap_plot <- function(dat, features, sample_order, title) {
 
   ggplot2::ggplot(long, ggplot2::aes(x = ID, y = Feature, fill = Value)) +
     ggplot2::geom_tile() +
+    ggplot2::scale_x_discrete(
+      breaks = sample_breaks,
+      labels = function(x) wrap_label_by_underscore(x, width = 16)
+    ) +
+    ggplot2::scale_y_discrete(
+      breaks = feature_breaks,
+      labels = function(x) wrap_label_by_underscore(x, width = 34)
+    ) +
     ggplot2::scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#D73027") +
-    ggplot2::labs(x = NULL, y = NULL, title = title, fill = "Score") +
-    ggplot2::theme_bw(base_size = 9, base_family = TEXT_FONT_FAMILY) +
+    ggplot2::labs(
+      x = paste0("Samples ordered by group and target expression (n = ", length(sample_order), x_axis_note, ")"),
+      y = paste0("IOBR features / signatures (n = ", length(features), y_axis_note, ")"),
+      title = title,
+      fill = "Score"
+    ) +
+    iobr_common_ggplot_theme(
+      base_size = 10,
+      axis_text_size = 7,
+      axis_title_size = 11.5,
+      title_size = 12,
+      rotate_x = TRUE,
+      hide_x_text = !show_sample_labels,
+      hide_y_text = !show_feature_labels,
+      margin = ggplot2::margin(14, 16, bottom_margin, left_margin, unit = "pt")
+    ) +
     ggplot2::theme(
-      plot.title = ggplot2::element_text(hjust = 0.5, face = TEXT_FONT_FACE),
-      axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
-      axis.text.y = ggplot2::element_text(size = 7, face = TEXT_FONT_FACE),
+      axis.text.x = if (show_sample_labels) {
+        ggplot2::element_text(
+          color = TEXT_COLOR,
+          face = TEXT_FONT_FACE,
+          size = col_text_size,
+          angle = 90,
+          hjust = 1,
+          vjust = 0.5
+        )
+      } else {
+        ggplot2::element_blank()
+      },
+      axis.ticks.x = if (show_sample_labels) {
+        ggplot2::element_line(color = TEXT_COLOR, linewidth = AXIS_LINE_WIDTH * 0.7)
+      } else {
+        ggplot2::element_blank()
+      },
+      axis.text.y = if (show_feature_labels) {
+        ggplot2::element_text(size = row_text_size, face = TEXT_FONT_FACE)
+      } else {
+        ggplot2::element_blank()
+      },
       panel.grid = ggplot2::element_blank()
+    )
+}
+
+iobr_make_cell_fraction_summary_plot <- function(
+    feature_table,
+    features,
+    group_col = "Target_Group",
+    title,
+    top_n = 20L) {
+  features <- intersect(features, colnames(feature_table))
+  features <- head(features, min(top_n, length(features)))
+  if (length(features) == 0L) {
+    stop("No features available for cell fraction summary plot.")
+  }
+
+  if (!group_col %in% colnames(feature_table)) {
+    feature_table$All_Samples <- "All samples"
+    group_col <- "All_Samples"
+  }
+
+  dat <- feature_table[, c("ID", group_col, features), drop = FALSE]
+  long <- reshape(
+    dat,
+    varying = features,
+    v.names = "Value",
+    timevar = "Feature",
+    times = features,
+    direction = "long"
+  )
+  long$Value <- suppressWarnings(as.numeric(long$Value))
+  long[[group_col]] <- as.character(long[[group_col]])
+  long <- long[is.finite(long$Value) & !is.na(long[[group_col]]), , drop = FALSE]
+  if (nrow(long) == 0L) {
+    stop("No finite feature values available for cell fraction summary plot.")
+  }
+
+  summary_dat <- stats::aggregate(
+    Value ~ Feature + Group,
+    data = data.frame(
+      Feature = long$Feature,
+      Group = long[[group_col]],
+      Value = long$Value,
+      stringsAsFactors = FALSE
+    ),
+    FUN = stats::median,
+    na.rm = TRUE
+  )
+  summary_dat$Abs_Value <- abs(summary_dat$Value)
+  feature_order <- stats::aggregate(
+    Abs_Value ~ Feature,
+    data = summary_dat,
+    FUN = max,
+    na.rm = TRUE
+  )
+  feature_order <- feature_order$Feature[order(feature_order[[2]], decreasing = TRUE)]
+  summary_dat$Feature <- factor(summary_dat$Feature, levels = rev(feature_order))
+
+  ggplot2::ggplot(summary_dat, ggplot2::aes(x = Feature, y = Value, fill = Group)) +
+    ggplot2::geom_col(position = ggplot2::position_dodge(width = 0.72), width = 0.64, alpha = 0.88) +
+    ggplot2::coord_flip() +
+    ggplot2::scale_x_discrete(labels = function(x) wrap_label_by_underscore(x, width = 34)) +
+    ggplot2::labs(
+      x = "TME features / scores",
+      y = "Median score / fraction",
+      fill = group_col,
+      title = title
+    ) +
+    iobr_common_ggplot_theme(
+      base_size = BASE_FONT_SIZE,
+      axis_text_size = 10,
+      axis_title_size = 12.5,
+      title_size = 13,
+      legend_text_size = 9.5,
+      legend_title_size = 10.5,
+      margin = ggplot2::margin(12, 18, 12, 18, unit = "pt")
     )
 }
 
@@ -890,19 +1355,48 @@ iobr_write_module_csv <- function(dat, output_root, module, file_stem, n_rows = 
   )
 }
 
-iobr_save_module_plot <- function(plot, output_root, module, file_stem, width = 8, height = 5.5) {
+iobr_save_module_plot <- function(
+    plot,
+    output_root,
+    module,
+    file_stem,
+    width = NULL,
+    height = NULL,
+    plot_type = "generic",
+    n_items = NA_integer_,
+    n_samples = NA_integer_,
+    n_groups = NA_integer_,
+    max_label_chars = NA_integer_,
+    title = file_stem) {
   pdf_file <- file.path(
     iobr_plot_dir(output_root, module, "pdf"),
     paste0(iobr_sanitize(file_stem), ".pdf")
   )
-  save_ggplot_pdf_png(plot, pdf_file = pdf_file, width = width, height = height)
+  size <- iobr_dynamic_plot_size(
+    plot_type = plot_type,
+    n_items = n_items,
+    n_samples = n_samples,
+    n_groups = n_groups,
+    max_label_chars = max_label_chars,
+    title = title,
+    width = width,
+    height = height
+  )
+  save_ggplot_pdf_png(plot, pdf_file = pdf_file, width = size$width, height = size$height)
 }
 
 iobr_append_title <- function(plot, title) {
   if (inherits(plot, "ggplot")) {
-    return(plot + ggplot2::ggtitle(title) + ggplot2::theme(
-      plot.title = ggplot2::element_text(hjust = 0.5, face = TEXT_FONT_FACE)
-    ))
+    return(
+      plot +
+        ggplot2::ggtitle(title) +
+        iobr_common_ggplot_theme(
+          base_size = BASE_FONT_SIZE,
+          axis_text_size = 10,
+          axis_title_size = 12.5,
+          title_size = 13
+        )
+    )
   }
   plot
 }
@@ -1006,6 +1500,37 @@ iobr_select_signatures <- function(
   }
 
   signatures
+}
+
+iobr_filter_signatures_for_expression <- function(
+    signatures,
+    expression_matrix,
+    mini_gene_count = 3L,
+    method = "pca") {
+  stopifnot(is.list(signatures))
+  if (length(signatures) == 0L) {
+    return(signatures)
+  }
+
+  expression_matrix <- as.matrix(expression_matrix)
+  storage.mode(expression_matrix) <- "double"
+  gene_sd <- apply(expression_matrix, 1, stats::sd, na.rm = TRUE)
+  usable_genes <- rownames(expression_matrix)[is.finite(gene_sd) & gene_sd > 0]
+  mini_gene_count <- suppressWarnings(as.integer(mini_gene_count)[1])
+  if (!is.finite(mini_gene_count)) {
+    mini_gene_count <- 3L
+  }
+  min_genes <- if (identical(tolower(method), "pca")) {
+    max(mini_gene_count, 2L)
+  } else {
+    max(mini_gene_count, 1L)
+  }
+
+  filtered <- lapply(signatures, function(genes) {
+    unique(intersect(as.character(genes), usable_genes))
+  })
+  keep <- vapply(filtered, length, integer(1)) >= min_genes
+  filtered[keep]
 }
 
 iobr_write_signature_catalog <- function(output_root) {
@@ -1139,8 +1664,17 @@ iobr_save_feature_summary_plots <- function(
     group_columns = character(0),
     correlation_table = data.frame(),
     group_test_table = data.frame(),
-    top_n = 15L) {
-  features <- iobr_feature_columns(feature_table)
+    top_n = 15L,
+    draw_all_feature_heatmap = TRUE,
+    all_feature_heatmap_max_features = Inf) {
+  features <- unique(c(
+    if ("sig_names" %in% colnames(correlation_table)) correlation_table$sig_names else character(0),
+    if ("sig_names" %in% colnames(group_test_table)) group_test_table$sig_names else character(0)
+  ))
+  features <- intersect(features, colnames(feature_table))
+  if (length(features) == 0L) {
+    features <- iobr_feature_columns(feature_table)
+  }
   status <- list()
 
   try({
@@ -1163,8 +1697,10 @@ iobr_save_feature_summary_plots <- function(
         output_root = output_root,
         module = module,
         file_stem = paste0(file_prefix, "_target_correlation_top", top_n),
-        width = 8.5,
-        height = max(5.5, 0.24 * nrow(plot_data) + 2.4)
+        plot_type = "bar",
+        n_items = nrow(plot_data),
+        max_label_chars = max(nchar(as.character(plot_data$sig_names)), na.rm = TRUE),
+        title = paste0(file_prefix, " correlation with target gene")
       )
       status[[length(status) + 1L]] <- files
     }
@@ -1194,8 +1730,10 @@ iobr_save_feature_summary_plots <- function(
         output_root = output_root,
         module = module,
         file_stem = paste0(file_prefix, "_", group_col, "_group_difference_top", top_n),
-        width = 8.5,
-        height = max(5.5, 0.24 * nrow(current) + 2.4)
+        plot_type = "bar",
+        n_items = nrow(current),
+        max_label_chars = max(nchar(as.character(current$sig_names)), na.rm = TRUE),
+        title = paste0(file_prefix, " group differences: ", group_col)
       )
 
       box_features <- intersect(current$sig_names, features)
@@ -1230,8 +1768,10 @@ iobr_save_feature_summary_plots <- function(
             output_root = output_root,
             module = module,
             file_stem = paste0(file_prefix, "_", group_col, "_", feature, "_boxplot"),
-            width = 5.8,
-            height = 5.2
+            plot_type = "box",
+            n_groups = length(unique(feature_table[[group_col]][!is.na(feature_table[[group_col]])])),
+            max_label_chars = max(nchar(c(as.character(feature_table[[group_col]]), feature)), na.rm = TRUE),
+            title = paste(file_prefix, feature, "by", group_col)
           )
         }
       }
@@ -1285,8 +1825,10 @@ iobr_save_feature_summary_plots <- function(
       output_root = output_root,
       module = module,
       file_stem = paste0(file_prefix, "_", group_col, "_pca"),
-      width = 6.5,
-      height = 5.8
+      plot_type = "pca",
+      n_groups = length(unique(feature_table[[group_col]][!is.na(feature_table[[group_col]])])),
+      max_label_chars = max(nchar(c(as.character(feature_table[[group_col]]), pca_features)), na.rm = TRUE),
+      title = paste0(file_prefix, " PCA")
     )
 
     sample_order <- feature_table$ID[order(feature_table[[group_col]], feature_table$Target_Expression)]
@@ -1301,16 +1843,103 @@ iobr_save_feature_summary_plots <- function(
       output_root = output_root,
       module = module,
       file_stem = paste0(file_prefix, "_", group_col, "_heatmap"),
-      width = max(7, min(18, 0.065 * length(sample_order) + 4.5)),
-      height = max(5.5, min(12, 0.26 * length(pca_features) + 2.8))
+      plot_type = "heatmap",
+      n_items = length(pca_features),
+      n_samples = length(sample_order),
+      max_label_chars = max(nchar(c(pca_features, sample_order)), na.rm = TRUE),
+      title = paste0(file_prefix, " top feature heatmap")
     )
+  }
+  }, silent = TRUE)
+
+  try({
+  if (isTRUE(draw_all_feature_heatmap) && length(features) >= 2L && length(group_columns) > 0L) {
+    heat_features <- features
+    if (nrow(correlation_table) > 0L && "statistic" %in% colnames(correlation_table)) {
+      ordered_features <- correlation_table$sig_names[order(abs(correlation_table$statistic), decreasing = TRUE)]
+      heat_features <- unique(c(intersect(ordered_features, features), features))
+    }
+    if (is.finite(all_feature_heatmap_max_features)) {
+      heat_features <- head(heat_features, all_feature_heatmap_max_features)
+    }
+    heat_features <- heat_features[vapply(heat_features, function(feature) {
+      values <- suppressWarnings(as.numeric(feature_table[[feature]]))
+      sum(is.finite(values)) >= 3L && stats::sd(values, na.rm = TRUE) > 0
+    }, logical(1))]
+
+    if (length(heat_features) >= 2L) {
+      group_col <- group_columns[1]
+      sample_order <- feature_table$ID[order(feature_table[[group_col]], feature_table$Target_Expression)]
+      p_all_heat <- iobr_make_heatmap_plot(
+        feature_table,
+        features = heat_features,
+        sample_order = sample_order,
+        title = paste0(file_prefix, " all IOBR features heatmap")
+      )
+      iobr_save_module_plot(
+        p_all_heat,
+        output_root = output_root,
+        module = module,
+        file_stem = paste0(file_prefix, "_", group_col, "_all_features_heatmap"),
+        plot_type = "all_signature_heatmap",
+        n_items = length(heat_features),
+        n_samples = length(sample_order),
+        max_label_chars = max(nchar(c(heat_features, sample_order)), na.rm = TRUE),
+        title = paste0(file_prefix, " all IOBR features heatmap")
+      )
+
+      chunk_size <- iobr_heatmap_feature_chunk_size(length(sample_order))
+      if (length(heat_features) > chunk_size) {
+        chunk_index <- ceiling(seq_along(heat_features) / chunk_size)
+        heat_feature_chunks <- split(heat_features, chunk_index)
+        for (chunk_id in seq_along(heat_feature_chunks)) {
+          chunk_features <- heat_feature_chunks[[chunk_id]]
+          chunk_title <- paste0(
+            file_prefix,
+            " all IOBR features heatmap part ",
+            sprintf("%03d", chunk_id),
+            "/",
+            sprintf("%03d", length(heat_feature_chunks))
+          )
+          p_chunk_heat <- iobr_make_heatmap_plot(
+            feature_table,
+            features = chunk_features,
+            sample_order = sample_order,
+            title = chunk_title
+          )
+          iobr_save_module_plot(
+            p_chunk_heat,
+            output_root = output_root,
+            module = module,
+            file_stem = paste0(
+              file_prefix,
+              "_",
+              group_col,
+              "_all_features_heatmap_part",
+              sprintf("%03d", chunk_id)
+            ),
+            plot_type = "heatmap_chunk",
+            n_items = length(chunk_features),
+            n_samples = length(sample_order),
+            max_label_chars = max(nchar(c(chunk_features, sample_order)), na.rm = TRUE),
+            title = chunk_title
+          )
+        }
+      }
+    }
   }
   }, silent = TRUE)
 
   invisible(status)
 }
 
-iobr_run_deconvolution_task <- function(task, output_root, correlation_method = "spearman", top_n = 15L) {
+iobr_run_deconvolution_task <- function(
+    task,
+    output_root,
+    correlation_method = "spearman",
+    top_n = 15L,
+    draw_all_feature_heatmap = TRUE,
+    all_feature_heatmap_max_features = Inf) {
   input <- iobr_cache_read(task$Input_File)
   method <- task$Method
   module <- "deconvolution"
@@ -1365,28 +1994,34 @@ iobr_run_deconvolution_task <- function(task, output_root, correlation_method = 
       group_columns = group_columns,
       correlation_table = cor_table,
       group_test_table = group_table,
-      top_n = top_n
+      top_n = top_n,
+      draw_all_feature_heatmap = draw_all_feature_heatmap,
+      all_feature_heatmap_max_features = all_feature_heatmap_max_features
     )
 
     if (length(features) > 1L && nrow(feature_table) > 1L) {
+      group_col_for_cell <- if (length(group_columns) > 0L) group_columns[1] else "Target_Group"
       cell_plot <- try(
-        IOBR::cell_bar_plot(
-          input = feature_table[, c("ID", head(features, min(length(features), 20L))), drop = FALSE],
-          id = "ID",
-          title = paste0(file_prefix, " cell fractions"),
-          features = head(features, min(length(features), 20L)),
-          coord_flip = TRUE
+        iobr_make_cell_fraction_summary_plot(
+          feature_table = feature_table,
+          features = features,
+          group_col = group_col_for_cell,
+          title = paste0(file_prefix, " cell fractions by group"),
+          top_n = min(length(features), 20L)
         ),
         silent = TRUE
       )
       if (!inherits(cell_plot, "try-error") && inherits(cell_plot, "ggplot")) {
         iobr_save_module_plot(
-          iobr_append_title(cell_plot, paste0(file_prefix, " cell fractions")),
+          cell_plot,
           output_root = output_root,
           module = module,
           file_stem = paste0(file_prefix, "_cell_barplot"),
-          width = 9,
-          height = 6
+          plot_type = "cell_bar",
+          n_items = min(length(features), 20L),
+          n_samples = nrow(feature_table),
+          max_label_chars = max(nchar(c(head(features, min(length(features), 20L)), feature_table$ID)), na.rm = TRUE),
+          title = paste0(file_prefix, " cell fractions by group")
         )
       }
     }
@@ -1410,17 +2045,35 @@ iobr_run_signature_score_task <- function(
     output_root,
     signatures,
     correlation_method = "spearman",
-    top_n = 15L) {
+    top_n = 15L,
+    draw_all_feature_heatmap = TRUE,
+    all_feature_heatmap_max_features = Inf) {
   input <- iobr_cache_read(task$Input_File)
   method <- task$Method
   module <- "signature_score"
   file_prefix <- iobr_sanitize(paste(task$Dataset_ID, task$Target_Gene, method, sep = "_"))
 
   result <- iobr_safe_task({
+    task_signatures <- iobr_filter_signatures_for_expression(
+      signatures = signatures,
+      expression_matrix = input$score_expr,
+      mini_gene_count = task$Mini_Gene_Count,
+      method = method
+    )
+    if (length(task_signatures) == 0L) {
+      return(iobr_status_row(
+        dataset_id = task$Dataset_ID,
+        module = module,
+        task = paste("calculate_sig_score", method, sep = "::"),
+        status = "skipped",
+        message = "No signatures retained after zero-variance gene filtering."
+      ))
+    }
+
     score <- suppressWarnings(suppressMessages(IOBR::calculate_sig_score(
       pdata = input$pdata[, c("ID"), drop = FALSE],
       eset = input$score_expr,
-      signature = signatures,
+      signature = task_signatures,
       method = method,
       mini_gene_count = task$Mini_Gene_Count,
       column_of_sample = "ID",
@@ -1457,7 +2110,9 @@ iobr_run_signature_score_task <- function(
       group_columns = group_columns,
       correlation_table = cor_table,
       group_test_table = group_table,
-      top_n = top_n
+      top_n = top_n,
+      draw_all_feature_heatmap = draw_all_feature_heatmap,
+      all_feature_heatmap_max_features = all_feature_heatmap_max_features
     )
 
     iobr_status_row(

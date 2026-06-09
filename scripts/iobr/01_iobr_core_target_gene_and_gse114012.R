@@ -93,6 +93,8 @@ MINI_GENE_COUNT <- iobr_parse_env_integer("IOBR_MINI_GENE_COUNT", 3L)
 CORRELATION_METHOD <- tolower(Sys.getenv("IOBR_CORRELATION_METHOD", unset = "spearman"))
 TOP_FEATURE_N <- iobr_parse_env_integer("IOBR_TOP_FEATURE_N", 15L)
 CIBERSORT_PERM <- iobr_parse_env_integer("IOBR_CIBERSORT_PERM", 100L)
+DRAW_ALL_SIGNATURE_HEATMAP <- iobr_parse_env_logical("IOBR_DRAW_ALL_SIGNATURE_HEATMAP", TRUE)
+ALL_SIGNATURE_HEATMAP_MAX_FEATURES <- iobr_parse_env_integer("IOBR_ALL_SIGNATURE_HEATMAP_MAX_FEATURES", Inf)
 
 
 # 2. 路径、缓存、并行与清理 ----------------------------------------------------
@@ -126,12 +128,11 @@ options(parallel_runtime_worker_packages = c(
   "IOBR", "ggplot2", "dplyr", "SummarizedExperiment", "qs2", "Cairo"
 ))
 
-if (CLEAR_PREVIOUS_RUN_OUTPUTS) {
-  unlink(OUTPUT_ROOT, recursive = TRUE, force = TRUE)
-  unlink(TEMP_ROOT, recursive = TRUE, force = TRUE)
-}
-dir.create(OUTPUT_ROOT, recursive = TRUE, showWarnings = FALSE)
-dir.create(TEMP_ROOT, recursive = TRUE, showWarnings = FALSE)
+iobr_prepare_output_tree(
+  output_root = OUTPUT_ROOT,
+  temporary_root = TEMP_ROOT,
+  clear_previous = CLEAR_PREVIOUS_RUN_OUTPUTS
+)
 dir.create(DATA_ROOT, recursive = TRUE, showWarnings = FALSE)
 dir.create(CACHE_ROOT, recursive = TRUE, showWarnings = FALSE)
 
@@ -168,7 +169,9 @@ run_config <- data.frame(
     "IOBR_version", "Target_genes", "TCGA_cancers", "GTEx_tissues",
     "Run_GSE114012", "Deconvolution_methods", "Signature_methods",
     "Signature_groups", "Signature_names", "Max_signatures",
-    "Correlation_method", "Parallel_backend", "Parallel_workers",
+    "Selected_signature_count", "Draw_all_signature_heatmap",
+    "All_signature_heatmap_max_features", "Correlation_method",
+    "Clear_previous_run_outputs", "Parallel_backend", "Parallel_workers",
     "Output_root", "Temporary_root", "Data_root"
   ),
   Value = c(
@@ -182,7 +185,11 @@ run_config <- data.frame(
     paste(SIGNATURE_GROUPS, collapse = ", "),
     paste(SIGNATURE_NAMES, collapse = ", "),
     MAX_SIGNATURES,
+    NA_character_,
+    DRAW_ALL_SIGNATURE_HEATMAP,
+    ALL_SIGNATURE_HEATMAP_MAX_FEATURES,
     CORRELATION_METHOD,
+    CLEAR_PREVIOUS_RUN_OUTPUTS,
     PARALLEL_BACKEND,
     PARALLEL_WORKERS,
     OUTPUT_ROOT,
@@ -208,6 +215,9 @@ selected_signature_table <- data.frame(
   stringsAsFactors = FALSE
 )
 iobr_write_module_csv(selected_signature_table, OUTPUT_ROOT, "run_summary", "001_selected_signatures")
+
+run_config$Value[run_config$Key == "Selected_signature_count"] <- length(signatures)
+iobr_write_module_csv(run_config, OUTPUT_ROOT, "run_summary", "000_iobr_core_run_configuration")
 
 
 # 4. 准备并缓存输入数据 --------------------------------------------------------
@@ -347,7 +357,9 @@ run_one_iobr_core_task <- function(task_id) {
       task = task,
       output_root = OUTPUT_ROOT,
       correlation_method = CORRELATION_METHOD,
-      top_n = TOP_FEATURE_N
+      top_n = TOP_FEATURE_N,
+      draw_all_feature_heatmap = DRAW_ALL_SIGNATURE_HEATMAP,
+      all_feature_heatmap_max_features = ALL_SIGNATURE_HEATMAP_MAX_FEATURES
     ))
   }
 
@@ -357,7 +369,9 @@ run_one_iobr_core_task <- function(task_id) {
       output_root = OUTPUT_ROOT,
       signatures = signatures,
       correlation_method = CORRELATION_METHOD,
-      top_n = TOP_FEATURE_N
+      top_n = TOP_FEATURE_N,
+      draw_all_feature_heatmap = DRAW_ALL_SIGNATURE_HEATMAP,
+      all_feature_heatmap_max_features = ALL_SIGNATURE_HEATMAP_MAX_FEATURES
     ))
   }
 
