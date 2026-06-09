@@ -6,6 +6,7 @@
 # 2. GSE114012：不做目标基因High/Low扩展，仅保留LRC vs BULK设计相关的IOBR结果；
 # 3. 基于GSE114012现有NGS差异分析表调用IOBR::sig_gsea，作为LRC vs BULK差异分析的旁证；
 # 4. 离群样本检测作为QC模块保存到QC/all_samples层级，不参与功能分组解释。
+# 5. 每个脚本只清理自己生成的OUTPUT_ROOT；01号core与02号exploratory互不清理。
 #
 # 运行前建议先运行：
 # Rscript scripts/iobr/01_iobr_core_target_gene_and_gse114012.R

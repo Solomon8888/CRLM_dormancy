@@ -1646,9 +1646,9 @@ iobr_table_dir <- function(output_root, module, file_stem = NULL) {
     context$dataset_id,
     context$target_block,
     context$design,
+    "tables",
     module,
-    context$method,
-    "tables"
+    context$method
   )
   dir.create(path, recursive = TRUE, showWarnings = FALSE)
   path
@@ -1670,9 +1670,9 @@ iobr_plot_dir <- function(output_root, module, format = c("pdf", "png"), file_st
     context$dataset_id,
     context$target_block,
     context$design,
+    "plots",
     module,
     context$method,
-    "plots",
     format
   )
   dir.create(path, recursive = TRUE, showWarnings = FALSE)

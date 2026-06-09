@@ -10,7 +10,9 @@
 # 4. 使用IOBR官方能力分层：deconvo_tme为TME细胞/微环境估计，
 #    calculate_sig_score为signature scoring；同一IOBR方法下的多个signature保存在同一目录，
 #    以文件名区分；
-# 5. 结果统一保存到results/iobr/core，缓存与中间文件保存到data/iobr和temporary/iobr。
+# 5. 结果统一保存到results/iobr/core。每个分析语境下优先分plots/tables，
+#    再按IOBR模块和方法分层，便于快速浏览全部图片结果；
+#    缓存与中间文件保存到data/iobr和temporary/iobr。
 
 
 # 0. 项目定位与共用函数 --------------------------------------------------------
