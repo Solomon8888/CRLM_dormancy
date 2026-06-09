@@ -115,12 +115,30 @@ iobr_dataset_family <- function(dataset_id) {
     return("TCGA")
   }
   if (grepl("^GTEx_", dataset_id)) {
-    return("GTEX")
+    return("GTEx")
   }
   if (identical(dataset_id, "GSE114012") || grepl("^GSE114012", dataset_id)) {
     return("GSE114012")
   }
   "OTHER"
+}
+
+iobr_known_iobr_methods <- function() {
+  unique(c(
+    "cibersort_abs", "mcpcounter", "quantiseq", "cibersort",
+    "estimate", "timer", "xcell", "epic", "ips", "svr", "lsei",
+    "integration", "ssgsea", "zscore", "pca",
+    "C2_CGP", "C2_CP", "H", "C2", "C5",
+    "outlier", "survival", "roc", "cluster", "sig_gsea"
+  ))
+}
+
+iobr_starts_with_iobr_method <- function(rest) {
+  rest <- iobr_sanitize(rest)
+  methods <- iobr_known_iobr_methods()
+  any(vapply(methods, function(method) {
+    grepl(paste0("^", method, "($|_)"), rest)
+  }, logical(1)))
 }
 
 iobr_extract_design_from_stem <- function(file_stem) {
@@ -150,17 +168,18 @@ iobr_extract_design_from_stem <- function(file_stem) {
     design <- sub("_(H|C[0-9]+|C[0-9]+_CP|C[0-9]+_CGP)$", "", design)
     return(iobr_sanitize(design, default = "analysis"))
   }
+  if (grepl("_outlier_samples($|_)", stem)) {
+    return("all_samples")
+  }
+  if (grepl("^GSE114012_", stem)) {
+    return("all_designs")
+  }
   "Target_Group"
 }
 
 iobr_extract_method_from_rest <- function(rest, module) {
   rest <- iobr_sanitize(rest)
-  candidates <- c(
-    "cibersort_abs", "mcpcounter", "quantiseq", "cibersort",
-    "estimate", "timer", "xcell", "epic", "ips", "svr", "lsei",
-    "integration", "ssgsea", "zscore", "pca",
-    "C2_CGP", "C2_CP", "H", "C2", "C5"
-  )
+  candidates <- iobr_known_iobr_methods()
   candidates <- candidates[order(nchar(candidates), decreasing = TRUE)]
   matched <- candidates[vapply(candidates, function(candidate) {
     grepl(paste0("^", candidate, "($|_)"), rest)
@@ -198,22 +217,44 @@ iobr_parse_output_context <- function(file_stem, module) {
   if (grepl("^TCGA_[A-Za-z0-9]+_01A_", stem)) {
     dataset_id <- sub("^(TCGA_[A-Za-z0-9]+_01A)_.*$", "\\1", stem)
     rest <- sub("^TCGA_[A-Za-z0-9]+_01A_", "", stem)
-    parts <- strsplit(rest, "_", fixed = TRUE)[[1]]
-    target_gene <- parts[1]
-    method <- iobr_extract_method_from_rest(sub(paste0("^", target_gene, "_?"), "", rest), module)
-    target_block <- paste0("GENE_", iobr_sanitize(target_gene))
+    if (grepl("_outlier_samples($|_)", stem)) {
+      target_block <- "QC"
+      method <- "outlier"
+    } else {
+      parts <- strsplit(rest, "_", fixed = TRUE)[[1]]
+      target_gene <- parts[1]
+      method <- iobr_extract_method_from_rest(sub(paste0("^", target_gene, "_?"), "", rest), module)
+      target_block <- paste0("GENE_", iobr_sanitize(target_gene))
+    }
   } else if (grepl("^GTEx_[A-Za-z0-9]+_", stem)) {
     dataset_id <- sub("^(GTEx_[A-Za-z0-9]+)_.*$", "\\1", stem)
     rest <- sub("^GTEx_[A-Za-z0-9]+_", "", stem)
-    parts <- strsplit(rest, "_", fixed = TRUE)[[1]]
-    target_gene <- parts[1]
-    method <- iobr_extract_method_from_rest(sub(paste0("^", target_gene, "_?"), "", rest), module)
-    target_block <- paste0("GENE_", iobr_sanitize(target_gene))
+    if (grepl("_outlier_samples($|_)", stem)) {
+      target_block <- "QC"
+      method <- "outlier"
+    } else {
+      parts <- strsplit(rest, "_", fixed = TRUE)[[1]]
+      target_gene <- parts[1]
+      method <- iobr_extract_method_from_rest(sub(paste0("^", target_gene, "_?"), "", rest), module)
+      target_block <- paste0("GENE_", iobr_sanitize(target_gene))
+    }
   } else if (grepl("^GSE114012_", stem)) {
     dataset_id <- "GSE114012"
     rest <- sub("^GSE114012_", "", stem)
     parts <- strsplit(rest, "_", fixed = TRUE)[[1]]
-    if (length(parts) >= 2L && !identical(parts[1], "analysis")) {
+    if (grepl("^analysis_", rest)) {
+      target_block <- "DEG"
+      method <- sub("^.*_([A-Z][A-Za-z0-9]*)_sig_gsea.*$", "\\1", stem)
+      if (identical(method, stem)) {
+        method <- iobr_extract_method_from_rest(rest, module)
+      }
+    } else if (grepl("_outlier_samples($|_)", stem)) {
+      target_block <- "QC"
+      method <- "outlier"
+    } else if (iobr_starts_with_iobr_method(rest)) {
+      target_block <- "LRC_vs_BULK"
+      method <- iobr_extract_method_from_rest(rest, module)
+    } else if (length(parts) >= 2L && !identical(parts[1], "analysis")) {
       target_gene <- parts[1]
       method <- iobr_extract_method_from_rest(sub(paste0("^", target_gene, "_?"), "", rest), module)
       target_block <- paste0("GENE_", iobr_sanitize(target_gene))
@@ -831,7 +872,8 @@ iobr_prepare_local_se_input <- function(
     low_group_label = "Low",
     tumor = TRUE,
     timer_indication = NULL,
-    clinical_file = NULL) {
+    clinical_file = NULL,
+    require_target_gene = TRUE) {
   if (!requireNamespace("SummarizedExperiment", quietly = TRUE)) {
     stop("Package SummarizedExperiment is required.")
   }
@@ -899,18 +941,29 @@ iobr_prepare_local_se_input <- function(
   }
 
   target_gene <- trimws(as.character(target_gene)[1])
-  if (!target_gene %in% rownames(score_expr)) {
-    stop("Target gene not found in ", dataset_id, ": ", target_gene)
+  has_target_gene <- !is.na(target_gene) && nzchar(target_gene)
+  if (has_target_gene && !target_gene %in% rownames(score_expr)) {
+    if (isTRUE(require_target_gene)) {
+      stop("Target gene not found in ", dataset_id, ": ", target_gene)
+    }
+    has_target_gene <- FALSE
   }
 
-  target_expression <- as.numeric(score_expr[target_gene, ])
-  target_median <- median(target_expression, na.rm = TRUE)
-  target_group <- ifelse(
-    target_expression >= target_median,
-    high_group_label,
-    low_group_label
-  )
-  target_group <- factor(target_group, levels = c(low_group_label, high_group_label))
+  if (has_target_gene) {
+    target_expression <- as.numeric(score_expr[target_gene, ])
+    target_median <- median(target_expression, na.rm = TRUE)
+    target_group <- ifelse(
+      target_expression >= target_median,
+      high_group_label,
+      low_group_label
+    )
+    target_group <- factor(target_group, levels = c(low_group_label, high_group_label))
+  } else {
+    target_gene <- NA_character_
+    target_expression <- rep(NA_real_, ncol(score_expr))
+    target_median <- NA_real_
+    target_group <- rep(NA_character_, ncol(score_expr))
+  }
 
   pdata <- cbind(
     data.frame(
@@ -1916,7 +1969,8 @@ iobr_prepare_and_cache_local_input <- function(
     sample_barcode_pattern = NULL,
     clinical_file = NULL,
     tumor = TRUE,
-    timer_indication = NULL) {
+    timer_indication = NULL,
+    require_target_gene = TRUE) {
   input <- iobr_prepare_local_se_input(
     dataset_id = dataset_id,
     se_file = se_file,
@@ -1931,13 +1985,19 @@ iobr_prepare_and_cache_local_input <- function(
     sample_barcode_pattern = sample_barcode_pattern,
     clinical_file = clinical_file,
     tumor = tumor,
-    timer_indication = timer_indication
+    timer_indication = timer_indication,
+    require_target_gene = require_target_gene
   )
   input$pdata <- iobr_add_survival_columns(input$pdata)
 
+  target_tag <- if (is.na(input$target_gene) || !nzchar(input$target_gene)) {
+    "design"
+  } else {
+    input$target_gene
+  }
   cache_file <- iobr_make_cache_file(
     cache_root,
-    paste(dataset_id, target_gene, "iobr_input", sep = "_")
+    paste(dataset_id, target_tag, "iobr_input", sep = "_")
   )
   iobr_cache_write(input, cache_file)
 
@@ -1977,12 +2037,50 @@ iobr_get_group_columns <- function(input, include_target_group = TRUE, gse_desig
   }, logical(1))])
 }
 
+iobr_get_analysis_group_columns <- function(input) {
+  dataset_id <- as.character(input$dataset_id)[1]
+  if (identical(dataset_id, "GSE114012")) {
+    return(iobr_get_group_columns(input, include_target_group = FALSE, gse_designs = TRUE))
+  }
+
+  iobr_get_group_columns(input, include_target_group = TRUE, gse_designs = FALSE)
+}
+
+iobr_should_run_target_correlation <- function(input) {
+  pdata <- input$pdata
+  target_gene <- as.character(input$target_gene)[1]
+  !is.na(target_gene) &&
+    nzchar(target_gene) &&
+    "Target_Expression" %in% colnames(pdata) &&
+    any(is.finite(suppressWarnings(as.numeric(pdata$Target_Expression))))
+}
+
+iobr_task_file_prefix <- function(task) {
+  dataset_id <- as.character(task$Dataset_ID[1])
+  method <- as.character(task$Method[1])
+  target_gene <- as.character(task$Target_Gene[1])
+
+  if (identical(dataset_id, "GSE114012")) {
+    return(iobr_sanitize(paste(dataset_id, method, sep = "_")))
+  }
+  if (is.na(target_gene) || !nzchar(target_gene)) {
+    stop("Target_Gene is required for TCGA/GTEx IOBR tasks: ", dataset_id)
+  }
+
+  iobr_sanitize(paste(dataset_id, target_gene, method, sep = "_"))
+}
+
 iobr_make_group_test_table <- function(feature_table, group_columns, features) {
   if (length(group_columns) == 0L || length(features) == 0L) {
     return(data.frame())
   }
 
   results <- lapply(group_columns, function(group_col) {
+    prepared <- iobr_prepare_group_data(
+      dat = feature_table,
+      group_col = group_col,
+      require_two_groups = iobr_is_gse_analysis_group(group_col)
+    )
     res <- iobr_standardize_test_result(
       iobr_group_test(feature_table, group_col = group_col, features = features)
     )
@@ -1992,6 +2090,8 @@ iobr_make_group_test_table <- function(feature_table, group_columns, features) {
     res$Group_Column <- group_col
     res$Group_Display <- iobr_group_axis_label(group_col)
     res$Analysis_Design <- iobr_group_design_name(group_col)
+    group_sizes <- table(as.character(prepared$data[[prepared$group_col]]))
+    res$Group_Sizes <- paste(names(group_sizes), as.integer(group_sizes), sep = "=", collapse = "; ")
     res
   })
 
@@ -2322,7 +2422,7 @@ iobr_run_deconvolution_task <- function(
   input <- iobr_cache_read(task$Input_File)
   method <- task$Method
   module <- "deconvolution"
-  file_prefix <- iobr_sanitize(paste(task$Dataset_ID, task$Target_Gene, method, sep = "_"))
+  file_prefix <- iobr_task_file_prefix(task)
 
   result <- iobr_safe_task({
     reference <- NULL
@@ -2348,13 +2448,17 @@ iobr_run_deconvolution_task <- function(
     deconv <- iobr_normalize_id_column(deconv)
     feature_table <- merge(input$pdata, deconv, by = "ID", all.x = TRUE)
     features <- iobr_feature_columns(feature_table, exclude = setdiff(colnames(input$pdata), "ID"))
-    group_columns <- iobr_get_group_columns(input)
-    cor_table <- iobr_make_correlation_table(
-      feature_table,
-      target = "Target_Expression",
-      features = features,
-      method = correlation_method
-    )
+    group_columns <- iobr_get_analysis_group_columns(input)
+    cor_table <- if (iobr_should_run_target_correlation(input)) {
+      iobr_make_correlation_table(
+        feature_table,
+        target = "Target_Expression",
+        features = features,
+        method = correlation_method
+      )
+    } else {
+      data.frame()
+    }
     group_table <- iobr_make_group_test_table(
       feature_table,
       group_columns = group_columns,
@@ -2362,7 +2466,9 @@ iobr_run_deconvolution_task <- function(
     )
 
     feature_file <- iobr_write_module_csv(feature_table, output_root, module, paste0(file_prefix, "_scores"))
-    cor_file <- iobr_write_module_csv(cor_table, output_root, module, paste0(file_prefix, "_target_correlation"))
+    if (nrow(cor_table) > 0L) {
+      iobr_write_module_csv(cor_table, output_root, module, paste0(file_prefix, "_target_correlation"))
+    }
     group_file <- iobr_write_module_csv(group_table, output_root, module, paste0(file_prefix, "_group_tests"))
 
     iobr_save_feature_summary_plots(
@@ -2430,7 +2536,7 @@ iobr_run_signature_score_task <- function(
   input <- iobr_cache_read(task$Input_File)
   method <- task$Method
   module <- "signature_score"
-  file_prefix <- iobr_sanitize(paste(task$Dataset_ID, task$Target_Gene, method, sep = "_"))
+  file_prefix <- iobr_task_file_prefix(task)
 
   result <- iobr_safe_task({
     task_signatures <- iobr_filter_signatures_for_expression(
@@ -2464,13 +2570,17 @@ iobr_run_signature_score_task <- function(
     score <- iobr_normalize_id_column(score)
     feature_table <- merge(input$pdata, score, by = "ID", all.x = TRUE)
     features <- iobr_feature_columns(feature_table, exclude = setdiff(colnames(input$pdata), "ID"))
-    group_columns <- iobr_get_group_columns(input)
-    cor_table <- iobr_make_correlation_table(
-      feature_table,
-      target = "Target_Expression",
-      features = features,
-      method = correlation_method
-    )
+    group_columns <- iobr_get_analysis_group_columns(input)
+    cor_table <- if (iobr_should_run_target_correlation(input)) {
+      iobr_make_correlation_table(
+        feature_table,
+        target = "Target_Expression",
+        features = features,
+        method = correlation_method
+      )
+    } else {
+      data.frame()
+    }
     group_table <- iobr_make_group_test_table(
       feature_table,
       group_columns = group_columns,
@@ -2478,7 +2588,9 @@ iobr_run_signature_score_task <- function(
     )
 
     feature_file <- iobr_write_module_csv(feature_table, output_root, module, paste0(file_prefix, "_scores"))
-    cor_file <- iobr_write_module_csv(cor_table, output_root, module, paste0(file_prefix, "_target_correlation"))
+    if (nrow(cor_table) > 0L) {
+      iobr_write_module_csv(cor_table, output_root, module, paste0(file_prefix, "_target_correlation"))
+    }
     group_file <- iobr_write_module_csv(group_table, output_root, module, paste0(file_prefix, "_group_tests"))
 
     iobr_save_feature_summary_plots(

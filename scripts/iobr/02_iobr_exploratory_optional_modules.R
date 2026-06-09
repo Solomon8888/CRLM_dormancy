@@ -1,9 +1,11 @@
 # IOBR探索性扩展分析
 #
 # 本脚本放置和当前实验目的相关但条件依赖更强、或不如01号脚本直接的IOBR模块：
-# 1. 基于01号脚本输出的TME/signature表做TCGA生存分析、Target_Group ROC、TME聚类；
-# 2. 对本地TCGA/GTEx/GSE114012表达矩阵做IOBR离群样本检查；
-# 3. 基于GSE114012现有NGS差异分析表调用IOBR::sig_gsea，作为NGS流程GSEA的旁证。
+# 1. TCGA/GTEx：基于01号脚本输出的TME/signature表，围绕目标基因High/Low分组做ROC、
+#    聚类组成等探索；TCGA额外尝试生存分析；
+# 2. GSE114012：不做目标基因High/Low扩展，仅保留LRC vs BULK设计相关的IOBR结果；
+# 3. 基于GSE114012现有NGS差异分析表调用IOBR::sig_gsea，作为LRC vs BULK差异分析的旁证；
+# 4. 离群样本检测作为QC模块保存到QC/all_samples层级，不参与功能分组解释。
 #
 # 运行前建议先运行：
 # Rscript scripts/iobr/01_iobr_core_target_gene_and_gse114012.R
@@ -219,7 +221,7 @@ read_core_feature_files <- function() {
     full.names = TRUE
   )
   files <- files[!grepl("/tables/(run_summary|capability_catalog)/", files)]
-  data.frame(
+  out <- data.frame(
     Feature_File = files,
     Module_Source = ifelse(
       grepl("/signature_score/", files),
@@ -229,6 +231,19 @@ read_core_feature_files <- function() {
     File_Stem = tools::file_path_sans_ext(basename(files)),
     stringsAsFactors = FALSE
   )
+  if (nrow(out) == 0L) {
+    return(out)
+  }
+
+  contexts <- lapply(seq_len(nrow(out)), function(i) {
+    iobr_parse_output_context(out$File_Stem[i], out$Module_Source[i])
+  })
+  out$Dataset_ID <- vapply(contexts, `[[`, character(1), "dataset_id")
+  out$Dataset_Family <- vapply(contexts, `[[`, character(1), "dataset_family")
+  out$Target_Block <- vapply(contexts, `[[`, character(1), "target_block")
+  out$Analysis_Design <- vapply(contexts, `[[`, character(1), "design")
+  out$IOBR_Method <- vapply(contexts, `[[`, character(1), "method")
+  out
 }
 
 select_numeric_features <- function(dat, top_n = TOP_FEATURE_N) {
@@ -533,17 +548,20 @@ task_list <- list()
 
 core_feature_files <- read_core_feature_files()
 if (nrow(core_feature_files) > 0L) {
-  core_feature_files$Dataset_ID <- sub("^((TCGA_[A-Za-z0-9]+_01A|GTEx_[A-Za-z0-9]+|GSE114012)).*$", "\\1", core_feature_files$File_Stem)
   core_feature_files$Task_ID_Base <- seq_len(nrow(core_feature_files))
 
   for (i in seq_len(nrow(core_feature_files))) {
-    if (RUN_SURVIVAL && grepl("^TCGA_", core_feature_files$Dataset_ID[i])) {
+    is_target_gene_table <- grepl("^GENE_", core_feature_files$Target_Block[i])
+    is_tcga <- identical(core_feature_files$Dataset_Family[i], "TCGA")
+    is_gtex <- identical(core_feature_files$Dataset_Family[i], "GTEx")
+
+    if (RUN_SURVIVAL && is_tcga && is_target_gene_table) {
       task_list[[length(task_list) + 1L]] <- data.frame(Task_Type = "survival", core_feature_files[i, ], stringsAsFactors = FALSE)
     }
-    if (RUN_ROC) {
+    if (RUN_ROC && is_target_gene_table && (is_tcga || is_gtex)) {
       task_list[[length(task_list) + 1L]] <- data.frame(Task_Type = "roc", core_feature_files[i, ], stringsAsFactors = FALSE)
     }
-    if (RUN_CLUSTER) {
+    if (RUN_CLUSTER && is_target_gene_table && (is_tcga || is_gtex)) {
       task_list[[length(task_list) + 1L]] <- data.frame(Task_Type = "cluster", core_feature_files[i, ], stringsAsFactors = FALSE)
     }
   }

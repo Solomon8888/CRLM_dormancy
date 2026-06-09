@@ -1,11 +1,15 @@
-# IOBR核心快速分析：ATF3本地TCGA/GTEx + GSE114012表型变化
+# IOBR核心快速分析：本地TCGA/GTEx单基因功能 + GSE114012 LRC vs BULK表型变化
 #
 # 分析目的：
-# 1. 研究指定基因在TCGA COAD 01A肿瘤样本中的TME、免疫/代谢/肿瘤signature功能关联；
-# 2. 研究指定基因在GTEx COLON全部样本中的正常组织signature功能关联；
-# 3. 复用GSE114012临床配置中的全部analysis_*设计，比较不同方案下IOBR表型变化；
-# 4. 使用IOBR的deconvo_tme、calculate_sig_score、batch_cor、batch_wilcoxon/
-#    batch_kruskal、sig_box、iobr_pca、cell_bar_plot等核心能力；
+# 1. TCGA：在COAD 01A肿瘤样本中，按脚本头部配置的目标基因表达中位数分为High/Low，
+#    用IOBR分析该基因在肿瘤组织中的TME、免疫、代谢和肿瘤signature功能作用；
+# 2. GTEx：在正常结肠组织中，按同一目标基因表达中位数分为High/Low，
+#    用IOBR分析该基因在正常组织中的功能关联；
+# 3. GSE114012：不做目标基因High/Low分组，仅复用临床表中已经设计好的analysis_*列，
+#    对每一种LRC vs BULK方案分别比较IOBR表型变化；
+# 4. 使用IOBR官方能力分层：deconvo_tme为TME细胞/微环境估计，
+#    calculate_sig_score为signature scoring；同一IOBR方法下的多个signature保存在同一目录，
+#    以文件名区分；
 # 5. 结果统一保存到results/iobr/core，缓存与中间文件保存到data/iobr和temporary/iobr。
 
 
@@ -70,7 +74,8 @@ TCGA_SAMPLE_PATTERN <- Sys.getenv("IOBR_TCGA_SAMPLE_PATTERN", unset = "-01A$")
 # GTEx主线：默认使用COLON全部样本。
 GTEX_TISSUES <- iobr_parse_env_vector("IOBR_GTEX_TISSUES", c("COLON"))
 
-# GSE114012主线：默认使用全部样本，并按临床表中的analysis_*列逐一比较表型。
+# GSE114012主线：默认使用全部样本，并按临床表中的analysis_*列逐一比较LRC vs BULK表型。
+# 注意：GSE114012不使用TARGET_GENES构造High/Low分组，TARGET_GENES只作用于TCGA/GTEx。
 RUN_GSE114012 <- iobr_parse_env_logical("IOBR_RUN_GSE114012", TRUE)
 GSE114012_SE_FILE <- file.path(PROJECT_ROOT, "data", "ngs", "GSE114012", "data_prepare", "GSE114012_se_raw.rds")
 GSE114012_CLINICAL_FILE <- file.path(PROJECT_ROOT, "data", "ngs", "GSE114012", "data_prepare", "GSE114012_clinical_edit.csv")
@@ -267,26 +272,27 @@ for (target_gene in TARGET_GENES) {
       timer_indication = NULL
     )
   }
+}
 
-  if (RUN_GSE114012) {
-    input_manifest_list[[length(input_manifest_list) + 1L]] <- iobr_prepare_and_cache_local_input(
-      project_root = PROJECT_ROOT,
-      cache_root = CACHE_ROOT,
-      dataset_id = "GSE114012",
-      se_file = GSE114012_SE_FILE,
-      target_gene = target_gene,
-      project_id = "GSE114012",
-      assay_name = "tpm",
-      deconvolution_assay = "tpm",
-      score_assay = "tpm",
-      score_log2 = TRUE,
-      sample_detail_values = NULL,
-      sample_barcode_pattern = NULL,
-      clinical_file = GSE114012_CLINICAL_FILE,
-      tumor = TRUE,
-      timer_indication = NULL
-    )
-  }
+if (RUN_GSE114012) {
+  input_manifest_list[[length(input_manifest_list) + 1L]] <- iobr_prepare_and_cache_local_input(
+    project_root = PROJECT_ROOT,
+    cache_root = CACHE_ROOT,
+    dataset_id = "GSE114012",
+    se_file = GSE114012_SE_FILE,
+    target_gene = NA_character_,
+    project_id = "GSE114012",
+    assay_name = "tpm",
+    deconvolution_assay = "tpm",
+    score_assay = "tpm",
+    score_log2 = TRUE,
+    sample_detail_values = NULL,
+    sample_barcode_pattern = NULL,
+    clinical_file = GSE114012_CLINICAL_FILE,
+    tumor = TRUE,
+    timer_indication = NULL,
+    require_target_gene = FALSE
+  )
 }
 
 input_manifest <- dplyr::bind_rows(input_manifest_list)
