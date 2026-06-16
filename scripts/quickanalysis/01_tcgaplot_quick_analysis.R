@@ -157,6 +157,7 @@ PLOT_PNG_DIR <- file.path(PLOT_ROOT, "png")
 SUMMARY_ROOT <- TABLE_ROOT
 DATA_ROOT <- file.path(PROJECT_ROOT, "data", "tcgaplot")
 TEMP_ROOT <- file.path(PROJECT_ROOT, "temporary", "tcgaplot")
+PROJECT_TCGAPLOT_LIBRARY <- file.path(DATA_ROOT, "package_lib")
 TCGAPLOT_REFERENCE_CACHE_ROOT <- file.path(DATA_ROOT, "reference_cache")
 TCGAPLOT_TASK_CACHE_ROOT <- file.path(TCGAPLOT_REFERENCE_CACHE_ROOT, "task_manifest")
 OMNIPATHR_CACHE_DIR <- file.path(TCGAPLOT_REFERENCE_CACHE_ROOT, "omnipathr_cache")
@@ -236,6 +237,44 @@ required_packages <- c(
   "Cairo"
 )
 
+prefer_project_tcgaplot_library <- function() {
+  local_package_dir <- file.path(PROJECT_TCGAPLOT_LIBRARY, "TCGAplot")
+  if (!dir.exists(local_package_dir)) {
+    return(invisible(FALSE))
+  }
+
+  local_library <- normalizePath(PROJECT_TCGAPLOT_LIBRARY, winslash = "/", mustWork = TRUE)
+  local_package_dir <- normalizePath(local_package_dir, winslash = "/", mustWork = TRUE)
+  .libPaths(unique(c(local_library, .libPaths())))
+
+  if ("TCGAplot" %in% loadedNamespaces()) {
+    loaded_path <- normalizePath(
+      getNamespaceInfo("TCGAplot", "path"),
+      winslash = "/",
+      mustWork = FALSE
+    )
+    if (!identical(loaded_path, local_package_dir)) {
+      if ("package:TCGAplot" %in% search()) {
+        try(detach("package:TCGAplot", unload = TRUE, character.only = TRUE), silent = TRUE)
+      }
+      if ("TCGAplot" %in% loadedNamespaces()) {
+        try(unloadNamespace("TCGAplot"), silent = TRUE)
+      }
+      if ("TCGAplot" %in% loadedNamespaces()) {
+        stop(
+          "Project-local TCGAplot is available at ", local_package_dir,
+          ", but another TCGAplot namespace is already loaded from ", loaded_path,
+          ". Please restart R and source this script again."
+        )
+      }
+    }
+  }
+
+  invisible(TRUE)
+}
+
+prefer_project_tcgaplot_library()
+
 missing_packages <- required_packages[
   !vapply(
     required_packages,
@@ -258,6 +297,35 @@ suppressPackageStartupMessages({
   suppressWarnings(library(TCGAplot))
   library(SummarizedExperiment)
 })
+
+validate_tcgaplot_installation <- function() {
+  required_data_objects <- c("tpm", "meta", "cancers")
+  missing_data_objects <- required_data_objects[
+    !vapply(
+      required_data_objects,
+      function(object_name) {
+        exists(object_name, envir = asNamespace("TCGAplot"), inherits = FALSE)
+      },
+      logical(1)
+    )
+  ]
+
+  if (length(missing_data_objects) == 0L) {
+    return(invisible(TRUE))
+  }
+
+  stop(
+    "The loaded TCGAplot package is missing required built-in data objects: ",
+    paste(missing_data_objects, collapse = ", "),
+    ". Loaded version: ", as.character(utils::packageVersion("TCGAplot")),
+    "; path: ", find.package("TCGAplot"),
+    ". This usually means TCGAplot was installed from GitHub main without the release data. ",
+    "Install/use the full TCGAplot release package, or keep it in: ",
+    PROJECT_TCGAPLOT_LIBRARY
+  )
+}
+
+validate_tcgaplot_installation()
 
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 TABLE_IO_FUNCTION_FILE <- "scripts/functions/result_table_io_functions.R"
@@ -320,6 +388,17 @@ get_tcgaplot_function <- function(function_name) {
   }
 
   get(function_name, envir = asNamespace("TCGAplot"), mode = "function")
+}
+
+add_supported_tcgaplot_args <- function(function_name, args, optional_args) {
+  formal_names <- names(formals(get_tcgaplot_function(function_name)))
+  for (arg_name in names(optional_args)) {
+    if (arg_name %in% formal_names) {
+      args[[arg_name]] <- optional_args[[arg_name]]
+    }
+  }
+
+  args
 }
 
 add_title_to_ggplot_if_needed <- function(plot, title) {
@@ -1889,18 +1968,23 @@ build_tcgaplot_tasks <- function(selected_analyses) {
       "gene_immunescore_heatmap"
     )
     for (analysis_name in intersect(immune_heatmap_names, selected_analyses)) {
-      add_task(make_task(
+      args <- add_supported_tcgaplot_args(
         analysis_name,
-        analysis_name,
+        list(gene = gene),
         list(
-          gene = gene,
           method = CORRELATION_METHOD,
           lowcol = HEATMAP_LOW_COLOR,
           highcol = HEATMAP_HIGH_COLOR,
           cluster_row = HEATMAP_CLUSTER_ROW,
           cluster_col = HEATMAP_CLUSTER_COL,
           legend = HEATMAP_LEGEND
-        ),
+        )
+      )
+
+      add_task(make_task(
+        analysis_name,
+        analysis_name,
+        args,
         gene,
         "pan_cancer",
         width = 12,
@@ -2135,9 +2219,17 @@ build_geneset_tasks <- function(selected_analyses) {
       }
       if ("lowcol" %in% formals_names) {
         args$lowcol <- HEATMAP_LOW_COLOR
+      }
+      if ("highcol" %in% formals_names) {
         args$highcol <- HEATMAP_HIGH_COLOR
+      }
+      if ("cluster_row" %in% formals_names) {
         args$cluster_row <- HEATMAP_CLUSTER_ROW
+      }
+      if ("cluster_col" %in% formals_names) {
         args$cluster_col <- HEATMAP_CLUSTER_COL
+      }
+      if ("legend" %in% formals_names) {
         args$legend <- HEATMAP_LEGEND
       }
 
