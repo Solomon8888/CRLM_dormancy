@@ -186,6 +186,7 @@ if (SMOKE_TEST_MODE &&
 }
 STOP_IF_BULK_DATA_MISSING <- parse_env_logical("SLCPTAC_STOP_IF_DATA_MISSING", TRUE)
 AUTO_PREPARE_CPTAC_BULK <- parse_env_logical("SLCPTAC_AUTO_PREPARE_BULK", TRUE)
+SLCPTAC_DOWNLOAD_TIMEOUT <- parse_env_integer("SLCPTAC_DOWNLOAD_TIMEOUT", 600L)
 LINKEDOMICS_RAW_ROOT <- file.path(DATA_ROOT, "raw_linkedomics")
 LINKEDOMICS_BULK_CONVERTER_VERSION <- "2026-06-08_sample_named_unlist_v2"
 LINKEDOMICS_BULK_MANIFEST_FILE <- file.path(DATA_ROOT, "bulk_data_manifest.csv")
@@ -249,6 +250,7 @@ options(parallel_runtime_force_single_line_progress = TRUE)
 options(parallel_runtime_quiet_strategy = !QUICKANALYSIS_VERBOSE)
 options(parallel_runtime_disable_fork = DISABLE_FORK_PARALLEL)
 options(parallel_runtime_backend = PARALLEL_BACKEND)
+options(timeout = max(getOption("timeout", 60L), SLCPTAC_DOWNLOAD_TIMEOUT))
 
 
 # 2. 加载R包和项目共用函数 ----------------------------------------------------
@@ -664,9 +666,7 @@ download_linkedomics_file <- function(cancer, resource, overwrite = FALSE) {
 
   dir.create(dirname(destination), recursive = TRUE, showWarnings = FALSE)
   url <- linkedomics_url(cancer, resource)
-  if (QUICKANALYSIS_VERBOSE) {
-    cat("Downloading LinkedOmicsKB ", cancer, " ", resource, "...\n", sep = "")
-  }
+  cat("Downloading LinkedOmicsKB ", cancer, " ", resource, "...\n", sep = "")
 
   ok <- FALSE
   last_error <- NULL
@@ -881,9 +881,8 @@ prepare_linkedomics_bulk_data <- function(tasks) {
     return(invisible(FALSE))
   }
 
-  if (QUICKANALYSIS_VERBOSE) {
-    cat("\nPreparing SLCPTAC bulk data from LinkedOmicsKB public downloads...\n")
-  }
+  cat("\nPreparing SLCPTAC bulk data from LinkedOmicsKB public downloads...\n")
+  cat("This first-time preparation may take several minutes; later runs reuse data/cptac/bulk_data.\n")
   dir.create(SLCPTAC_BULK_DATA_ROOT, recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(SLCPTAC_BULK_DATA_ROOT, "CPTAC_Omics_Split"), recursive = TRUE, showWarnings = FALSE)
   dir.create(LINKEDOMICS_RAW_ROOT, recursive = TRUE, showWarnings = FALSE)
@@ -3103,8 +3102,10 @@ task_summary <- if (length(slcptac_tasks) > 0L) {
 
 if (nrow(task_summary) > 0L) {
   write_table(task_summary, TABLE_ROOT, "000_slcptac_task_summary")
-  failed_tasks <- task_summary[is_error_status(task_summary$Status) | task_summary$Status == "skipped", , drop = FALSE]
+  failed_tasks <- task_summary[is_error_status(task_summary$Status), , drop = FALSE]
+  skipped_tasks <- task_summary[task_summary$Status == "skipped", , drop = FALSE]
   write_table(failed_tasks, TABLE_ROOT, "000_slcptac_failed_tasks")
+  write_table(skipped_tasks, TABLE_ROOT, "000_slcptac_skipped_tasks")
 }
 
 runtime_summary <- make_runtime_summary(task_summary = task_summary, start_time = SCRIPT_START_TIME)
