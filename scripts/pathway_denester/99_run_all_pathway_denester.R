@@ -13,9 +13,16 @@ SCRIPTS_TO_RUN <- c(
   "scripts/pathway_denester/03_plot_pathway_overlap_combo_heatmap.py"
 )
 
+PYTHON_WORKERS <- parallel::detectCores(logical = TRUE)
+if (is.na(PYTHON_WORKERS) || PYTHON_WORKERS < 1L) {
+  PYTHON_WORKERS <- 1L
+}
+
 PYTHON_ARGS <- c(
   "--clone-if-missing",
-  "--refresh"
+  "--refresh",
+  "--workers",
+  as.character(PYTHON_WORKERS)
 )
 
 options(width = 200)
