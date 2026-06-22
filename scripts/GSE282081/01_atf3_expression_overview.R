@@ -187,6 +187,119 @@ run_group_test <- function(analysis_column) {
   )
 }
 
+get_significance_label <- function(p_value) {
+  if (is.na(p_value)) return("NA")
+  if (p_value < 0.001) return("***")
+  if (p_value < 0.01) return("**")
+  if (p_value < 0.05) return("*")
+  "ns"
+}
+
+run_pairwise_expression_tests <- function(dat, group_column, group_levels = NULL) {
+  groups <- as.character(dat[[group_column]])
+  if (is.null(group_levels)) {
+    group_levels <- unique(groups)
+  }
+  group_levels <- group_levels[group_levels %in% groups]
+
+  if (length(group_levels) < 2) {
+    return(data.frame())
+  }
+
+  pairs <- combn(group_levels, 2, simplify = FALSE)
+  do.call(
+    rbind,
+    lapply(pairs, function(pair_value) {
+      group_1 <- pair_value[1]
+      group_2 <- pair_value[2]
+      x1 <- dat$log2_tpm_plus_1[groups == group_1]
+      x2 <- dat$log2_tpm_plus_1[groups == group_2]
+      t_p <- tryCatch(t.test(x2, x1)$p.value, error = function(e) NA_real_)
+      w_p <- tryCatch(
+        wilcox.test(x2, x1, exact = FALSE)$p.value,
+        error = function(e) NA_real_
+      )
+
+      data.frame(
+        Dataset = DATASET_ID,
+        Target_Gene = TARGET_GENE,
+        Group_Variable = group_column,
+        Group_1 = group_1,
+        Group_2 = group_2,
+        Contrast = paste0(group_2, "_vs_", group_1),
+        N_Group_1 = length(x1),
+        N_Group_2 = length(x2),
+        Mean_Group_1 = mean(x1, na.rm = TRUE),
+        Mean_Group_2 = mean(x2, na.rm = TRUE),
+        Mean_Difference_Group_2_minus_Group_1 = mean(x2, na.rm = TRUE) - mean(x1, na.rm = TRUE),
+        T_Test_P = t_p,
+        Wilcox_P = w_p,
+        P_Value_For_Label = w_p,
+        Significance_Label = get_significance_label(w_p),
+        Test_Mode = "unpaired",
+        stringsAsFactors = FALSE
+      )
+    })
+  )
+}
+
+make_significance_annotations <- function(pairwise_tests, group_levels, y_values) {
+  if (nrow(pairwise_tests) == 0) {
+    return(data.frame())
+  }
+
+  y_range <- diff(range(y_values, na.rm = TRUE))
+  if (!is.finite(y_range) || y_range <= 0) {
+    y_range <- 1
+  }
+
+  pairwise_tests$x_start <- match(pairwise_tests$Group_1, group_levels)
+  pairwise_tests$x_end <- match(pairwise_tests$Group_2, group_levels)
+  pairwise_tests$y_position <- max(y_values, na.rm = TRUE) +
+    seq_len(nrow(pairwise_tests)) * y_range * 0.10
+  pairwise_tests$label_y <- pairwise_tests$y_position + y_range * 0.025
+  pairwise_tests$tip_y <- pairwise_tests$y_position - y_range * 0.025
+  pairwise_tests
+}
+
+add_significance_annotations <- function(plot, annotation_table) {
+  if (nrow(annotation_table) == 0) {
+    return(plot)
+  }
+
+  plot +
+    geom_segment(
+      data = annotation_table,
+      aes(x = x_start, xend = x_end, y = y_position, yend = y_position),
+      inherit.aes = FALSE,
+      linewidth = 0.32,
+      color = TEXT_COLOR
+    ) +
+    geom_segment(
+      data = annotation_table,
+      aes(x = x_start, xend = x_start, y = tip_y, yend = y_position),
+      inherit.aes = FALSE,
+      linewidth = 0.32,
+      color = TEXT_COLOR
+    ) +
+    geom_segment(
+      data = annotation_table,
+      aes(x = x_end, xend = x_end, y = tip_y, yend = y_position),
+      inherit.aes = FALSE,
+      linewidth = 0.32,
+      color = TEXT_COLOR
+    ) +
+    geom_text(
+      data = annotation_table,
+      aes(x = (x_start + x_end) / 2, y = label_y, label = Significance_Label),
+      inherit.aes = FALSE,
+      family = TEXT_FONT_FAMILY,
+      fontface = TEXT_FONT_FACE,
+      size = 3.2,
+      color = TEXT_COLOR
+    )
+}
+
 group_tests <- do.call(rbind, lapply(analysis_columns, run_group_test))
 rownames(group_tests) <- NULL
 
@@ -212,6 +325,17 @@ model_order <- c(
 expression_table$liver_niche_model <- factor(
   expression_table$liver_niche_model,
   levels = model_order[model_order %in% expression_table$liver_niche_model]
+)
+model_levels <- levels(expression_table$liver_niche_model)
+pairwise_tests <- run_pairwise_expression_tests(
+  expression_table,
+  group_column = "liver_niche_model",
+  group_levels = model_levels
+)
+pairwise_plot_annotations <- make_significance_annotations(
+  pairwise_tests,
+  group_levels = model_levels,
+  y_values = expression_table$log2_tpm_plus_1
 )
 
 fill_colors <- c(
@@ -256,11 +380,16 @@ expression_plot <- ggplot(
     plot.margin = margin(8, 12, 8, 8, unit = "pt")
   )
 
+expression_plot <- add_significance_annotations(
+  expression_plot,
+  pairwise_plot_annotations
+)
+
 save_ggplot_pdf_png(
   plot = expression_plot,
   pdf_file = file.path(PLOT_ROOT, "ATF3_expression_by_model.pdf"),
   width = 8.2,
-  height = 5.2
+  height = 6.8
 )
 
 
@@ -277,6 +406,10 @@ write_csv_with_report_previews(
 write_csv_with_report_previews(
   group_tests,
   file.path(TABLE_ROOT, "ATF3_group_tests.csv")
+)
+write_csv_with_report_previews(
+  pairwise_tests,
+  file.path(TABLE_ROOT, "ATF3_pairwise_liver_niche_model_tests.csv")
 )
 write_csv_with_report_previews(
   limitation_table,

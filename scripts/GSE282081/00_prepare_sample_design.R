@@ -214,7 +214,7 @@ requested_comparison_audit <- data.frame(
   ),
   Supported_By_Current_Sample_Info = c(TRUE, FALSE),
   Implemented_As = c(
-    "ATF3 expression, DE and GSEA across hepatocyte coculture and 3D organoid model comparisons.",
+    "ATF3 expression overview plus within-model ATF3 high/low DE, ATF3 correlation, and GSEA for each configured model scope.",
     "Not implemented as a formal DE contrast because current samples are in vitro SW480 cultures and contain no normal tissue samples."
   ),
   Tumor_Tissue_Samples = c(NA, sum(clinical_data$is_liver_metastasis_tumor_tissue)),

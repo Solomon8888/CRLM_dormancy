@@ -1,12 +1,14 @@
-# GSE282081 ATF3组内功能分析
+# GSE50760 ATF3 within-tissue functional analysis.
 #
-# 先提取单独的培养/共培养模型范围，再在该范围内分析ATF3功能：
-# 1. 按ATF3表达中位数分为High/Low，运行组内差异分析和GSEA；
-# 2. 将ATF3作为连续变量，运行组内全基因Spearman相关性和GSEA。
-# 当前GSE282081本地样本是SW480体外模型，不是真实肝转移组织。
+# First subsets one tissue group at a time, then evaluates ATF3 function inside
+# that tissue context:
+# 1. ATF3 median high/low differential expression and GSEA;
+# 2. ATF3 continuous-expression Spearman correlation and GSEA.
+# The liver metastasis scope directly addresses ATF3-associated functions in
+# liver metastasis tumor tissue.
 
 
-# 0. 小型环境变量解析函数 ------------------------------------------------------
+# 0. Small env parsers ---------------------------------------------------------
 
 parse_env_vector <- function(variable_name, default_value) {
   value <- trimws(Sys.getenv(variable_name, unset = ""))
@@ -36,15 +38,15 @@ parse_env_integer <- function(variable_name, default_value) {
 }
 
 
-# 1. 可修改配置 ----------------------------------------------------------------
+# 1. Config -------------------------------------------------------------------
 
-DATASET_ID <- "GSE282081"
+DATASET_ID <- "GSE50760"
 DATA_TYPE <- "ngs"
-TARGET_GENE <- Sys.getenv("GSE282081_ATF3_TARGET_GENE", unset = "ATF3")
+TARGET_GENE <- Sys.getenv("GSE50760_ATF3_TARGET_GENE", unset = "ATF3")
 
-SE_RDS_FILE <- "data/ngs/GSE282081/data_prepare/GSE282081_se_raw.rds"
-CLINICAL_EDIT_FILE <- "data/ngs/GSE282081/data_prepare/GSE282081_clinical_edit.csv"
-SAMPLE_DESIGN_SCRIPT <- "scripts/GSE282081/00_prepare_sample_design.R"
+SE_RDS_FILE <- "data/ngs/GSE50760/data_prepare/GSE50760_se_raw.rds"
+CLINICAL_EDIT_FILE <- "data/ngs/GSE50760/data_prepare/GSE50760_clinical_edit.csv"
+SAMPLE_DESIGN_SCRIPT <- "scripts/GSE50760/00_prepare_sample_design.R"
 
 LIMMA_FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
@@ -55,46 +57,44 @@ GSEA_FUNCTION_FILE <- "scripts/functions/gsea_common_functions.R"
 RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
 TABLE_ROOT <- file.path(RESULT_ROOT, "tables", "ATF3_function")
 
-TARGET_EXPRESSION_ASSAY <- Sys.getenv("GSE282081_ATF3_ASSAY", unset = "tpm")
-TARGET_EXPRESSION_LOG2 <- parse_env_logical("GSE282081_ATF3_LOG2", TRUE)
-COUNT_ASSAY_NAME <- Sys.getenv("GSE282081_ATF3_COUNT_ASSAY", unset = "counts")
+TARGET_EXPRESSION_ASSAY <- Sys.getenv("GSE50760_ATF3_ASSAY", unset = "tpm")
+TARGET_EXPRESSION_LOG2 <- parse_env_logical("GSE50760_ATF3_LOG2", TRUE)
+COUNT_ASSAY_NAME <- Sys.getenv("GSE50760_ATF3_COUNT_ASSAY", unset = "counts")
 GENE_BIOTYPE_FILTER <- "coding"
 CORRELATION_METHOD <- "spearman"
-MIN_SAMPLES_FOR_CORRELATION <- parse_env_integer("GSE282081_ATF3_MIN_N", 3L)
-CORRELATION_P_CUTOFF <- as.numeric(Sys.getenv("GSE282081_ATF3_COR_P_CUTOFF", unset = "0.05"))
+MIN_SAMPLES_FOR_CORRELATION <- parse_env_integer("GSE50760_ATF3_MIN_N", 8L)
+CORRELATION_P_CUTOFF <- as.numeric(Sys.getenv("GSE50760_ATF3_COR_P_CUTOFF", unset = "0.05"))
 
-RUN_HIGH_LOW_DE <- parse_env_logical("GSE282081_ATF3_RUN_HIGH_LOW_DE", TRUE)
-MIN_SAMPLES_PER_ATF3_GROUP <- parse_env_integer("GSE282081_ATF3_MIN_HIGH_LOW_GROUP_N", 3L)
-HIGH_LOW_P_VALUE_COLUMN <- Sys.getenv("GSE282081_ATF3_HIGH_LOW_P_COLUMN", unset = "P.Value")
-HIGH_LOW_P_VALUE_CUTOFF <- as.numeric(Sys.getenv("GSE282081_ATF3_HIGH_LOW_P_CUTOFF", unset = "0.05"))
-HIGH_LOW_LOGFC_CUTOFF <- as.numeric(Sys.getenv("GSE282081_ATF3_HIGH_LOW_LOGFC_CUTOFF", unset = "0.5"))
+RUN_HIGH_LOW_DE <- parse_env_logical("GSE50760_ATF3_RUN_HIGH_LOW_DE", TRUE)
+MIN_SAMPLES_PER_ATF3_GROUP <- parse_env_integer("GSE50760_ATF3_MIN_HIGH_LOW_GROUP_N", 5L)
+HIGH_LOW_P_VALUE_COLUMN <- Sys.getenv("GSE50760_ATF3_HIGH_LOW_P_COLUMN", unset = "P.Value")
+HIGH_LOW_P_VALUE_CUTOFF <- as.numeric(Sys.getenv("GSE50760_ATF3_HIGH_LOW_P_CUTOFF", unset = "0.05"))
+HIGH_LOW_LOGFC_CUTOFF <- as.numeric(Sys.getenv("GSE50760_ATF3_HIGH_LOW_LOGFC_CUTOFF", unset = "0.5"))
 
 CORRELATION_SCOPES_TO_RUN <- parse_env_vector(
-  "GSE282081_ATF3_CORRELATION_SCOPES",
+  "GSE50760_ATF3_CORRELATION_SCOPES",
   c(
-    "2D_none",
-    "2D_J2",
-    "2D_J2_hepatocyte",
-    "3D_organoid_none",
-    "3D_organoid_J2_hepatocyte"
+    "Liver_metastasis",
+    "Primary_tumor",
+    "Normal_colon"
   )
 )
 
-RUN_GSEA <- parse_env_logical("GSE282081_ATF3_RUN_GSEA", TRUE)
+RUN_GSEA <- parse_env_logical("GSE50760_ATF3_RUN_GSEA", TRUE)
 
-SPECIES <- Sys.getenv("GSE282081_ATF3_SPECIES", unset = "human")
-GENE_ID_TYPE <- Sys.getenv("GSE282081_ATF3_GENE_ID_TYPE", unset = "ENTREZ")
+SPECIES <- Sys.getenv("GSE50760_ATF3_SPECIES", unset = "human")
+GENE_ID_TYPE <- Sys.getenv("GSE50760_ATF3_GENE_ID_TYPE", unset = "ENTREZ")
 RANK_METRIC_COLUMN <- "Correlation"
 
-GSEA_SIGNIFICANCE_COLUMN <- Sys.getenv("GSE282081_ATF3_GSEA_P_COLUMN", unset = "pvalue")
-GSEA_SIGNIFICANCE_CUTOFF <- as.numeric(Sys.getenv("GSE282081_ATF3_GSEA_P_CUTOFF", unset = "0.05"))
+GSEA_SIGNIFICANCE_COLUMN <- Sys.getenv("GSE50760_ATF3_GSEA_P_COLUMN", unset = "pvalue")
+GSEA_SIGNIFICANCE_CUTOFF <- as.numeric(Sys.getenv("GSE50760_ATF3_GSEA_P_CUTOFF", unset = "0.05"))
 GSEA_PARAMS <- list(
   exponent = 1,
-  minGSSize = parse_env_integer("GSE282081_ATF3_GSEA_MIN_GS_SIZE", 5L),
-  maxGSSize = parse_env_integer("GSE282081_ATF3_GSEA_MAX_GS_SIZE", 500L),
+  minGSSize = parse_env_integer("GSE50760_ATF3_GSEA_MIN_GS_SIZE", 5L),
+  maxGSSize = parse_env_integer("GSE50760_ATF3_GSEA_MAX_GS_SIZE", 500L),
   pvalueCutoff = GSEA_SIGNIFICANCE_CUTOFF,
   pAdjustMethod = "BH",
-  verbose = parse_env_logical("GSE282081_ATF3_GSEA_VERBOSE", FALSE),
+  verbose = parse_env_logical("GSE50760_ATF3_GSEA_VERBOSE", FALSE),
   nPerm = 1000,
   method = "multilevel",
   adaptive = FALSE,
@@ -104,7 +104,7 @@ GSEA_PARAMS <- list(
 )
 
 GSEA_GENESETS_TO_RUN <- parse_env_vector(
-  "GSE282081_ATF3_GSEA_GENESETS",
+  "GSE50760_ATF3_GSEA_GENESETS",
   c(
     "H",
     "C2:CP:BIOCARTA",
@@ -123,30 +123,22 @@ GSEA_GENESETS_TO_RUN <- parse_env_vector(
   )
 )
 
-READABLE_GENE_SYMBOLS <- parse_env_logical("GSE282081_ATF3_READABLE_SYMBOLS", TRUE)
-USE_QS2_CACHE <- parse_env_logical("GSE282081_ATF3_USE_QS2_CACHE", TRUE)
-REFRESH_QS2_CACHE <- parse_env_logical("GSE282081_ATF3_REFRESH_QS2_CACHE", TRUE)
-CLEAN_GSEA_OUTPUT_DIR <- parse_env_logical("GSE282081_ATF3_CLEAN_GSEA", TRUE)
+READABLE_GENE_SYMBOLS <- parse_env_logical("GSE50760_ATF3_READABLE_SYMBOLS", TRUE)
+USE_QS2_CACHE <- parse_env_logical("GSE50760_ATF3_USE_QS2_CACHE", TRUE)
+REFRESH_QS2_CACHE <- parse_env_logical("GSE50760_ATF3_REFRESH_QS2_CACHE", TRUE)
+CLEAN_GSEA_OUTPUT_DIR <- parse_env_logical("GSE50760_ATF3_CLEAN_GSEA", TRUE)
 
 QS2_CACHE_DIR <- file.path("temporary", DATA_TYPE, DATASET_ID, "ATF3_GSEA_qs2_cache")
 MSIGDB_REFERENCE_DIR <- file.path("data", "reference", "msigdb")
-MSIGDB_REFERENCE_MAX_AGE_DAYS <- parse_env_integer("GSE282081_ATF3_MSIGDB_MAX_AGE_DAYS", 7L)
+MSIGDB_REFERENCE_MAX_AGE_DAYS <- parse_env_integer("GSE50760_ATF3_MSIGDB_MAX_AGE_DAYS", 7L)
 
 options(width = 200)
 options(lifecycle_verbosity = "quiet")
 
 
-# 2. 加载包和函数 --------------------------------------------------------------
+# 2. Packages and helpers ------------------------------------------------------
 
-required_packages <- c(
-  "SummarizedExperiment",
-  "limma",
-  "edgeR",
-  "clusterProfiler",
-  "msigdbr",
-  "qs2",
-  "parallel"
-)
+required_packages <- c("SummarizedExperiment", "limma", "edgeR", "clusterProfiler", "msigdbr", "qs2", "parallel")
 
 is_package_available <- function(package_name) {
   suppressWarnings(
@@ -186,161 +178,6 @@ configure_parallel_runtime(
   task_workers = PARALLEL_WORKERS,
   inner_workers = PARALLEL_WORKERS,
   qs2_threads = PARALLEL_WORKERS
-)
-
-
-# 3. 读取表达和样本信息 --------------------------------------------------------
-
-if (!file.exists(CLINICAL_EDIT_FILE)) {
-  source(SAMPLE_DESIGN_SCRIPT)
-}
-
-dir.create(TABLE_ROOT, recursive = TRUE, showWarnings = FALSE)
-unlink(file.path(TABLE_ROOT, "All_samples"), recursive = TRUE, force = TRUE)
-
-se <- readRDS(SE_RDS_FILE)
-clinical_data <- read.csv(
-  CLINICAL_EDIT_FILE,
-  stringsAsFactors = FALSE,
-  check.names = FALSE
-)
-
-stopifnot(inherits(se, "SummarizedExperiment"))
-stopifnot(TARGET_EXPRESSION_ASSAY %in% names(assays(se)))
-stopifnot(COUNT_ASSAY_NAME %in% names(assays(se)))
-stopifnot("Sample_ID" %in% colnames(clinical_data))
-stopifnot(all(colnames(se) %in% clinical_data$Sample_ID))
-
-clinical_data <- clinical_data[
-  match(colnames(se), clinical_data$Sample_ID),
-  ,
-  drop = FALSE
-]
-stopifnot(all(clinical_data$Sample_ID == colnames(se)))
-
-exprSet_all <- as.matrix(assay(se, TARGET_EXPRESSION_ASSAY))
-counts_all <- as.matrix(assay(se, COUNT_ASSAY_NAME))
-if (TARGET_EXPRESSION_LOG2) {
-  exprSet_all <- log2(exprSet_all + 1)
-}
-
-feature_id <- rownames(exprSet_all)
-if (is.null(feature_id)) {
-  feature_id <- paste0("Feature_", seq_len(nrow(exprSet_all)))
-  rownames(exprSet_all) <- feature_id
-}
-
-gene_annotation <- data.frame(
-  Feature_ID = feature_id,
-  as.data.frame(rowData(se), stringsAsFactors = FALSE),
-  check.names = FALSE
-)
-rownames(gene_annotation) <- rownames(exprSet_all)
-
-target_index_all <- which(toupper(trimws(as.character(gene_annotation$Symbol))) == toupper(TARGET_GENE))
-stopifnot(length(target_index_all) >= 1)
-target_index_all <- target_index_all[1]
-target_feature_id <- rownames(exprSet_all)[target_index_all]
-target_expression_all <- as.numeric(exprSet_all[target_index_all, ])
-
-gene_filter <- filter_genes_by_biotype(
-  exprSet = exprSet_all,
-  gene_annotation = gene_annotation,
-  biotype_filter = GENE_BIOTYPE_FILTER
-)
-
-exprSet <- gene_filter$exprSet
-gene_annotation <- gene_filter$gene_annotation
-counts <- counts_all[rownames(gene_annotation), , drop = FALSE]
-
-
-# 4. 样本范围和相关性计算 ------------------------------------------------------
-
-scope_definitions <- list(
-  `2D_none` = function(sample_info) sample_info$liver_niche_model == "2D_none",
-  `2D_J2` = function(sample_info) sample_info$liver_niche_model == "2D_J2",
-  `2D_J2_hepatocyte` = function(sample_info) sample_info$liver_niche_model == "2D_J2_hepatocyte",
-  `3D_organoid_none` = function(sample_info) sample_info$liver_niche_model == "3D_organoid_none",
-  `3D_organoid_J2_hepatocyte` = function(sample_info) {
-    sample_info$liver_niche_model == "3D_organoid_J2_hepatocyte"
-  }
-)
-
-missing_scopes <- setdiff(CORRELATION_SCOPES_TO_RUN, names(scope_definitions))
-if (length(missing_scopes) > 0) {
-  stop(
-    "Undefined correlation scopes: ",
-    paste(missing_scopes, collapse = ", ")
-  )
-}
-
-scope_metadata <- stats::setNames(
-  lapply(names(scope_definitions), function(scope_name) {
-    c(Scope_Group_Column = "liver_niche_model", Scope_Group_Value = scope_name)
-  }),
-  names(scope_definitions)
-)
-
-clean_stale_scope_output_dirs <- function() {
-  existing_dirs <- list.dirs(TABLE_ROOT, recursive = FALSE, full.names = FALSE)
-  keep_dirs <- c(
-    CORRELATION_SCOPES_TO_RUN,
-    "GSEA_summary",
-    "ATF3_high_low_DE_GSEA_summary"
-  )
-  stale_dirs <- setdiff(existing_dirs, keep_dirs)
-  if (length(stale_dirs) > 0) {
-    unlink(file.path(TABLE_ROOT, stale_dirs), recursive = TRUE, force = TRUE)
-  }
-
-  invisible(stale_dirs)
-}
-
-clean_stale_scope_output_dirs()
-
-get_scope_metadata <- function(scope_name) {
-  metadata <- scope_metadata[[scope_name]]
-  if (is.null(metadata)) {
-    return(c(Scope_Group_Column = "custom", Scope_Group_Value = scope_name))
-  }
-
-  metadata
-}
-
-make_scope_sample_manifest <- function() {
-  display_columns <- intersect(
-    c(
-      "Sample_ID", "Title", "culture_model", "treatment_class",
-      "liver_niche_model", "hepatocyte_coculture", "J2_coculture"
-    ),
-    colnames(clinical_data)
-  )
-
-  do.call(
-    rbind,
-    lapply(CORRELATION_SCOPES_TO_RUN, function(scope_name) {
-      keep_sample <- scope_definitions[[scope_name]](clinical_data)
-      keep_sample[is.na(keep_sample)] <- FALSE
-      metadata <- get_scope_metadata(scope_name)
-      sample_table <- clinical_data[keep_sample, display_columns, drop = FALSE]
-
-      data.frame(
-        Dataset = DATASET_ID,
-        Analysis_Name = scope_name,
-        Scope_Group_Column = unname(metadata["Scope_Group_Column"]),
-        Scope_Group_Value = unname(metadata["Scope_Group_Value"]),
-        sample_table,
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-    })
-  )
-}
-
-scope_sample_manifest <- make_scope_sample_manifest()
-scope_sample_manifest_file <- write_csv_with_report_previews(
-  scope_sample_manifest,
-  file.path(TABLE_ROOT, "scope_sample_manifest.csv")
 )
 
 compute_correlation_p_value <- function(rho, n) {
@@ -413,10 +250,7 @@ run_scope_high_low_de <- function(scope_name) {
       "Skipped: too few samples for ATF3 high/low split",
       sample_count
     )
-    summary_file <- write_csv_with_report_previews(
-      summary_table,
-      file.path(output_dir, "summary.csv")
-    )
+    summary_file <- write_csv_with_report_previews(summary_table, file.path(output_dir, "summary.csv"))
     return(list(
       analysis_name = scope_name,
       status = summary_table$Status,
@@ -433,10 +267,7 @@ run_scope_high_low_de <- function(scope_name) {
       "Skipped: ATF3 expression has fewer than two unique values",
       sample_count
     )
-    summary_file <- write_csv_with_report_previews(
-      summary_table,
-      file.path(output_dir, "summary.csv")
-    )
+    summary_file <- write_csv_with_report_previews(summary_table, file.path(output_dir, "summary.csv"))
     return(list(
       analysis_name = scope_name,
       status = summary_table$Status,
@@ -460,10 +291,7 @@ run_scope_high_low_de <- function(scope_name) {
     summary_table$ATF3_High_N <- unname(group_counts["ATF3_high"])
     summary_table$ATF3_Low_N <- unname(group_counts["ATF3_low"])
     summary_table$ATF3_Median_Cutoff <- atf3_cutoff
-    summary_file <- write_csv_with_report_previews(
-      summary_table,
-      file.path(output_dir, "summary.csv")
-    )
+    summary_file <- write_csv_with_report_previews(summary_table, file.path(output_dir, "summary.csv"))
     return(list(
       analysis_name = scope_name,
       status = summary_table$Status,
@@ -545,10 +373,7 @@ run_scope_high_low_de <- function(scope_name) {
     stringsAsFactors = FALSE
   )
 
-  summary_file <- write_csv_with_report_previews(
-    summary_table,
-    file.path(output_dir, "summary.csv")
-  )
+  summary_file <- write_csv_with_report_previews(summary_table, file.path(output_dir, "summary.csv"))
 
   stopifnot(file.exists(all_results_file))
   stopifnot(file.exists(significant_results_file))
@@ -564,8 +389,152 @@ run_scope_high_low_de <- function(scope_name) {
   )
 }
 
+# 3. Read expression and sample information -----------------------------------
+
+if (!file.exists(CLINICAL_EDIT_FILE)) {
+  source(SAMPLE_DESIGN_SCRIPT)
+}
+
+dir.create(TABLE_ROOT, recursive = TRUE, showWarnings = FALSE)
+unlink(file.path(TABLE_ROOT, c("All_samples", "Tumor_samples")), recursive = TRUE, force = TRUE)
+
+se <- readRDS(SE_RDS_FILE)
+clinical_data <- read.csv(
+  CLINICAL_EDIT_FILE,
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+)
+
+stopifnot(inherits(se, "SummarizedExperiment"))
+stopifnot(TARGET_EXPRESSION_ASSAY %in% names(assays(se)))
+stopifnot(COUNT_ASSAY_NAME %in% names(assays(se)))
+stopifnot("Sample_ID" %in% colnames(clinical_data))
+stopifnot("tissue_class" %in% colnames(clinical_data))
+stopifnot(all(colnames(se) %in% clinical_data$Sample_ID))
+
+clinical_data <- clinical_data[
+  match(colnames(se), clinical_data$Sample_ID),
+  ,
+  drop = FALSE
+]
+stopifnot(all(clinical_data$Sample_ID == colnames(se)))
+
+exprSet_all <- as.matrix(assay(se, TARGET_EXPRESSION_ASSAY))
+counts_all <- as.matrix(assay(se, COUNT_ASSAY_NAME))
+if (TARGET_EXPRESSION_LOG2) {
+  exprSet_all <- log2(exprSet_all + 1)
+}
+
+feature_id <- rownames(exprSet_all)
+if (is.null(feature_id)) {
+  feature_id <- paste0("Feature_", seq_len(nrow(exprSet_all)))
+  rownames(exprSet_all) <- feature_id
+}
+
+gene_annotation <- data.frame(
+  Feature_ID = feature_id,
+  as.data.frame(rowData(se), stringsAsFactors = FALSE),
+  check.names = FALSE
+)
+rownames(gene_annotation) <- rownames(exprSet_all)
+
+target_index_all <- which(toupper(trimws(as.character(gene_annotation$Symbol))) == toupper(TARGET_GENE))
+stopifnot(length(target_index_all) >= 1)
+target_index_all <- target_index_all[1]
+target_feature_id <- rownames(exprSet_all)[target_index_all]
+target_expression_all <- as.numeric(exprSet_all[target_index_all, ])
+
+gene_filter <- filter_genes_by_biotype(
+  exprSet = exprSet_all,
+  gene_annotation = gene_annotation,
+  biotype_filter = GENE_BIOTYPE_FILTER
+)
+
+exprSet <- gene_filter$exprSet
+gene_annotation <- gene_filter$gene_annotation
+counts <- counts_all[rownames(gene_annotation), , drop = FALSE]
+
+
+# 4. Correlation scopes --------------------------------------------------------
+
+scope_definitions <- list(
+  Liver_metastasis = function(sample_info) sample_info$tissue_class == "Liver_metastasis",
+  Primary_tumor = function(sample_info) sample_info$tissue_class == "Primary_tumor",
+  Normal_colon = function(sample_info) sample_info$tissue_class == "Normal_colon"
+)
+
+missing_scopes <- setdiff(CORRELATION_SCOPES_TO_RUN, names(scope_definitions))
+if (length(missing_scopes) > 0) {
+  stop("Undefined correlation scopes: ", paste(missing_scopes, collapse = ", "))
+}
+
+scope_metadata <- list(
+  Liver_metastasis = c(Scope_Group_Column = "tissue_class", Scope_Group_Value = "Liver_metastasis"),
+  Primary_tumor = c(Scope_Group_Column = "tissue_class", Scope_Group_Value = "Primary_tumor"),
+  Normal_colon = c(Scope_Group_Column = "tissue_class", Scope_Group_Value = "Normal_colon")
+)
+
+clean_stale_scope_output_dirs <- function() {
+  existing_dirs <- list.dirs(TABLE_ROOT, recursive = FALSE, full.names = FALSE)
+  keep_dirs <- c(
+    CORRELATION_SCOPES_TO_RUN,
+    "GSEA_summary",
+    "ATF3_high_low_DE_GSEA_summary"
+  )
+  stale_dirs <- setdiff(existing_dirs, keep_dirs)
+  if (length(stale_dirs) > 0) {
+    unlink(file.path(TABLE_ROOT, stale_dirs), recursive = TRUE, force = TRUE)
+  }
+
+  invisible(stale_dirs)
+}
+
+clean_stale_scope_output_dirs()
+
+get_scope_metadata <- function(scope_name) {
+  metadata <- scope_metadata[[scope_name]]
+  if (is.null(metadata)) {
+    return(c(Scope_Group_Column = "custom", Scope_Group_Value = scope_name))
+  }
+
+  metadata
+}
+
+make_scope_sample_manifest <- function() {
+  display_columns <- intersect(
+    c("Sample_ID", "Title", "Patient_ID", "tissue", "tissue_class", "ajcc_stage"),
+    colnames(clinical_data)
+  )
+
+  do.call(
+    rbind,
+    lapply(CORRELATION_SCOPES_TO_RUN, function(scope_name) {
+      keep_sample <- scope_definitions[[scope_name]](clinical_data)
+      keep_sample[is.na(keep_sample)] <- FALSE
+      metadata <- get_scope_metadata(scope_name)
+      sample_table <- clinical_data[keep_sample, display_columns, drop = FALSE]
+
+      data.frame(
+        Dataset = DATASET_ID,
+        Analysis_Name = scope_name,
+        Scope_Group_Column = unname(metadata["Scope_Group_Column"]),
+        Scope_Group_Value = unname(metadata["Scope_Group_Value"]),
+        sample_table,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+    })
+  )
+}
+
+scope_sample_manifest <- make_scope_sample_manifest()
+scope_sample_manifest_file <- write_csv_with_report_previews(
+  scope_sample_manifest,
+  file.path(TABLE_ROOT, "scope_sample_manifest.csv")
+)
+
 if (RUN_HIGH_LOW_DE) {
-  cat("\nRunning GSE282081 within-scope ATF3 high/low DE analyses...\n")
+  cat("\nRunning GSE50760 within-tissue ATF3 high/low DE analyses...\n")
   high_low_results <- lapply(CORRELATION_SCOPES_TO_RUN, run_scope_high_low_de)
   names(high_low_results) <- CORRELATION_SCOPES_TO_RUN
 
@@ -613,10 +582,7 @@ compute_scope_correlation <- function(scope_name) {
       stringsAsFactors = FALSE
     )
 
-    summary_file <- write_csv_with_report_previews(
-      summary_table,
-      file.path(output_dir, "summary.csv")
-    )
+    summary_file <- write_csv_with_report_previews(summary_table, file.path(output_dir, "summary.csv"))
 
     return(list(
       analysis_name = scope_name,
@@ -678,8 +644,7 @@ compute_scope_correlation <- function(scope_name) {
   ]
 
   significant_table <- result_table[
-    is.finite(result_table$P.Value) &
-      result_table$P.Value < CORRELATION_P_CUTOFF,
+    is.finite(result_table$P.Value) & result_table$P.Value < CORRELATION_P_CUTOFF,
     ,
     drop = FALSE
   ]
@@ -734,7 +699,7 @@ compute_scope_correlation <- function(scope_name) {
   )
 }
 
-cat("\nRunning GSE282081 ATF3 correlation analyses...\n")
+cat("\nRunning GSE50760 ATF3 correlation analyses...\n")
 correlation_results <- lapply(CORRELATION_SCOPES_TO_RUN, compute_scope_correlation)
 names(correlation_results) <- CORRELATION_SCOPES_TO_RUN
 
@@ -756,7 +721,7 @@ correlation_summary_file <- write_csv_with_report_previews(
 )
 
 
-# 5. ATF3相关性GSEA -----------------------------------------------------------
+# 5. Correlation GSEA ----------------------------------------------------------
 
 if (RUN_GSEA) {
   stopifnot(GENE_ID_TYPE %in% names(GENE_ID_COLUMN_BY_TYPE))
@@ -778,19 +743,11 @@ if (RUN_GSEA) {
   )
 
   if (CLEAN_GSEA_OUTPUT_DIR) {
-    unlink(
-      file.path(TABLE_ROOT, names(gsea_ready_results), "GSEA"),
-      recursive = TRUE,
-      force = TRUE
-    )
-    unlink(
-      file.path(TABLE_ROOT, "GSEA_summary"),
-      recursive = TRUE,
-      force = TRUE
-    )
+    unlink(file.path(TABLE_ROOT, names(gsea_ready_results), "GSEA"), recursive = TRUE, force = TRUE)
+    unlink(file.path(TABLE_ROOT, "GSEA_summary"), recursive = TRUE, force = TRUE)
   }
 
-  cat("\nLoading MSigDB gene sets for ATF3 correlation GSEA...\n")
+  cat("\nLoading MSigDB gene sets for GSE50760 ATF3 correlation GSEA...\n")
   geneset_cache <- lapply(names(GSEA_GENESET_CONFIG), function(geneset_name) {
     config <- GSEA_GENESET_CONFIG[[geneset_name]]
     terms <- load_msigdb_terms(geneset_name, config)
@@ -878,14 +835,14 @@ if (RUN_GSEA) {
     )
   }
 
-  cat("\nRunning ATF3 correlation GSEA tasks...\n")
+  cat("\nRunning GSE50760 ATF3 correlation GSEA tasks...\n")
   task_ids <- seq_len(nrow(task_table))
   gsea_summary_records <- run_parallel_tasks_with_progress(
     task_ids = task_ids,
     task_function = run_gsea_task,
     workers = parallel_strategy$task_workers
   )
-  stop_on_parallel_errors(gsea_summary_records, task_ids = task_ids, label = "ATF3 correlation GSEA tasks")
+  stop_on_parallel_errors(gsea_summary_records, task_ids = task_ids, label = "GSE50760 ATF3 correlation GSEA tasks")
 
   gsea_summary <- do.call(rbind, gsea_summary_records)
   rownames(gsea_summary) <- NULL
@@ -897,14 +854,11 @@ if (RUN_GSEA) {
     file.path(gsea_summary_dir, "summary.csv")
   )
 
-  cat("\nATF3 correlation GSEA summary:\n")
+  cat("\nGSE50760 ATF3 correlation GSEA summary:\n")
   print(
     gsea_summary[
       ,
-      c(
-        "Analysis_Name", "GeneSet_Name", "Source", "Ranked_Genes",
-        "GSEA_Terms", "Positive_NES", "Negative_NES"
-      )
+      c("Analysis_Name", "GeneSet_Name", "Source", "Ranked_Genes", "GSEA_Terms", "Positive_NES", "Negative_NES")
     ],
     row.names = FALSE
   )
@@ -1011,7 +965,7 @@ if (RUN_GSEA) {
         )
       }
 
-      cat("\nRunning ATF3 high/low DE GSEA tasks...\n")
+      cat("\nRunning GSE50760 ATF3 high/low DE GSEA tasks...\n")
       high_low_task_ids <- seq_len(nrow(high_low_task_table))
       high_low_gsea_summary_records <- run_parallel_tasks_with_progress(
         task_ids = high_low_task_ids,
@@ -1021,7 +975,7 @@ if (RUN_GSEA) {
       stop_on_parallel_errors(
         high_low_gsea_summary_records,
         task_ids = high_low_task_ids,
-        label = "ATF3 high/low DE GSEA tasks"
+        label = "GSE50760 ATF3 high/low DE GSEA tasks"
       )
 
       RANK_METRIC_COLUMN <- old_rank_metric_column
@@ -1036,14 +990,11 @@ if (RUN_GSEA) {
         file.path(high_low_gsea_summary_dir, "summary.csv")
       )
 
-      cat("\nATF3 high/low DE GSEA summary:\n")
+      cat("\nGSE50760 ATF3 high/low DE GSEA summary:\n")
       print(
         high_low_gsea_summary[
           ,
-          c(
-            "Analysis_Name", "GeneSet_Name", "Source", "Ranked_Genes",
-            "GSEA_Terms", "Positive_NES", "Negative_NES"
-          )
+          c("Analysis_Name", "GeneSet_Name", "Source", "Ranked_Genes", "GSEA_Terms", "Positive_NES", "Negative_NES")
         ],
         row.names = FALSE
       )
@@ -1059,9 +1010,9 @@ if (RUN_GSEA) {
 }
 
 
-# 6. 终端汇总 ------------------------------------------------------------------
+# 6. Console summary -----------------------------------------------------------
 
-cat("\nGSE282081 ATF3 correlation analysis finished.\n")
+cat("\nGSE50760 ATF3 correlation analysis finished.\n")
 cat("Scope sample manifest: ", scope_sample_manifest_file, "\n", sep = "")
 if (RUN_HIGH_LOW_DE) {
   cat("ATF3 high/low DE summary: ", high_low_summary_file, "\n", sep = "")
