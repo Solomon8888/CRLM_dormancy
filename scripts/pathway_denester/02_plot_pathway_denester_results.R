@@ -321,22 +321,8 @@ make_top_hitchhiker_plot <- function(result_dat) {
   apply_pathway_denester_theme(plot)
 }
 
-plot_one_pathway_denester_result <- function(summary_row) {
-  result_file <- summary_row$PathwayDenester_Result_File
-  result_dat <- read.csv(result_file, stringsAsFactors = FALSE, check.names = FALSE)
+save_top_hitchhiker_plot <- function(summary_row, result_dat, output_dir) {
   plot <- make_top_hitchhiker_plot(result_dat)
-
-  output_dir <- file.path(
-    RESULTS_ROOT,
-    summary_row$Data_Type,
-    summary_row$Dataset_ID,
-    "plots",
-    "PathwayDenester",
-    sanitize_file_name(summary_row$Plot_Category),
-    sanitize_file_name(summary_row$Analysis_Name),
-    sanitize_file_name(summary_row$GeneSet_Name)
-  )
-  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
   shown_terms <- min(TOP_HITCHHIKER_N, as.numeric(summary_row$Excluded_Terms))
   plot_height <- max(5.2, shown_terms * 0.36 + 1.8)
@@ -360,6 +346,31 @@ plot_one_pathway_denester_result <- function(summary_row) {
     PDF_File = files$pdf_file,
     PNG_File = files$png_file,
     stringsAsFactors = FALSE
+  )
+}
+
+plot_one_pathway_denester_result <- function(summary_row) {
+  result_file <- summary_row$PathwayDenester_Result_File
+  result_dat <- read.csv(result_file, stringsAsFactors = FALSE, check.names = FALSE)
+
+  output_dir <- file.path(
+    RESULTS_ROOT,
+    summary_row$Data_Type,
+    summary_row$Dataset_ID,
+    "plots",
+    "PathwayDenester",
+    sanitize_file_name(summary_row$Plot_Category),
+    sanitize_file_name(summary_row$Analysis_Name),
+    sanitize_file_name(summary_row$GeneSet_Name)
+  )
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+  # Pathway-overlap heatmaps are drawn as PathwayDenester-style combo plots
+  # by 03_plot_pathway_overlap_combo_heatmap.py.
+  save_top_hitchhiker_plot(
+    summary_row = summary_row,
+    result_dat = result_dat,
+    output_dir = output_dir
   )
 }
 

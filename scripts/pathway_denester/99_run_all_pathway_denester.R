@@ -1,7 +1,7 @@
 # PathwayDenester all-project runner.
 #
 # 00 export MSigDB SYMBOL GMT -> 01 run official Python PathwayDenester ->
-# 02 plot summaries.
+# 02 plot summaries -> 03 plot PathwayDenester-style overlap combo heatmaps.
 
 
 # 0. Config -------------------------------------------------------------------
@@ -9,7 +9,8 @@
 SCRIPTS_TO_RUN <- c(
   "scripts/pathway_denester/00_export_msigdb_symbol_gmt.R",
   "scripts/pathway_denester/01_run_pathway_denester.py",
-  "scripts/pathway_denester/02_plot_pathway_denester_results.R"
+  "scripts/pathway_denester/02_plot_pathway_denester_results.R",
+  "scripts/pathway_denester/03_plot_pathway_overlap_combo_heatmap.py"
 )
 
 PYTHON_ARGS <- c(
