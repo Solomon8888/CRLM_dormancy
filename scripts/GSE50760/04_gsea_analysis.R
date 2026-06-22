@@ -45,6 +45,7 @@ PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 REPORT_TABLE_FUNCTION_FILE <- "scripts/functions/report_table_functions.R"
 PARALLEL_FUNCTION_FILE <- "scripts/functions/parallel_runtime_functions.R"
 GSEA_FUNCTION_FILE <- "scripts/functions/gsea_common_functions.R"
+BATCH_VIS_FUNCTION_FILE <- "scripts/functions/gse_batch_visualization_functions.R"
 
 RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
 TABLE_ROOT <- file.path(RESULT_ROOT, "tables")
@@ -139,6 +140,7 @@ source(PLOTTING_FUNCTION_FILE)
 source(REPORT_TABLE_FUNCTION_FILE)
 source(PARALLEL_FUNCTION_FILE)
 source(GSEA_FUNCTION_FILE)
+source(BATCH_VIS_FUNCTION_FILE)
 
 SCRIPT_START_TIME <- start_runtime_timer()
 
@@ -152,12 +154,11 @@ configure_parallel_runtime(
 
 # 3. Prepare inputs and gene sets ---------------------------------------------
 
-deg_file_candidates <- list.files(
-  TABLE_ROOT,
-  pattern = "^all_genes[.]csv$",
-  recursive = TRUE,
-  full.names = TRUE
+deg_file_candidates <- c(
+  file.path(list.dirs(TABLE_ROOT, recursive = FALSE, full.names = TRUE), "DEG", "all_genes.csv"),
+  file.path(list.dirs(TABLE_ROOT, recursive = FALSE, full.names = TRUE), "DEG", "csv", "all_genes.csv")
 )
+deg_file_candidates <- deg_file_candidates[file.exists(deg_file_candidates)]
 
 if (length(deg_file_candidates) == 0) {
   source(DEG_SCRIPT)
@@ -173,7 +174,9 @@ GSEA_GENESET_CONFIG <- select_msigdb_genesets(
   genesets_to_run = RUNTIME_GENESETS_TO_RUN
 )
 
-file_info <- get_deg_file_info(TABLE_ROOT)
+file_info <- collect_batch_deg_file_info(TABLE_ROOT)
+file_info <- file_info[file_info$Plot_Category == "Main_DE", , drop = FALSE]
+file_info <- file_info[, c("Analysis_Name", "All_Genes_File"), drop = FALSE]
 selected_analyses <- get_selected_analysis_names(
   file_info = file_info,
   analyses_to_plot = ANALYSES_TO_RUN

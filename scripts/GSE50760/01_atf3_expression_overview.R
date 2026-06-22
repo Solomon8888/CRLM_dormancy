@@ -161,6 +161,67 @@ get_significance_label <- function(p_value) {
   "ns"
 }
 
+get_shapiro_p_value <- function(x) {
+  x <- as.numeric(x)
+  x <- x[is.finite(x)]
+
+  if (length(x) < 3 || length(unique(x)) < 3) {
+    return(NA_real_)
+  }
+
+  tryCatch(
+    shapiro.test(x)$p.value,
+    error = function(e) NA_real_
+  )
+}
+
+select_unpaired_expression_test <- function(x_experiment, x_control) {
+  # ATF3表达量已使用log2(TPM + 1)转换。两组均近似正态时使用Welch t检验；
+  # 任一组正态性证据不足时使用Wilcoxon秩和检验，避免小样本分布假设过强。
+  x_experiment <- as.numeric(x_experiment)
+  x_control <- as.numeric(x_control)
+  x_experiment <- x_experiment[is.finite(x_experiment)]
+  x_control <- x_control[is.finite(x_control)]
+
+  shapiro_experiment <- get_shapiro_p_value(x_experiment)
+  shapiro_control <- get_shapiro_p_value(x_control)
+  normality_passed <- is.finite(shapiro_experiment) &&
+    is.finite(shapiro_control) &&
+    shapiro_experiment >= 0.05 &&
+    shapiro_control >= 0.05
+
+  if (normality_passed) {
+    p_value <- tryCatch(
+      t.test(x_experiment, x_control, paired = FALSE)$p.value,
+      error = function(e) NA_real_
+    )
+    test_name <- "Welch t-test"
+    rationale <- paste0(
+      "Both log2(TPM + 1) groups passed Shapiro-Wilk normality screening ",
+      "(p >= 0.05); Welch t-test was used without assuming equal variances."
+    )
+  } else {
+    p_value <- tryCatch(
+      wilcox.test(x_experiment, x_control, paired = FALSE, exact = FALSE)$p.value,
+      error = function(e) NA_real_
+    )
+    test_name <- "Wilcoxon rank-sum test"
+    rationale <- paste0(
+      "At least one log2(TPM + 1) group failed or could not support ",
+      "Shapiro-Wilk normality screening; Wilcoxon rank-sum test was used."
+    )
+  }
+
+  list(
+    test_name = test_name,
+    p_value = p_value,
+    shapiro_experiment = shapiro_experiment,
+    shapiro_control = shapiro_control,
+    normality_passed = normality_passed,
+    rationale = rationale
+  )
+}
+
 run_pairwise_expression_tests <- function(dat, group_column, group_levels = NULL, paired_id_column = NULL) {
   groups <- as.character(dat[[group_column]])
   if (is.null(group_levels)) {
@@ -224,6 +285,10 @@ run_pairwise_expression_tests <- function(dat, group_column, group_levels = NULL
         wilcox.test(x2, x1, exact = FALSE)$p.value,
         error = function(e) NA_real_
       )
+      unpaired_primary <- select_unpaired_expression_test(
+        x_experiment = x2,
+        x_control = x1
+      )
 
       label_p <- if (test_mode == "paired") paired_w_p else wilcox_p
 
@@ -244,6 +309,12 @@ run_pairwise_expression_tests <- function(dat, group_column, group_levels = NULL
         Paired_Wilcox_P = paired_w_p,
         Unpaired_T_Test_P = unpaired_t_p,
         Wilcox_P = wilcox_p,
+        Shapiro_P_Group_2 = unpaired_primary$shapiro_experiment,
+        Shapiro_P_Group_1 = unpaired_primary$shapiro_control,
+        Unpaired_Normality_Passed = unpaired_primary$normality_passed,
+        Unpaired_Primary_Test = unpaired_primary$test_name,
+        Unpaired_Primary_P = unpaired_primary$p_value,
+        Unpaired_Primary_Rationale = unpaired_primary$rationale,
         P_Value_For_Label = label_p,
         Significance_Label = get_significance_label(label_p),
         Test_Mode = test_mode,
@@ -308,6 +379,43 @@ add_significance_annotations <- function(plot, annotation_table) {
       size = 3.4,
       color = TEXT_COLOR
     )
+}
+
+add_adjusted_pairwise_labels <- function(pairwise_tests) {
+  if (nrow(pairwise_tests) == 0) {
+    return(pairwise_tests)
+  }
+
+  pairwise_tests$Paired_Primary_P <- ifelse(
+    pairwise_tests$Test_Mode == "paired",
+    pairwise_tests$Paired_Wilcox_P,
+    pairwise_tests$Wilcox_P
+  )
+  pairwise_tests$Paired_Primary_Test <- ifelse(
+    pairwise_tests$Test_Mode == "paired",
+    "Paired Wilcoxon signed-rank test",
+    "Wilcoxon rank-sum test"
+  )
+  pairwise_tests$Paired_Primary_P_Adjusted_BH <- p.adjust(
+    pairwise_tests$Paired_Primary_P,
+    method = "BH"
+  )
+  pairwise_tests$Paired_Significance_Label_BH <- vapply(
+    pairwise_tests$Paired_Primary_P_Adjusted_BH,
+    get_significance_label,
+    character(1)
+  )
+  pairwise_tests$Unpaired_Primary_P_Adjusted_BH <- p.adjust(
+    pairwise_tests$Unpaired_Primary_P,
+    method = "BH"
+  )
+  pairwise_tests$Unpaired_Significance_Label_BH <- vapply(
+    pairwise_tests$Unpaired_Primary_P_Adjusted_BH,
+    get_significance_label,
+    character(1)
+  )
+
+  pairwise_tests
 }
 
 
@@ -394,6 +502,7 @@ pairwise_tests <- run_pairwise_expression_tests(
   group_levels = tissue_levels,
   paired_id_column = "Patient_ID"
 )
+pairwise_tests <- add_adjusted_pairwise_labels(pairwise_tests)
 pairwise_plot_annotations <- make_significance_annotations(
   pairwise_tests,
   group_levels = tissue_levels,
@@ -406,45 +515,55 @@ fill_colors <- c(
   Liver_metastasis = "#C95F3F"
 )
 
-expression_plot <- ggplot(
-  expression_table,
-  aes(x = tissue_class, y = log2_tpm_plus_1, group = Patient_ID)
-) +
-  geom_line(color = "grey70", linewidth = 0.35, alpha = 0.75) +
-  geom_boxplot(
-    aes(fill = tissue_class, group = tissue_class),
-    width = 0.58,
-    outlier.shape = NA,
-    alpha = 0.72,
-    color = TEXT_COLOR
-  ) +
-  geom_point(
-    aes(fill = tissue_class),
-    shape = 21,
-    size = 2.8,
-    stroke = 0.35,
-    color = TEXT_COLOR,
-    position = position_jitter(width = 0.08, height = 0, seed = 20260622),
-    alpha = 0.95
-  ) +
-  scale_fill_manual(values = fill_colors) +
-  scale_x_discrete(labels = function(x) wrap_label_by_underscore(x, width = 14)) +
-  labs(
-    x = NULL,
-    y = paste0(TARGET_GENE, " log2(TPM + 1)"),
-    fill = NULL
-  ) +
-  theme_bw(base_size = BASE_FONT_SIZE, base_family = TEXT_FONT_FAMILY) +
-  theme(
-    panel.grid.major.x = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.border = element_rect(color = TEXT_COLOR, fill = NA, linewidth = AXIS_LINE_WIDTH),
-    axis.text = element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
-    axis.title = element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
-    legend.position = "none",
-    text = element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
-    plot.margin = margin(8, 12, 8, 8, unit = "pt")
+make_expression_plot <- function(show_patient_lines = TRUE) {
+  expression_plot <- ggplot(
+    expression_table,
+    aes(x = tissue_class, y = log2_tpm_plus_1)
   )
+
+  if (show_patient_lines) {
+    expression_plot <- expression_plot +
+      geom_line(aes(group = Patient_ID), color = "grey70", linewidth = 0.35, alpha = 0.75)
+  }
+
+  expression_plot +
+    geom_boxplot(
+      aes(fill = tissue_class, group = tissue_class),
+      width = 0.58,
+      outlier.shape = NA,
+      alpha = 0.72,
+      color = TEXT_COLOR
+    ) +
+    geom_point(
+      aes(fill = tissue_class),
+      shape = 21,
+      size = 2.8,
+      stroke = 0.35,
+      color = TEXT_COLOR,
+      position = position_jitter(width = 0.08, height = 0, seed = 20260622),
+      alpha = 0.95
+    ) +
+    scale_fill_manual(values = fill_colors) +
+    scale_x_discrete(labels = function(x) wrap_label_by_underscore(x, width = 14)) +
+    labs(
+      x = NULL,
+      y = paste0(TARGET_GENE, " log2(TPM + 1)"),
+      fill = NULL
+    ) +
+    theme_bw(base_size = BASE_FONT_SIZE, base_family = TEXT_FONT_FAMILY) +
+    theme(
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_rect(color = TEXT_COLOR, fill = NA, linewidth = AXIS_LINE_WIDTH),
+      axis.text = element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
+      axis.title = element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
+      legend.position = "none",
+      text = element_text(color = TEXT_COLOR, face = TEXT_FONT_FACE),
+      plot.margin = margin(8, 12, 8, 8, unit = "pt")
+    )
+}
+
+expression_plot <- make_expression_plot(show_patient_lines = TRUE)
 
 expression_plot <- add_significance_annotations(
   expression_plot,
@@ -454,6 +573,28 @@ expression_plot <- add_significance_annotations(
 save_ggplot_pdf_png(
   plot = expression_plot,
   pdf_file = file.path(PLOT_ROOT, "ATF3_expression_by_tissue.pdf"),
+  width = 7.4,
+  height = 5.8
+)
+
+unpaired_pairwise_tests <- pairwise_tests
+unpaired_pairwise_tests$P_Value_For_Label <- unpaired_pairwise_tests$Unpaired_Primary_P_Adjusted_BH
+unpaired_pairwise_tests$Significance_Label <- unpaired_pairwise_tests$Unpaired_Significance_Label_BH
+unpaired_plot_annotations <- make_significance_annotations(
+  unpaired_pairwise_tests,
+  group_levels = tissue_levels,
+  y_values = expression_table$log2_tpm_plus_1
+)
+
+unpaired_expression_plot <- make_expression_plot(show_patient_lines = FALSE)
+unpaired_expression_plot <- add_significance_annotations(
+  unpaired_expression_plot,
+  unpaired_plot_annotations
+)
+
+save_ggplot_pdf_png(
+  plot = unpaired_expression_plot,
+  pdf_file = file.path(PLOT_ROOT, "ATF3_expression_by_tissue_unpaired_BH.pdf"),
   width = 7.4,
   height = 5.8
 )
@@ -476,6 +617,22 @@ write_csv_with_report_previews(
 write_csv_with_report_previews(
   pairwise_tests,
   file.path(TABLE_ROOT, "ATF3_pairwise_tissue_class_tests.csv")
+)
+unpaired_output_columns <- intersect(
+  c(
+    "Dataset", "Target_Gene", "Group_Variable", "Group_1", "Group_2", "Contrast",
+    "N_Group_1", "N_Group_2", "Mean_Group_1", "Mean_Group_2",
+    "Mean_Difference_Group_2_minus_Group_1",
+    "Shapiro_P_Group_1", "Shapiro_P_Group_2", "Unpaired_Normality_Passed",
+    "Unpaired_Primary_Test", "Unpaired_Primary_P",
+    "Unpaired_Primary_P_Adjusted_BH", "Unpaired_Significance_Label_BH",
+    "Unpaired_Primary_Rationale"
+  ),
+  colnames(pairwise_tests)
+)
+write_csv_with_report_previews(
+  pairwise_tests[, unpaired_output_columns, drop = FALSE],
+  file.path(TABLE_ROOT, "ATF3_pairwise_tissue_class_unpaired_tests.csv")
 )
 
 cat("\nGSE50760 ATF3 expression overview finished.\n")

@@ -2,7 +2,8 @@
 #
 # 默认顺序运行：
 # 00 样本设计 -> 01 ATF3表达概览 -> 02 差异分析 ->
-# 03 组内ATF3高低表达/相关性/GSEA -> 04 差异分析GSEA
+# 03 组内ATF3高低表达/相关性/GSEA -> 04 差异分析GSEA ->
+# 05 火山图 -> 06 多组火山图 -> 07 GSEA气泡图
 
 
 # 0. 可修改配置 ---------------------------------------------------------------
@@ -12,7 +13,10 @@ SCRIPTS_TO_RUN <- c(
   "scripts/GSE282081/01_atf3_expression_overview.R",
   "scripts/GSE282081/02_limma_differential_expression.R",
   "scripts/GSE282081/03_atf3_correlation_gsea.R",
-  "scripts/GSE282081/04_gsea_analysis.R"
+  "scripts/GSE282081/04_gsea_analysis.R",
+  "scripts/GSE282081/05_volcano_plot.R",
+  "scripts/GSE282081/06_multiple_volcano_plot.R",
+  "scripts/GSE282081/07_gsea_dotplot.R"
 )
 
 options(width = 200)
