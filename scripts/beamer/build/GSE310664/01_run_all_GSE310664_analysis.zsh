@@ -13,8 +13,13 @@ CLINICAL_FILE="data/${DATA_TYPE}/${DATASET_ID}/data_prepare/${DATASET_ID}_clinic
 GSEA_QS2_CACHE_ROOT="${TEMP_ROOT}/GSEA_qs2_cache"
 OMNIPATHR_LOG_ROOT="${TEMP_ROOT}/omnipathr-log"
 
-R_BIN="${R_BIN:-Rscript}"
+RSCRIPT_BIN="${RSCRIPT_BIN:-$(command -v Rscript)}"
 VALIDATE_ONLY="${GSE310664_VALIDATE_ONLY:-0}"
+
+if [[ -z "$RSCRIPT_BIN" || ! -x "$RSCRIPT_BIN" ]]; then
+  printf "Cannot find executable Rscript. Set RSCRIPT_BIN=/path/to/Rscript and rerun.\n" >&2
+  exit 1
+fi
 
 # 保留R脚本自己的实时进度条；这里仅负责串联、预检和清理。
 export PARALLEL_RUNTIME_BACKEND="${PARALLEL_RUNTIME_BACKEND:-auto}"
@@ -34,7 +39,7 @@ R_SCRIPTS=(
 )
 
 validate_inputs() {
-  "$R_BIN" --vanilla - <<'RSCRIPT'
+  "$RSCRIPT_BIN" --vanilla - <<'RSCRIPT'
 source("scripts/functions/limma_de_functions.R")
 
 clinical_file <- "data/ngs/GSE310664/data_prepare/GSE310664_clinical_edit.csv"
@@ -176,12 +181,13 @@ run_r_script() {
   printf "\n============================================================\n"
   printf "[%02d/%02d] Running: %s\n" "$index" "$total" "$script"
   printf "============================================================\n"
-  "$R_BIN" "$script"
+  "$RSCRIPT_BIN" "$script"
 }
 
 printf "\nRunning %s full analysis pipeline...\n" "$DATASET_ID"
 printf "Project root: %s\n" "$PROJECT_ROOT"
 printf "Clinical file: %s\n" "$CLINICAL_FILE"
+printf "Rscript binary: %s\n" "$RSCRIPT_BIN"
 printf "Parallel backend: %s\n" "$PARALLEL_RUNTIME_BACKEND"
 printf "Refresh GSEA qs2 cache: %s\n" "$GSEA_REFRESH_QS2_CACHE"
 
