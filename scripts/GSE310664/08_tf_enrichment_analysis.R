@@ -168,6 +168,8 @@ ENRICHR_SLEEP_TIME <- 1
 # 这两类方法按官方普通调用方式逐个运行，并使用本地缓存减少真实远程请求；
 # DoRothEA/VIPER/TRRUST/CollecTRI均为本地统计运算，继续使用parallel函数全速并行。
 REMOTE_API_METHODS <- c("chea3", "enrichr")
+REMOTE_API_MAX_ATTEMPTS <- 3L
+REMOTE_API_RETRY_SLEEP_SECONDS <- 5
 
 # 兼容历史参数名；当前R脚本只保存完整CSV。
 TABLE_PREVIEW_ROWS <- 21
@@ -438,6 +440,51 @@ run_one_tf_task <- function(task_id) {
   )
 }
 
+get_tf_task_label <- function(task_id) {
+  task <- tf_tasks[[task_id]]
+  paste(
+    task_id,
+    task$method,
+    task$input$input_type,
+    task$input$input_name,
+    sep = ":"
+  )
+}
+
+run_one_remote_tf_task <- function(task_id) {
+  # ChEA3/Enrichr依赖远程API；偶发网络/API错误时自动重试，避免全流程中途退出。
+  last_error <- NULL
+
+  for (attempt in seq_len(REMOTE_API_MAX_ATTEMPTS)) {
+    result <- try(run_one_tf_task(task_id), silent = TRUE)
+    if (!inherits(result, "try-error")) {
+      return(result)
+    }
+
+    last_error <- result
+    if (attempt < REMOTE_API_MAX_ATTEMPTS) {
+      Sys.sleep(REMOTE_API_RETRY_SLEEP_SECONDS * attempt)
+    }
+  }
+
+  task <- tf_tasks[[task_id]]
+  last_message <- conditionMessage(attr(last_error, "condition"))
+  stop(
+    "Remote TF task failed after ",
+    REMOTE_API_MAX_ATTEMPTS,
+    " attempts: task_id=",
+    task_id,
+    ", method=",
+    task$method,
+    ", input=",
+    task$input$input_type,
+    "/",
+    task$input$input_name,
+    ". Last error: ",
+    last_message
+  )
+}
+
 
 # 4. 并行运行TF富集分析 -------------------------------------------------------
 
@@ -461,15 +508,16 @@ if (length(local_task_ids) > 0L) {
 
 if (length(remote_task_ids) > 0L) {
   cat("\nRunning remote API TF enrichment tasks with local cache...\n")
+  remote_task_labels <- vapply(remote_task_ids, get_tf_task_label, character(1))
   remote_results <- run_parallel_tasks_with_progress(
     task_ids = remote_task_ids,
-    task_function = run_one_tf_task,
+    task_function = run_one_remote_tf_task,
     workers = 1L,
     progress_label = "Remote API"
   )
   stop_on_parallel_errors(
     remote_results,
-    task_ids = remote_task_ids,
+    task_ids = remote_task_labels,
     label = "remote API TF enrichment tasks"
   )
   summary_records <- c(summary_records, remote_results)
