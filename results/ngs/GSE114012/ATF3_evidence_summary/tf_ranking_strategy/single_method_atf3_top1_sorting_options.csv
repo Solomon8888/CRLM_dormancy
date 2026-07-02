@@ -1,0 +1,21 @@
+"Analysis_Name","Method","Method_Label","Sorting_Name","Sorting_Rule","Recommended_Primary_Sorting","ATF3_Found","ATF3_Rank","ATF3_Score","ATF3_P_Value","ATF3_Adj_P_Value","ATF3_Rank1","Top_TF","DEG_ATF3_Primary_Significant","DEG_ATF3_FDR_Significant"
+"ALL","chea3","ChEA3","current_09_rank","ChEA3 Integrated--topRank: Method_Rank ascending; lower ChEA3 score is better.",TRUE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,FALSE
+"ALL","chea3","ChEA3","score_ascending","ChEA3 Integrated score ascending; lower score is better.",FALSE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,FALSE
+"ALL","chea3","ChEA3","library_count_desc_toprank_asc","ChEA3 evidence-library count descending, then integrated top rank ascending.",FALSE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,FALSE
+"DLD1_HCT15","chea3","ChEA3","current_09_rank","ChEA3 Integrated--topRank: Method_Rank ascending; lower ChEA3 score is better.",TRUE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,FALSE
+"DLD1_HCT15","chea3","ChEA3","score_ascending","ChEA3 Integrated score ascending; lower score is better.",FALSE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,FALSE
+"DLD1_HCT15","chea3","ChEA3","library_count_desc_toprank_asc","ChEA3 evidence-library count descending, then integrated top rank ascending.",FALSE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,FALSE
+"DLD1_HCT15","enrichr","ENRICHR","best_adjusted_p_asc","Best adjusted P value ascending, then best P ascending, then combined score descending.",FALSE,TRUE,1,67.9244563136121,1.37418721396433e-07,9.99034104552068e-05,TRUE,"ATF3",TRUE,FALSE
+"DLD1_HCT15","enrichr","ENRICHR","best_p_value_asc","Best nominal P value ascending, then best adjusted P ascending, then combined score descending.",FALSE,TRUE,1,67.9244563136121,1.37418721396433e-07,9.99034104552068e-05,TRUE,"ATF3",TRUE,FALSE
+"DLD1_HCT15","enrichr","ENRICHR","library_count_desc_adj_p_asc","ENRICHR library count descending, then best adjusted P and P ascending.",FALSE,TRUE,1,67.9244563136121,1.37418721396433e-07,9.99034104552068e-05,TRUE,"ATF3",TRUE,FALSE
+"DLD1_HCT15_SW48","chea3","ChEA3","current_09_rank","ChEA3 Integrated--topRank: Method_Rank ascending; lower ChEA3 score is better.",TRUE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,FALSE
+"DLD1_HCT15_SW48","chea3","ChEA3","score_ascending","ChEA3 Integrated score ascending; lower score is better.",FALSE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,FALSE
+"DLD1_HCT15_SW48","chea3","ChEA3","library_count_desc_toprank_asc","ChEA3 evidence-library count descending, then integrated top rank ascending.",FALSE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,FALSE
+"HCT15","chea3","ChEA3","current_09_rank","ChEA3 Integrated--topRank: Method_Rank ascending; lower ChEA3 score is better.",TRUE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,TRUE
+"HCT15","chea3","ChEA3","score_ascending","ChEA3 Integrated score ascending; lower score is better.",FALSE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,TRUE
+"HCT15","chea3","ChEA3","library_count_desc_toprank_asc","ChEA3 evidence-library count descending, then integrated top rank ascending.",FALSE,TRUE,1,0.0006143,NA,NA,TRUE,"ATF3",TRUE,TRUE
+"HCT15","enrichr","ENRICHR","best_adjusted_p_asc","Best adjusted P value ascending, then best P ascending, then combined score descending.",FALSE,TRUE,1,125.529235519107,6.07194103214042e-19,4.51752412791248e-16,TRUE,"ATF3",TRUE,TRUE
+"HCT15","enrichr","ENRICHR","best_p_value_asc","Best nominal P value ascending, then best adjusted P ascending, then combined score descending.",FALSE,TRUE,1,125.529235519107,6.07194103214042e-19,4.51752412791248e-16,TRUE,"ATF3",TRUE,TRUE
+"HCT15","enrichr","ENRICHR","library_count_desc_adj_p_asc","ENRICHR library count descending, then best adjusted P and P ascending.",FALSE,TRUE,1,125.529235519107,6.07194103214042e-19,4.51752412791248e-16,TRUE,"ATF3",TRUE,TRUE
+"HT55","chea3","ChEA3","library_count_desc_toprank_asc","ChEA3 evidence-library count descending, then integrated top rank ascending.",FALSE,TRUE,1,0.001229,NA,NA,TRUE,"ATF3",FALSE,FALSE
+"SW948","chea3","ChEA3","library_count_desc_toprank_asc","ChEA3 evidence-library count descending, then integrated top rank ascending.",FALSE,TRUE,1,0.0006223,NA,NA,TRUE,"ATF3",TRUE,FALSE

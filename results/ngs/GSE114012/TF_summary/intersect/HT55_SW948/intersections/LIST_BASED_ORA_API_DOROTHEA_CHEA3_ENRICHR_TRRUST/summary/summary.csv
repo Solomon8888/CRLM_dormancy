@@ -1,0 +1,2 @@
+"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
+"INTERSECT","HT55_SW948","LIST_BASED_ORA_API_DOROTHEA_CHEA3_ENRICHR_TRRUST","DoRothEA;ChEA3;ENRICHR;TRRUST","4","137","10","results/ngs/GSE114012/TF_summary/intersect/HT55_SW948/intersections/LIST_BASED_ORA_API_DOROTHEA_CHEA3_ENRICHR_TRRUST/candidates/top10_tf_candidates.csv"

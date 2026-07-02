@@ -1,0 +1,2 @@
+"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
+"DEG","SW948","ACTIVITY_METHODS_VIPER_COLLECTRI","VIPER;CollecTRI","2","234","10","results/ngs/GSE114012/TF_summary/deg/SW948/intersections/ACTIVITY_METHODS_VIPER_COLLECTRI/candidates/top10_tf_candidates.csv"

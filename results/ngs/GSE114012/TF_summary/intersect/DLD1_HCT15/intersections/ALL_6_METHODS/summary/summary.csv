@@ -1,0 +1,2 @@
+"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
+"INTERSECT","DLD1_HCT15","ALL_6_METHODS","DoRothEA;ChEA3;VIPER;ENRICHR;TRRUST;CollecTRI","6","140","10","results/ngs/GSE114012/TF_summary/intersect/DLD1_HCT15/intersections/ALL_6_METHODS/candidates/top10_tf_candidates.csv"

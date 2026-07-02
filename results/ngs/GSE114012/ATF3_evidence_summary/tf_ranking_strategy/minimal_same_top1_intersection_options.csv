@@ -1,0 +1,4 @@
+"Methods","Method_Labels","Method_Count","Analyses_Evaluated","ATF3_Rank1_Count_All","ATF3_Rank1_Analyses_All","ATF3_Rank1_Count_DEG_Primary","ATF3_Rank1_Analyses_DEG_Primary","ATF3_Top3_Count_All","ATF3_Top10_Count_All","ATF3_Top10_Count_DEG_Primary","ATF3_Median_Consensus_Rank","ATF3_Mean_Consensus_Rank","ATF3_Max_Consensus_Rank"
+"chea3;collectri","ChEA3;CollecTRI",2,9,5,"ALL;DLD1_HCT15;DLD1_HCT15_SW48;HCT15;SW948",5,"ALL;DLD1_HCT15;DLD1_HCT15_SW48;HCT15;SW948",5,6,5,1,10.2222222222222,34
+"dorothea;chea3;collectri","DoRothEA;ChEA3;CollecTRI",3,9,5,"ALL;DLD1_HCT15;DLD1_HCT15_SW48;HCT15;SW948",5,"ALL;DLD1_HCT15;DLD1_HCT15_SW48;HCT15;SW948",5,7,6,1,6.88888888888889,28
+"dorothea;chea3;enrichr;collectri","DoRothEA;ChEA3;ENRICHR;CollecTRI",4,9,5,"ALL;DLD1_HCT15;DLD1_HCT15_SW48;HCT15;SW948",5,"ALL;DLD1_HCT15;DLD1_HCT15_SW48;HCT15;SW948",5,7,6,1,6.22222222222222,20

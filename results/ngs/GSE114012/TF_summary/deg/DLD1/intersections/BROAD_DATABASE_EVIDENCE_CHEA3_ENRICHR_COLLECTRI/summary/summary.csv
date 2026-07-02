@@ -1,0 +1,2 @@
+"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
+"DEG","DLD1","BROAD_DATABASE_EVIDENCE_CHEA3_ENRICHR_COLLECTRI","ChEA3;ENRICHR;CollecTRI","3","297","10","results/ngs/GSE114012/TF_summary/deg/DLD1/intersections/BROAD_DATABASE_EVIDENCE_CHEA3_ENRICHR_COLLECTRI/candidates/top10_tf_candidates.csv"

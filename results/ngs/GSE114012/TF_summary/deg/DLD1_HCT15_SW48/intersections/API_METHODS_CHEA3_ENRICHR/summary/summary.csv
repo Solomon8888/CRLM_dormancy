@@ -1,0 +1,2 @@
+"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
+"DEG","DLD1_HCT15_SW48","API_METHODS_CHEA3_ENRICHR","ChEA3;ENRICHR","2","267","10","results/ngs/GSE114012/TF_summary/deg/DLD1_HCT15_SW48/intersections/API_METHODS_CHEA3_ENRICHR/candidates/top10_tf_candidates.csv"

@@ -1,0 +1,6 @@
+"Dataset","Total_Files","CSV_Tables","PDF_Plots","PNG_Plots","TF_Result_Files","DEG_Analysis_Count"
+"GSE114012",3643,818,1412,1412,1053,9
+"GSE282081",3347,1165,783,783,462,11
+"GSE310664",1578,322,628,628,431,4
+"GSE50760",2753,963,643,643,379,9
+"GSEA_denester_project_summary",4,2,1,1,0,0

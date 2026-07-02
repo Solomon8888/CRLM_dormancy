@@ -1,0 +1,2 @@
+"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
+"DEG","SW948","DOROTHEA_CHEA3_VIPER","DoRothEA;ChEA3;VIPER","3","263","10","results/ngs/GSE114012/TF_summary/deg/SW948/intersections/DOROTHEA_CHEA3_VIPER/candidates/top10_tf_candidates.csv"

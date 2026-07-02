@@ -1,0 +1,2 @@
+"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
+"DEG","DLD1_HCT15","CHIP_LITERATURE_EVIDENCE_CHEA3_ENRICHR_TRRUST","ChEA3;ENRICHR;TRRUST","3","186","10","results/ngs/GSE114012/TF_summary/deg/DLD1_HCT15/intersections/CHIP_LITERATURE_EVIDENCE_CHEA3_ENRICHR_TRRUST/candidates/top10_tf_candidates.csv"

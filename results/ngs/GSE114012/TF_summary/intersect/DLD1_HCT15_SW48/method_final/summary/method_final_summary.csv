@@ -1,0 +1,7 @@
+"Input_Type","TF_Analysis_Name","Method","Method_Label","Final_TF_Count","Final_Result_File"
+"INTERSECT","DLD1_HCT15_SW48","dorothea","DoRothEA","271","results/ngs/GSE114012/TF_summary/intersect/DLD1_HCT15_SW48/method_final/dorothea/dorothea_intersect_final_result.csv"
+"INTERSECT","DLD1_HCT15_SW48","chea3","ChEA3","1632","results/ngs/GSE114012/TF_summary/intersect/DLD1_HCT15_SW48/method_final/chea3/chea3_intersect_Integrated--topRank.csv"
+"INTERSECT","DLD1_HCT15_SW48","viper","VIPER","268","results/ngs/GSE114012/TF_summary/intersect/DLD1_HCT15_SW48/method_final/viper/viper_intersect_final_result.csv"
+"INTERSECT","DLD1_HCT15_SW48","enrichr","ENRICHR","360","results/ngs/GSE114012/TF_summary/intersect/DLD1_HCT15_SW48/method_final/enrichr/enrichr_intersect_Integrated--topRank.csv"
+"INTERSECT","DLD1_HCT15_SW48","trrust","TRRUST","329","results/ngs/GSE114012/TF_summary/intersect/DLD1_HCT15_SW48/method_final/trrust/trrust_intersect_final_result.csv"
+"INTERSECT","DLD1_HCT15_SW48","collectri","CollecTRI","683","results/ngs/GSE114012/TF_summary/intersect/DLD1_HCT15_SW48/method_final/collectri/collectri_intersect_final_result.csv"

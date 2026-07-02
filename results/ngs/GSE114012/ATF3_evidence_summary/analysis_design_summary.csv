@@ -1,0 +1,10 @@
+"Dataset","Analysis_Order","Analysis_Name","Design_Column","Experiment_Group","Control_Group","Contrast","Samples_Used","Experiment_N","Control_N"
+"GSE114012",1,"ALL","analysis_ALL","ALL","BULK","ALL_vs_BULK",48,24,24
+"GSE114012",2,"DLD1_HCT15_SW48","analysis_DLD1_HCT15_SW48","DLD1_HCT15_SW48","BULK","DLD1_HCT15_SW48_vs_BULK",24,12,12
+"GSE114012",3,"DLD1_HCT15","analysis_DLD1_HCT15","DLD1_HCT15","BULK","DLD1_HCT15_vs_BULK",16,8,8
+"GSE114012",4,"DLD1","analysis_DLD1","DLD1","BULK","DLD1_vs_BULK",8,4,4
+"GSE114012",5,"HCT15","analysis_HCT15","HCT15","BULK","HCT15_vs_BULK",8,4,4
+"GSE114012",6,"HT55","analysis_HT55","HT55","BULK","HT55_vs_BULK",8,4,4
+"GSE114012",7,"RKO","analysis_RKO","RKO","BULK","RKO_vs_BULK",8,4,4
+"GSE114012",8,"SW48","analysis_SW48","SW48","BULK","SW48_vs_BULK",8,4,4
+"GSE114012",9,"SW948","analysis_SW948","SW948","BULK","SW948_vs_BULK",8,4,4
