@@ -1,0 +1,2 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOBP_NEGATIVE_REGULATION_OF_CENTRIOLE_REPLICATION","GOBP_NEGATIVE_REGULATION_OF_CENTRIOLE_REPLICATION","Too many core enrichment genes were absent from the reference gene set.","7","6","7","0.1428571428571428"

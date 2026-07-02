@@ -1,0 +1,3 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"KEGG_MEDICUS_REFERENCE_BCR_PLCG_CALCINEURIN_SIGNALING_PATHWAY","KEGG_MEDICUS_REFERENCE_BCR_PLCG_CALCINEURIN_SIGNALING_PATHWAY","Too many core enrichment genes were absent from the reference gene set.","7","6","18","0.1428571428571428"
+"KEGG_MEDICUS_PATHOGEN_SARS_COV_2_S_TO_CLASSICAL_PATHWAY_OF_COMPLEMENT_CASCADE","KEGG_MEDICUS_PATHOGEN_SARS_COV_2_S_TO_CLASSICAL_PATHWAY_OF_COMPLEMENT_CASCADE","Too many core enrichment genes were absent from the reference gene set.","4","3","6","0.2500000000000000"

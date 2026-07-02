@@ -1,0 +1,2 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"REACTOME_CELLULAR_HEXOSE_TRANSPORT","REACTOME_CELLULAR_HEXOSE_TRANSPORT","Too many core enrichment genes were absent from the reference gene set.","7","6","21","0.1428571428571428"

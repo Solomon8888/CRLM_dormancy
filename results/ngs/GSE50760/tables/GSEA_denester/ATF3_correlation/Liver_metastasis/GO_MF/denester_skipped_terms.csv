@@ -1,0 +1,5 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOMF_FUCOSYLTRANSFERASE_ACTIVITY","GOMF_FUCOSYLTRANSFERASE_ACTIVITY","Too many core enrichment genes were absent from the reference gene set.","9","7","13","0.2222222222222222"
+"GOMF_ALPHA_1_3_FUCOSYLTRANSFERASE_ACTIVITY","GOMF_ALPHA_1_3_FUCOSYLTRANSFERASE_ACTIVITY","Too many core enrichment genes were absent from the reference gene set.","5","3","8","0.4000000000000000"
+"GOMF_CARBOHYDRATE_MONOATOMIC_CATION_SYMPORTER_ACTIVITY","GOMF_CARBOHYDRATE_MONOATOMIC_CATION_SYMPORTER_ACTIVITY","Too many core enrichment genes were absent from the reference gene set.","6","5","16","0.1666666666666667"
+"GOMF_INTERMEDIATE_FILAMENT_BINDING","GOMF_INTERMEDIATE_FILAMENT_BINDING","Too many core enrichment genes were absent from the reference gene set.","9","8","11","0.1111111111111111"

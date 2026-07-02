@@ -1,0 +1,2 @@
+"Dataset","Analysis_Name","Scope_Group_Column","Scope_Group_Value","Target_Gene","Status","Samples_Used","Ranked_Genes","Positive_Correlation_P05","Negative_Correlation_P05","Strong_Positive_AbsR_0_5","Strong_Negative_AbsR_0_5","Target_Feature_ID","Correlation_Method","Expression_Assay","Expression_Log2_Transformed"
+"GSE50760","Normal_colon","tissue_class","Normal_colon","ATF3","OK","18","18903","288","1475","229","1140","ENSG00000162772","spearman","tpm",TRUE

@@ -1,0 +1,4 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOBP_PROTEIN_O_LINKED_GLYCOSYLATION_VIA_FUCOSE","GOBP_PROTEIN_O_LINKED_GLYCOSYLATION_VIA_FUCOSE","Too many core enrichment genes were absent from the reference gene set.","7","5","9","0.2857142857142857"
+"GOBP_CARBOHYDRATE_IMPORT_ACROSS_PLASMA_MEMBRANE","GOBP_CARBOHYDRATE_IMPORT_ACROSS_PLASMA_MEMBRANE","Too many core enrichment genes were absent from the reference gene set.","4","3","9","0.2500000000000000"
+"GOBP_FUCOSE_CATABOLIC_PROCESS","GOBP_FUCOSE_CATABOLIC_PROCESS","Too many core enrichment genes were absent from the reference gene set.","6","5","10","0.1666666666666667"

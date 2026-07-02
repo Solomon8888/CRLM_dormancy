@@ -1,0 +1,2 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GLI1_UP.V1_DN","GLI1_UP.V1_DN","Too many core enrichment genes were absent from the reference gene set.","6","5","17","0.1666666666666667"

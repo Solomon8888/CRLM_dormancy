@@ -1,0 +1,2 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOMF_PROTEIN_CARBOXYL_O_METHYLTRANSFERASE_ACTIVITY","GOMF_PROTEIN_CARBOXYL_O_METHYLTRANSFERASE_ACTIVITY","Too many core enrichment genes were absent from the reference gene set.","5","4","6","0.2"

@@ -1,0 +1,2 @@
+Namespace(pathway_list='results/ngs/GSE50760/tables/PathwayDenester/Main_DE/Liver_metastasis_vs_normal/CP_KEGG_MEDICUS/pathway_denester_input.tsv', gmt_file='data/reference/pathway_denester/msigdb_symbol_gmt/CP_KEGG_MEDICUS.gmt', selected_gene_list='', output_address='results/ngs/GSE50760/tables/PathwayDenester/Main_DE/Liver_metastasis_vs_normal/CP_KEGG_MEDICUS/pathway_denester_official.tsv', to_test_threshold=0.5, pval_threshold=0.05, term_size_limit=0.0, tranlator_gene_names='', top_n=20, clean=False)
+PathwayDenester done

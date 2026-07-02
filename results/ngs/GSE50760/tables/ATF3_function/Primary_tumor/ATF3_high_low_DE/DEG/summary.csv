@@ -1,0 +1,2 @@
+"Dataset","Analysis_Name","Scope_Group_Column","Scope_Group_Value","Target_Gene","Contrast","Status","Samples_Used","ATF3_High_N","ATF3_Low_N","ATF3_Median_Cutoff","Up","Down","Total_Significant_Genes","P_Value_Column","P_Value_Cutoff","LogFC_Cutoff","Genes_Filtered_By_EdgeR"
+"GSE50760","Primary_tumor","tissue_class","Primary_tumor","ATF3","ATF3_high_vs_ATF3_low_within_Primary_tumor","OK","18","9","9","1.569987974568297","178","230","408","P.Value","0.05","0.5","4406"

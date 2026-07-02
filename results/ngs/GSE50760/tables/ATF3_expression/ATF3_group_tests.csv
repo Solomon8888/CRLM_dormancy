@@ -1,0 +1,4 @@
+"Analysis_Name","Contrast","N_Experiment","N_Control","Complete_Pairs","Mean_Experiment","Mean_Control","Mean_Difference","Paired_T_Test_P","Paired_Wilcox_P","Unpaired_T_Test_P","Wilcox_P","Test_Mode","Status"
+"Liver_metastasis_vs_normal","Liver_metastasis_vs_normal_vs_Normal_colon","18","18","18","2.241857376963709","1.844050883718234","0.3978064932454752","0.15915347564918375","0.13868331050810290","0.15805141387084279","0.05168190616441626","paired","OK"
+"Liver_metastasis_vs_primary","Liver_metastasis_vs_primary_vs_Primary_tumor","18","18","18","2.241857376963709","1.709174393931325","0.5326829830323843","0.01620804392333499","0.02944195656513537","0.02904062240473604","0.02004860017537169","paired","OK"
+"Primary_tumor_vs_normal","Primary_tumor_vs_normal_vs_Normal_colon","18","18","18","1.709174393931325","1.844050883718234","-0.1348764897869090","0.60853033224081321","0.82762251838714740","0.59041187563666297","0.91182641175338408","paired","OK"

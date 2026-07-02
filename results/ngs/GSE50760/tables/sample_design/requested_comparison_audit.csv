@@ -1,0 +1,3 @@
+"Dataset","Requested_Question","Supported_By_Current_Sample_Info","Implemented_As","Liver_Metastasis_Tumor_Samples","Normal_Tissue_Samples","Complete_Trio_Patients"
+"GSE50760","ATF3 function in liver metastasis tumor tissue",TRUE,"Within-tissue ATF3 high/low DE, ATF3 correlation, and GSEA, including the liver metastasis tissue subset.","18","18","18"
+"GSE50760","ATF3 difference between liver metastasis tumor tissue and normal tissue",TRUE,"Matched-pair limma contrast: Liver_metastasis_vs_normal.","18","18","18"

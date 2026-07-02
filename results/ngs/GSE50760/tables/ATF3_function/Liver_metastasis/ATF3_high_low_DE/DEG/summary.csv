@@ -1,0 +1,2 @@
+"Dataset","Analysis_Name","Scope_Group_Column","Scope_Group_Value","Target_Gene","Contrast","Status","Samples_Used","ATF3_High_N","ATF3_Low_N","ATF3_Median_Cutoff","Up","Down","Total_Significant_Genes","P_Value_Column","P_Value_Cutoff","LogFC_Cutoff","Genes_Filtered_By_EdgeR"
+"GSE50760","Liver_metastasis","tissue_class","Liver_metastasis","ATF3","ATF3_high_vs_ATF3_low_within_Liver_metastasis","OK","18","9","9","2.306124207084336","151","181","332","P.Value","0.05","0.5","4531"

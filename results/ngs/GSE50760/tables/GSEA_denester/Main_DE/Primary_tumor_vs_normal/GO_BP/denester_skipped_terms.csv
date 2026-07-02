@@ -1,0 +1,4 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOBP_NEGATIVE_REGULATION_OF_CELLULAR_RESPIRATION","GOBP_NEGATIVE_REGULATION_OF_CELLULAR_RESPIRATION","Too many core enrichment genes were absent from the reference gene set.","4","3","12","0.25"
+"GOBP_PROTEIN_O_LINKED_GLYCOSYLATION_VIA_FUCOSE","GOBP_PROTEIN_O_LINKED_GLYCOSYLATION_VIA_FUCOSE","Too many core enrichment genes were absent from the reference gene set.","4","3","9","0.25"
+"GOBP_REGULATION_OF_MITOCHONDRIAL_ATP_SYNTHESIS_COUPLED_ELECTRON_TRANSPORT","GOBP_REGULATION_OF_MITOCHONDRIAL_ATP_SYNTHESIS_COUPLED_ELECTRON_TRANSPORT","Too many core enrichment genes were absent from the reference gene set.","5","4","8","0.20"

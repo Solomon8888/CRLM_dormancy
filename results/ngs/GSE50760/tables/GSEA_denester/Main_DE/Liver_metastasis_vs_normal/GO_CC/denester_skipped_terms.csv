@@ -1,0 +1,2 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOCC_RIBONUCLEASE_MRP_COMPLEX","GOCC_RIBONUCLEASE_MRP_COMPLEX","Too many core enrichment genes were absent from the reference gene set.","4","3","12","0.25"

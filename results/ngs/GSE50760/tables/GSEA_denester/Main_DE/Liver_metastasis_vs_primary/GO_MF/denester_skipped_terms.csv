@@ -1,0 +1,2 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOMF_PROTEIN_KINASE_A_REGULATORY_SUBUNIT_BINDING","GOMF_PROTEIN_KINASE_A_REGULATORY_SUBUNIT_BINDING","Too many core enrichment genes were absent from the reference gene set.","6","5","25","0.1666666666666667"
