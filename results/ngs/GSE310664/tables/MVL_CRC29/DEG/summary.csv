@@ -1,0 +1,2 @@
+"Dataset","Data_Type","Analysis_Name","Contrast","Samples_Used","Up","Down","Total_Significant_Genes","P_Value_Column","P_Value_Cutoff","LogFC_Cutoff","Microarray_Log2_Transformed"
+"GSE310664","ngs","MVL_CRC29","MVL_CRC29_vs_CTRL","6","185","47","232","P.Value","0.05","0.5",NA

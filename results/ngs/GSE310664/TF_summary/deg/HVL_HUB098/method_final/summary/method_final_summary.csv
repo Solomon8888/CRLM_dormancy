@@ -1,0 +1,7 @@
+"Input_Type","TF_Analysis_Name","Method","Method_Label","Final_TF_Count","Final_Result_File"
+"DEG","HVL_HUB098","dorothea","DoRothEA","271","results/ngs/GSE310664/TF_summary/deg/HVL_HUB098/method_final/dorothea/dorothea_deg_final_result.csv"
+"DEG","HVL_HUB098","chea3","ChEA3","1632","results/ngs/GSE310664/TF_summary/deg/HVL_HUB098/method_final/chea3/chea3_deg_Integrated--topRank.csv"
+"DEG","HVL_HUB098","viper","VIPER","264","results/ngs/GSE310664/TF_summary/deg/HVL_HUB098/method_final/viper/viper_deg_final_result.csv"
+"DEG","HVL_HUB098","enrichr","ENRICHR","601","results/ngs/GSE310664/TF_summary/deg/HVL_HUB098/method_final/enrichr/enrichr_deg_Integrated--topRank.csv"
+"DEG","HVL_HUB098","trrust","TRRUST","329","results/ngs/GSE310664/TF_summary/deg/HVL_HUB098/method_final/trrust/trrust_deg_final_result.csv"
+"DEG","HVL_HUB098","collectri","CollecTRI","638","results/ngs/GSE310664/TF_summary/deg/HVL_HUB098/method_final/collectri/collectri_deg_final_result.csv"
