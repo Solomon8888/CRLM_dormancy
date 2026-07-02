@@ -1,0 +1,4 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOMF_INTERMEDIATE_FILAMENT_BINDING","GOMF_INTERMEDIATE_FILAMENT_BINDING","Too many core enrichment genes were absent from the reference gene set.","4","3","11","0.2500000000000000"
+"GOMF_FLIPPASE_ACTIVITY","GOMF_FLIPPASE_ACTIVITY","Too many core enrichment genes were absent from the reference gene set.","6","5","15","0.1666666666666667"
+"GOMF_KERATIN_FILAMENT_BINDING","GOMF_KERATIN_FILAMENT_BINDING","Too many core enrichment genes were absent from the reference gene set.","3","2","6","0.3333333333333333"

@@ -1,0 +1,2 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOBP_SPERM_CAPACITATION","GOBP_SPERM_CAPACITATION","Too many core enrichment genes were absent from the reference gene set.","11","9","39","0.1818181818181818"

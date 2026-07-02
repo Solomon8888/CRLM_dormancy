@@ -1,0 +1,2 @@
+"Dataset","Target_Gene","Question","Status","Reason"
+"GSE282081","ATF3","ATF3 difference between liver metastasis tumor tissue and normal tissue","Not testable from current sample table","Current GSE282081 local metadata contains in vitro SW480 2D/3D culture and coculture samples, but no normal tissue samples."

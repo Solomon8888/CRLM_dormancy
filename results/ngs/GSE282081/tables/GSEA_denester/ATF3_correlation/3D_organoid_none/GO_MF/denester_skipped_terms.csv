@@ -1,0 +1,3 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOMF_THIAMINE_PYROPHOSPHATE_BINDING","GOMF_THIAMINE_PYROPHOSPHATE_BINDING","Too many core enrichment genes were absent from the reference gene set.","6","5","8","0.1666666666666667"
+"GOMF_MICROTUBULE_SEVERING_ATPASE_ACTIVITY","GOMF_MICROTUBULE_SEVERING_ATPASE_ACTIVITY","Too many core enrichment genes were absent from the reference gene set.","7","6","9","0.1428571428571428"

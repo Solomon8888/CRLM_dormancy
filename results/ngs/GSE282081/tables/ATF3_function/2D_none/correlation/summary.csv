@@ -1,0 +1,2 @@
+"Dataset","Analysis_Name","Scope_Group_Column","Scope_Group_Value","Target_Gene","Status","Samples_Used","Ranked_Genes","Positive_Correlation_P05","Negative_Correlation_P05","Strong_Positive_AbsR_0_5","Strong_Negative_AbsR_0_5","Target_Feature_ID","Correlation_Method","Expression_Assay","Expression_Log2_Transformed"
+"GSE282081","2D_none","liver_niche_model","2D_none","ATF3","OK","3","17047","2749","2158","8913","7770","ENSG00000162772","spearman","tpm",TRUE

@@ -1,0 +1,3 @@
+"Dataset","Requested_Question","Supported_By_Current_Sample_Info","Implemented_As","Tumor_Tissue_Samples","Normal_Tissue_Samples"
+"GSE282081","ATF3 function in liver-metastasis-like tumor model",TRUE,"ATF3 expression overview plus within-model ATF3 high/low DE, ATF3 correlation, and GSEA for each configured model scope.",NA,NA
+"GSE282081","ATF3 difference between liver metastasis tumor tissue and normal tissue",FALSE,"Not implemented as a formal DE contrast because current samples are in vitro SW480 cultures and contain no normal tissue samples.","0","0"

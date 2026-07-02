@@ -1,0 +1,2 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOCC_AXONEMAL_NEXIN_LINK","GOCC_AXONEMAL_NEXIN_LINK","Too many core enrichment genes were absent from the reference gene set.","8","2","11","0.75"

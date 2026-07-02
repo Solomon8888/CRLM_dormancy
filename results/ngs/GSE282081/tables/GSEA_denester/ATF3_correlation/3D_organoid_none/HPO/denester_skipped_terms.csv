@@ -1,0 +1,2 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"HP_ABNORMAL_CSF_PYRUVATE_FAMILY_AMINO_ACID_CONCENTRATION","HP_ABNORMAL_CSF_PYRUVATE_FAMILY_AMINO_ACID_CONCENTRATION","Too many core enrichment genes were absent from the reference gene set.","7","6","7","0.1428571428571428"

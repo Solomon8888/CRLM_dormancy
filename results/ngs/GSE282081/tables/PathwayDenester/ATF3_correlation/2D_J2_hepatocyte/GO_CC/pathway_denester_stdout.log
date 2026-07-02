@@ -1,0 +1,5 @@
+Namespace(pathway_list='results/ngs/GSE282081/tables/PathwayDenester/ATF3_correlation/2D_J2_hepatocyte/GO_CC/pathway_denester_input.tsv', gmt_file='data/reference/pathway_denester/msigdb_symbol_gmt/GO_CC.gmt', selected_gene_list='', output_address='results/ngs/GSE282081/tables/PathwayDenester/ATF3_correlation/2D_J2_hepatocyte/GO_CC/pathway_denester_official.tsv', to_test_threshold=0.5, pval_threshold=0.05, term_size_limit=0.0, tranlator_gene_names='', top_n=20, clean=False)
+GOCC_VOLTAGE_GATED_CALCIUM_CHANNEL_COMPLEX has a high fraction of its DEGs not in the original gmt file: 11.1%
+GOCC_SPERM_PRINCIPAL_PIECE has a high fraction of its DEGs not in the original gmt file: 15.0%
+GOCC_CATSPER_COMPLEX has a high fraction of its DEGs not in the original gmt file: 28.599999999999998%
+PathwayDenester done

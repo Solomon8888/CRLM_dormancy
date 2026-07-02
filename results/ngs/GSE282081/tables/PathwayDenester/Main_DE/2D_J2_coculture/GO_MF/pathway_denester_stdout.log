@@ -1,0 +1,5 @@
+Namespace(pathway_list='results/ngs/GSE282081/tables/PathwayDenester/Main_DE/2D_J2_coculture/GO_MF/pathway_denester_input.tsv', gmt_file='data/reference/pathway_denester/msigdb_symbol_gmt/GO_MF.gmt', selected_gene_list='', output_address='results/ngs/GSE282081/tables/PathwayDenester/Main_DE/2D_J2_coculture/GO_MF/pathway_denester_official.tsv', to_test_threshold=0.5, pval_threshold=0.05, term_size_limit=0.0, tranlator_gene_names='', top_n=20, clean=False)
+GOMF_THIAMINE_PYROPHOSPHATE_BINDING has a high fraction of its DEGs not in the original gmt file: 25.0%
+GOMF_TRANSKETOLASE_OR_TRANSALDOLASE_ACTIVITY has a high fraction of its DEGs not in the original gmt file: 50.0%
+GOMF_QUATERNARY_AMMONIUM_GROUP_BINDING has a high fraction of its DEGs not in the original gmt file: 11.1%
+PathwayDenester done

@@ -1,0 +1,2 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOBP_CARBOHYDRATE_IMPORT_ACROSS_PLASMA_MEMBRANE","GOBP_CARBOHYDRATE_IMPORT_ACROSS_PLASMA_MEMBRANE","Too many core enrichment genes were absent from the reference gene set.","7","6","9","0.1428571428571428"

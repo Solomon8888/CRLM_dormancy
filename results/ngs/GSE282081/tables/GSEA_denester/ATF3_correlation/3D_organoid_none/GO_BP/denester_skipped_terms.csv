@@ -1,0 +1,2 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOBP_TRNA_WOBBLE_GUANINE_MODIFICATION","GOBP_TRNA_WOBBLE_GUANINE_MODIFICATION","Too many core enrichment genes were absent from the reference gene set.","6","4","6","0.3333333333333333"

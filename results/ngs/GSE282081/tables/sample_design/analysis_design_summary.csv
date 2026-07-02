@@ -1,0 +1,7 @@
+"Dataset","Analysis_Column","Analysis_Name","Experiment_Group","Control_Group","Samples_Used","Group_Counts","Ready_For_Two_Group_DE","Note"
+"GSE282081","analysis_Hepatocyte_coculture","Hepatocyte_coculture","Hepatocyte_coculture","No_hepatocyte_coculture","15","Hepatocyte_coculture=6;No_hepatocyte_coculture=9",TRUE,"All samples; approximates liver-cell niche exposure, but culture model and J2 status are partly confounded."
+"GSE282081","analysis_3D_organoid","3D_organoid","3D_organoid","2D_culture","15","2D_culture=9;3D_organoid=6",TRUE,"All samples; compares 3D organoid model against 2D culture."
+"GSE282081","analysis_3D_hepatic_coculture","3D_hepatic_coculture","3D_hepatic_coculture","3D_organoid_none","6","3D_hepatic_coculture=3;3D_organoid_none=3",TRUE,"3D samples only; compares 3D organoids with J2/hepatocyte coculture against 3D organoids alone."
+"GSE282081","analysis_2D_J2_coculture","2D_J2_coculture","2D_J2_coculture","2D_none","6","2D_J2_coculture=3;2D_none=3",TRUE,"2D samples without hepatocytes; compares J2 coculture against 2D culture alone."
+"GSE282081","analysis_2D_J2_hepatocyte","2D_J2_hepatocyte","2D_J2_hepatocyte","2D_J2_coculture","6","2D_J2_coculture=3;2D_J2_hepatocyte=3",TRUE,"2D J2 samples only; compares added hepatocytes against J2 coculture alone."
+"GSE282081","analysis_2D_J2_hepatocyte_vs_2D_none","2D_J2_hepatocyte_vs_2D_none","2D_J2_hepatocyte_vs_2D_none","2D_none","6","2D_J2_hepatocyte_vs_2D_none=3;2D_none=3",TRUE,"2D samples only; compares J2/hepatocyte coculture against 2D culture alone."

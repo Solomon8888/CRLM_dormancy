@@ -1,0 +1,4 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOCC_VOLTAGE_GATED_CALCIUM_CHANNEL_COMPLEX","GOCC_VOLTAGE_GATED_CALCIUM_CHANNEL_COMPLEX","Too many core enrichment genes were absent from the reference gene set.","18","16","45","0.1111111111111111"
+"GOCC_CATSPER_COMPLEX","GOCC_CATSPER_COMPLEX","Too many core enrichment genes were absent from the reference gene set.","7","5","14","0.2857142857142857"
+"GOCC_SPERM_PRINCIPAL_PIECE","GOCC_SPERM_PRINCIPAL_PIECE","Too many core enrichment genes were absent from the reference gene set.","20","17","62","0.1500000000000000"

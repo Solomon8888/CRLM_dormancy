@@ -1,0 +1,4 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOBP_NUCLEOTIDE_SUGAR_TRANSMEMBRANE_TRANSPORT","GOBP_NUCLEOTIDE_SUGAR_TRANSMEMBRANE_TRANSPORT","Too many core enrichment genes were absent from the reference gene set.","6","5","13","0.1666666666666667"
+"GOBP_TRNA_WOBBLE_BASE_MODIFICATION","GOBP_TRNA_WOBBLE_BASE_MODIFICATION","Too many core enrichment genes were absent from the reference gene set.","15","13","29","0.1333333333333333"
+"GOBP_TRNA_WOBBLE_GUANINE_MODIFICATION","GOBP_TRNA_WOBBLE_GUANINE_MODIFICATION","Too many core enrichment genes were absent from the reference gene set.","4","3","6","0.2500000000000000"

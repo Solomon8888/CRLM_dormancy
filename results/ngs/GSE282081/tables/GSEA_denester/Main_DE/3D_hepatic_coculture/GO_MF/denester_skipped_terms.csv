@@ -1,0 +1,3 @@
+"Pathway_ID","Description","Skip_Reason","Core_Gene_Count_Raw","Core_Gene_Count_Matched","Term_Size","Unexpected_Core_Gene_Fraction"
+"GOMF_POTASSIUM_PROTON_ANTIPORTER_ACTIVITY","GOMF_POTASSIUM_PROTON_ANTIPORTER_ACTIVITY","Too many core enrichment genes were absent from the reference gene set.","8","7","14","0.1250000000000000"
+"GOMF_SOLUTE_POTASSIUM_ANTIPORTER_ACTIVITY","GOMF_SOLUTE_POTASSIUM_ANTIPORTER_ACTIVITY","Too many core enrichment genes were absent from the reference gene set.","9","8","19","0.1111111111111111"

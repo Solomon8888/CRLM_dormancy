@@ -1,0 +1,7 @@
+"Analysis_Name","Scope_Group_Column","Scope_Group_Value","GeneSet_Name","Source","Ranked_Genes","GSEA_Terms","Positive_NES","Negative_NES","CSV_File"
+"Hepatocyte_coculture","hepatocyte_coculture","Hepatocyte_coculture","hallmark","computed","14828","33","12","21","results/ngs/GSE282081/tables/ATF3_function/Hepatocyte_coculture/ATF3_high_low_DE/GSEA/hallmark/gsea_result.csv"
+"No_hepatocyte_coculture","hepatocyte_coculture","No_hepatocyte_coculture","hallmark","computed","14427","20","14","6","results/ngs/GSE282081/tables/ATF3_function/No_hepatocyte_coculture/ATF3_high_low_DE/GSEA/hallmark/gsea_result.csv"
+"J2_coculture","J2_coculture","J2_coculture","hallmark","computed","14336","31","11","20","results/ngs/GSE282081/tables/ATF3_function/J2_coculture/ATF3_high_low_DE/GSEA/hallmark/gsea_result.csv"
+"No_J2","J2_coculture","No_J2","hallmark","computed","14797","29","7","22","results/ngs/GSE282081/tables/ATF3_function/No_J2/ATF3_high_low_DE/GSEA/hallmark/gsea_result.csv"
+"2D_culture","culture_model","2D_culture","hallmark","computed","14341","18","12","6","results/ngs/GSE282081/tables/ATF3_function/2D_culture/ATF3_high_low_DE/GSEA/hallmark/gsea_result.csv"
+"3D_organoid","culture_model","3D_organoid","hallmark","computed","15109","34","22","12","results/ngs/GSE282081/tables/ATF3_function/3D_organoid/ATF3_high_low_DE/GSEA/hallmark/gsea_result.csv"
