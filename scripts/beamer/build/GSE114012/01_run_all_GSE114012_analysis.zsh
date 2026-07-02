@@ -24,6 +24,9 @@ R_SCRIPTS=(
   "scripts/GSE114012/07_gsea_plot.R"
   "scripts/GSE114012/08_tf_enrichment_analysis.R"
   "scripts/GSE114012/09_integrate_tf_enrichment_results.R"
+  "scripts/GSE114012/10_atf3_evidence_summary.R"
+  "scripts/GSE114012/11_atf3_tf_ranking_strategy_summary.R"
+  "scripts/GSE114012/12_atf3_tf_enrichment_visualization.R"
 )
 
 run_r_script() {

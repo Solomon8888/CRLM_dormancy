@@ -69,9 +69,43 @@ scripts/beamer/generated_tables/
 # ----------------------------------------------------------------------
 # Analysis outputs and intermediate files
 # ----------------------------------------------------------------------
-# All tables, plots, reports, LaTeX build products, logs and qs2 caches are
-# reproducible from the analysis/build scripts.
-results/**
+# Keep results visible to Git so CSV/PDF/PNG summaries can be reviewed and
+# synced. Note that .gitignore cannot filter files by size; large generated
+# result objects must be ignored by path or file type.
+!results/
+!results/**
+
+# Re-apply global housekeeping ignores inside results after the broad unignore
+# above; otherwise results/** makes these files visible again.
+results/.DS_Store
+results/**/.DS_Store
+results/*.log
+results/**/*.log
+results/*.tmp
+results/**/*.tmp
+results/*.temp
+results/**/*.temp
+
+# Large binary result artifacts and caches should not be committed. This keeps
+# GitHub-safe result tables/figures visible while excluding common files that
+# can easily exceed the 200 MB single-file limit.
+results/**/*.rds
+results/**/*.RData
+results/**/*.rda
+results/**/*.qs
+results/**/*.qs2
+results/**/*.h5
+results/**/*.h5ad
+results/**/*.loom
+results/**/*.mtx
+results/**/*.bam
+results/**/*.sam
+results/**/*.cram
+results/**/*.fastq
+results/**/*.fq
+results/**/*.fastq.gz
+results/**/*.fq.gz
+
 temporary/**
 omnipathr-log/
 omipathr-log/
