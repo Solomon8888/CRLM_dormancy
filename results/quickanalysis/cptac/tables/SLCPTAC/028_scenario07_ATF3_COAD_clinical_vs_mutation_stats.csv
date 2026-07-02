@@ -1,0 +1,2 @@
+"var1","var2","p_value","test_method","effect_size","odds_ratio","log2_or","cramers_v","n","p_adjusted","significant","var1_feature","var2_feature","method"
+"COAD_Tumor_Stage_Clinical","COAD_KRAS_Mutation","0.06946526736631684","Fisher's exact",NA,NA,NA,NA,"108","0.06946526736631684",FALSE,"Tumor_Stage (Clinical, COAD)","KRAS (Mutation, COAD)","Fisher's exact"

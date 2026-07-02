@@ -1,0 +1,2 @@
+"Package","Version","Library_Path","Official_GitHub","SL_BULK_DATA","Data_Root","Temporary_Root","Result_Root","Smoke_Test_Mode"
+"SLCPTAC","1.2.0","/opt/homebrew/lib/R/4.6/site-library/SLCPTAC","https://github.com/SolvingLab/SLCPTAC","/Users/solomon/Projects/CRLM_dormancy/data/cptac/bulk_data","/Users/solomon/Projects/CRLM_dormancy/data/cptac","/Users/solomon/Projects/CRLM_dormancy/temporary/slcptac","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac",FALSE

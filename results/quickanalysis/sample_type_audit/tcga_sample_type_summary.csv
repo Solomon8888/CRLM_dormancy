@@ -1,0 +1,33 @@
+"Dataset","Cohort","Source","Sample_Fragment","Sample_Type_Code","Vial","Sample_Type_Definition","Is_01A","N"
+"TCGA","COAD","data_prepare_se_raw","01A","01","A","Primary Solid Tumor","TRUE",455
+"TCGA","COAD","data_prepare_se_raw","01B","01","B","Primary Solid Tumor","FALSE",3
+"TCGA","COAD","data_prepare_se_raw","02A","02","A","Recurrent Solid Tumor","FALSE",1
+"TCGA","COAD","data_prepare_se_raw","06A","06","A","Metastatic","FALSE",1
+"TCGA","COAD","data_prepare_se_raw","11A","11","A","Solid Tissue Normal","FALSE",41
+"TCGA","COAD","raw_counts_columns","01A","01","A","Primary Solid Tumor","TRUE",484
+"TCGA","COAD","raw_counts_columns","01B","01","B","Primary Solid Tumor","FALSE",18
+"TCGA","COAD","raw_counts_columns","01C","01","C","Primary Solid Tumor","FALSE",1
+"TCGA","COAD","raw_counts_columns","02A","02","A","Recurrent Solid Tumor","FALSE",1
+"TCGA","COAD","raw_counts_columns","06A","06","A","Metastatic","FALSE",1
+"TCGA","COAD","raw_counts_columns","11A","11","A","Solid Tissue Normal","FALSE",41
+"TCGA","COAD","raw_metadata_full_barcode","01A","01","A","Primary Solid Tumor","TRUE",484
+"TCGA","COAD","raw_metadata_full_barcode","01B","01","B","Primary Solid Tumor","FALSE",18
+"TCGA","COAD","raw_metadata_full_barcode","01C","01","C","Primary Solid Tumor","FALSE",1
+"TCGA","COAD","raw_metadata_full_barcode","02A","02","A","Recurrent Solid Tumor","FALSE",1
+"TCGA","COAD","raw_metadata_full_barcode","06A","06","A","Metastatic","FALSE",1
+"TCGA","COAD","raw_metadata_full_barcode","11A","11","A","Solid Tissue Normal","FALSE",41
+"TCGA","READ","data_prepare_se_raw","01A","01","A","Primary Solid Tumor","TRUE",163
+"TCGA","READ","data_prepare_se_raw","01B","01","B","Primary Solid Tumor","FALSE",2
+"TCGA","READ","data_prepare_se_raw","01C","01","C","Primary Solid Tumor","FALSE",1
+"TCGA","READ","data_prepare_se_raw","02A","02","A","Recurrent Solid Tumor","FALSE",1
+"TCGA","READ","data_prepare_se_raw","11A","11","A","Solid Tissue Normal","FALSE",10
+"TCGA","READ","raw_counts_columns","01A","01","A","Primary Solid Tumor","TRUE",163
+"TCGA","READ","raw_counts_columns","01B","01","B","Primary Solid Tumor","FALSE",2
+"TCGA","READ","raw_counts_columns","01C","01","C","Primary Solid Tumor","FALSE",1
+"TCGA","READ","raw_counts_columns","02A","02","A","Recurrent Solid Tumor","FALSE",1
+"TCGA","READ","raw_counts_columns","11A","11","A","Solid Tissue Normal","FALSE",10
+"TCGA","READ","raw_metadata_full_barcode","01A","01","A","Primary Solid Tumor","TRUE",163
+"TCGA","READ","raw_metadata_full_barcode","01B","01","B","Primary Solid Tumor","FALSE",2
+"TCGA","READ","raw_metadata_full_barcode","01C","01","C","Primary Solid Tumor","FALSE",1
+"TCGA","READ","raw_metadata_full_barcode","02A","02","A","Recurrent Solid Tumor","FALSE",1
+"TCGA","READ","raw_metadata_full_barcode","11A","11","A","Solid Tissue Normal","FALSE",10

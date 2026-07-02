@@ -1,0 +1,20 @@
+"Script_Analysis","Function","Module","Variable_Design","Statistics","Plot_Type","Default_Scope","Notes_CN","Implemented_In_Script","Selected_This_Run"
+"data_summary","cptac_load_modality","数据审计","包版本、数据根目录、组学覆盖、任务所需文件","文件存在性检查","CSV表","本项目配置","不调用SLCPTAC下载数据；只审计SL_BULK_DATA结构",TRUE,TRUE
+"modal_pair_grid","cptac_correlation","组学两两关联","同一目标基因在可用组学层之间两两比较","自动选择Pearson/Wilcoxon/Chi-square等","Scatter/Lollipop/Box/Heatmap","COAD及泛癌可用层","覆盖7x7能力矩阵中的常用单基因组合",TRUE,TRUE
+"scenario01","cptac_correlation","相关/关联场景1","1 continuous vs 1 continuous","Pearson/Spearman/Kendall","CorPlot或LollipopPlot","ATF3 RNAseq vs logCNA","当前LinkedOmicsKB COAD蛋白矩阵缺少ATF3蛋白，默认用ATF3 RNAseq/logCNA完成主线",TRUE,TRUE
+"scenario02","cptac_correlation","相关/关联场景2","1 continuous vs multiple continuous","相关分析+FDR","LollipopPlot或DotPlot","ATF3 RNAseq vs连续变量logCNA面板","",TRUE,TRUE
+"scenario03","cptac_correlation","相关/关联场景3","multiple continuous vs multiple continuous","相关矩阵+FDR","DotPlot","连续变量面板RNAseq vs logCNA","",TRUE,TRUE
+"scenario04","cptac_correlation","相关/关联场景4","1 categorical vs 1 continuous","Wilcoxon或Kruskal-Wallis","BoxPlot","KRAS Mutation/Stage vs ATF3 RNAseq","",TRUE,TRUE
+"scenario05","cptac_correlation","相关/关联场景5","1 continuous vs multiple categorical","多组Wilcoxon/Kruskal-Wallis","Multiple BoxPlots","ATF3 RNAseq vs突变面板","",TRUE,TRUE
+"scenario06","cptac_correlation","相关/关联场景6","multiple continuous vs 1 categorical","多组Wilcoxon/Kruskal-Wallis","Multiple BoxPlots","连续变量RNAseq面板 vs KRAS Mutation","",TRUE,TRUE
+"scenario07","cptac_correlation","相关/关联场景7","categorical vs categorical","Fisher或Chi-square+Odds Ratio","BarPlot或Heatmap","共突变/临床-突变关联","",TRUE,TRUE
+"scenario08","cptac_enrichment","富集场景8","1 categorical vs genome-wide","limma DEA","NetworkPlot","KRAS Mutation驱动蛋白组扫描","",TRUE,TRUE
+"scenario09","cptac_enrichment","富集场景9","1 categorical vs pathways","limma DEA -> fgsea","GSEA DotPlot","KRAS Mutation驱动通路富集","",TRUE,TRUE
+"scenario10","cptac_enrichment","富集场景10","multiple categorical vs genome-wide","多变量limma DEA","DotPlot Paired","突变面板驱动蛋白组扫描","",TRUE,TRUE
+"scenario11","cptac_enrichment","富集场景11","multiple categorical vs pathways","多变量DEA -> fgsea","GSEA Matrix","突变面板通路富集","",TRUE,TRUE
+"scenario12","cptac_enrichment","富集场景12","1 continuous vs genome-wide","相关排序","NetworkPlot","ATF3 RNAseq相关蛋白组扫描","var1使用ATF3 RNAseq，genome_modal仍使用CPTAC COAD Protein矩阵",TRUE,TRUE
+"scenario13","cptac_enrichment","富集场景13","1 continuous vs pathways","相关排序 -> fgsea","GSEA DotPlot","ATF3 RNAseq相关通路富集","var1使用ATF3 RNAseq，GSEA排名来自Protein genome",TRUE,TRUE
+"scenario14","cptac_enrichment","富集场景14","multiple continuous vs genome-wide","多连续变量相关排序","DotPlot Paired","连续变量RNAseq面板相关蛋白组扫描","",TRUE,TRUE
+"scenario15","cptac_enrichment","富集场景15","multiple continuous vs pathways","多连续变量相关排序 -> fgsea","GSEA Matrix","连续变量RNAseq面板通路富集","",TRUE,TRUE
+"scenario16","cptac_survival","生存场景16","1 variable vs survival","KM + Cox","KM+Cox combined","ATF3单变量OS/PFS","",TRUE,TRUE
+"scenario17","cptac_survival","生存场景17","multiple variables vs survival","Cox回归","Forest plot","ATF3泛癌或多基因OS/PFS","",TRUE,TRUE

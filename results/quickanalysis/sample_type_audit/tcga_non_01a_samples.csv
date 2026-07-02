@@ -1,0 +1,213 @@
+"Dataset","Cohort","Source","Sample_ID","Short_Sample_ID","Patient_ID","Sample_Fragment_Raw","Sample_Fragment","Sample_Type_Code","Vial","Portion_Analyte","Is_01A","Has_Local_Duplicate_Suffix","Is_TCGA_Barcode_Like","Sample_Type_Definition","Short_Letter_Code","ColData_TCGA_Sample_Type","ColData_Group","ColData_Group_Detail","GDC_Sample_Type","CGC_Sample_Type"
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-2682-11A",NA,"TCGA-A6-2682","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-NH-A8F7-06A",NA,"TCGA-NH-A8F7","06A","06A","06","A",NA,FALSE,FALSE,TRUE,"Metastatic","TM","Metastatic","tumor_metastatic","metastatic_06A",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-F4-6704-11A",NA,"TCGA-F4-6704","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-5662-11A",NA,"TCGA-A6-5662","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-2684-11A",NA,"TCGA-A6-2684","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-2679-11A",NA,"TCGA-A6-2679","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-5665-11A",NA,"TCGA-A6-5665","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3516-11A",NA,"TCGA-AA-3516","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3527-11A",NA,"TCGA-AA-3527","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3518-11A",NA,"TCGA-AA-3518","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-2671-11A",NA,"TCGA-A6-2671","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AZ-6600-11A",NA,"TCGA-AZ-6600","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AZ-6601-11A",NA,"TCGA-AZ-6601","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-2686-11A",NA,"TCGA-A6-2686","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AZ-6603-11A",NA,"TCGA-AZ-6603","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-G4-6317-02A",NA,"TCGA-G4-6317","02A","02A","02","A",NA,FALSE,FALSE,TRUE,"Recurrent Solid Tumor","TR","Recurrent Solid Tumor","tumor_recurrent_solid","recurrent_solid_tumor_02A",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3660-11A",NA,"TCGA-AA-3660","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-2678-11A",NA,"TCGA-A6-2678","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3697-11A",NA,"TCGA-AA-3697","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-CK-4947-01B",NA,"TCGA-CK-4947","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP","Primary Solid Tumor","tumor_primary_non_a","primary_solid_tumor_01B",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-5659-11A",NA,"TCGA-A6-5659","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-2683-11A",NA,"TCGA-A6-2683","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-2685-11A",NA,"TCGA-A6-2685","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3525-11A",NA,"TCGA-AA-3525","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-2675-11A",NA,"TCGA-A6-2675","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AZ-6599-11A",NA,"TCGA-AZ-6599","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3522-11A",NA,"TCGA-AA-3522","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-CK-4948-01B",NA,"TCGA-CK-4948","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP","Primary Solid Tumor","tumor_primary_non_a","primary_solid_tumor_01B",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AZ-4682-01B",NA,"TCGA-AZ-4682","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP","Primary Solid Tumor","tumor_primary_non_a","primary_solid_tumor_01B",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3514-11A",NA,"TCGA-AA-3514","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-2680-11A",NA,"TCGA-A6-2680","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3534-11A",NA,"TCGA-AA-3534","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3517-11A",NA,"TCGA-AA-3517","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3655-11A",NA,"TCGA-AA-3655","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AZ-6605-11A",NA,"TCGA-AZ-6605","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3712-11A",NA,"TCGA-AA-3712","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AZ-6598-11A",NA,"TCGA-AZ-6598","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3531-11A",NA,"TCGA-AA-3531","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3520-11A",NA,"TCGA-AA-3520","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3713-11A",NA,"TCGA-AA-3713","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3489-11A",NA,"TCGA-AA-3489","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-A6-5667-11A",NA,"TCGA-A6-5667","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3511-11A",NA,"TCGA-AA-3511","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3662-11A",NA,"TCGA-AA-3662","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3663-11A",NA,"TCGA-AA-3663","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","data_prepare_se_raw","TCGA-AA-3496-11A",NA,"TCGA-AA-3496","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-G5-6572-02A",NA,"TCGA-G5-6572","02A","02A","02","A",NA,FALSE,FALSE,TRUE,"Recurrent Solid Tumor","TR","Recurrent Solid Tumor","tumor_recurrent_solid","recurrent_solid_tumor_02A",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-AF-2691-11A",NA,"TCGA-AF-2691","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-AG-3725-11A",NA,"TCGA-AG-3725","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-AG-3731-11A",NA,"TCGA-AG-3731","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-AF-2692-11A",NA,"TCGA-AF-2692","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-CI-6623-01B",NA,"TCGA-CI-6623","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP","Primary Solid Tumor","tumor_primary_non_a","primary_solid_tumor_01B",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-AG-3742-11A",NA,"TCGA-AG-3742","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-CI-6619-01B",NA,"TCGA-CI-6619","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP","Primary Solid Tumor","tumor_primary_non_a","primary_solid_tumor_01B",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-AH-6643-11A",NA,"TCGA-AH-6643","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-CI-6624-01C",NA,"TCGA-CI-6624","01C","01C","01","C",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP","Primary Solid Tumor","tumor_primary_non_a","primary_solid_tumor_01C",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-AF-3400-11A",NA,"TCGA-AF-3400","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-AG-3732-11A",NA,"TCGA-AG-3732","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-AF-5654-11A",NA,"TCGA-AF-5654","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","READ","data_prepare_se_raw","TCGA-AF-2689-11A",NA,"TCGA-AF-2689","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT","Solid Tissue Normal","normal","normal_solid_11a",NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2682-11A",NA,"TCGA-A6-2682","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-NH-A8F7-06A",NA,"TCGA-NH-A8F7","06A","06A","06","A",NA,FALSE,FALSE,TRUE,"Metastatic","TM",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-6781-01B",NA,"TCGA-A6-6781","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-F4-6704-11A",NA,"TCGA-F4-6704","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-5662-11A",NA,"TCGA-A6-5662","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2684-11A",NA,"TCGA-A6-2684","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2679-11A",NA,"TCGA-A6-2679","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2684-01C",NA,"TCGA-A6-2684","01C","01C","01","C",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-5659-01B",NA,"TCGA-A6-5659","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-5665-11A",NA,"TCGA-A6-5665","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-3809-01B",NA,"TCGA-A6-3809","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3516-11A",NA,"TCGA-AA-3516","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-5661-01B",NA,"TCGA-A6-5661","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3527-11A",NA,"TCGA-AA-3527","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3518-11A",NA,"TCGA-AA-3518","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2671-11A",NA,"TCGA-A6-2671","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AZ-6600-11A",NA,"TCGA-AZ-6600","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AZ-6601-11A",NA,"TCGA-AZ-6601","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-5665-01B",NA,"TCGA-A6-5665","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2686-11A",NA,"TCGA-A6-2686","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AZ-6603-11A",NA,"TCGA-AZ-6603","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2672-01B",NA,"TCGA-A6-2672","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-G4-6317-02A",NA,"TCGA-G4-6317","02A","02A","02","A",NA,FALSE,FALSE,TRUE,"Recurrent Solid Tumor","TR",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2674-01B",NA,"TCGA-A6-2674","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3660-11A",NA,"TCGA-AA-3660","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2678-11A",NA,"TCGA-A6-2678","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3697-11A",NA,"TCGA-AA-3697","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-CK-4947-01B",NA,"TCGA-CK-4947","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-5659-11A",NA,"TCGA-A6-5659","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-5665-01B__dup1",NA,"TCGA-A6-5665","01B__dup1","01B","01","B",NA,FALSE,TRUE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-3810-01B",NA,"TCGA-A6-3810","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-5656-01B",NA,"TCGA-A6-5656","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2683-11A",NA,"TCGA-A6-2683","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2685-11A",NA,"TCGA-A6-2685","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3525-11A",NA,"TCGA-AA-3525","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2675-11A",NA,"TCGA-A6-2675","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AZ-6599-11A",NA,"TCGA-AZ-6599","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-6780-01B",NA,"TCGA-A6-6780","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3522-11A",NA,"TCGA-AA-3522","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-CK-4948-01B",NA,"TCGA-CK-4948","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AZ-4682-01B",NA,"TCGA-AZ-4682","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3514-11A",NA,"TCGA-AA-3514","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2677-01B",NA,"TCGA-A6-2677","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2672-01B__dup1",NA,"TCGA-A6-2672","01B__dup1","01B","01","B",NA,FALSE,TRUE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-2680-11A",NA,"TCGA-A6-2680","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3534-11A",NA,"TCGA-AA-3534","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3517-11A",NA,"TCGA-AA-3517","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3655-11A",NA,"TCGA-AA-3655","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AZ-6605-11A",NA,"TCGA-AZ-6605","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3712-11A",NA,"TCGA-AA-3712","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AZ-6598-11A",NA,"TCGA-AZ-6598","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3531-11A",NA,"TCGA-AA-3531","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3520-11A",NA,"TCGA-AA-3520","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3713-11A",NA,"TCGA-AA-3713","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3489-11A",NA,"TCGA-AA-3489","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-5667-11A",NA,"TCGA-A6-5667","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3511-11A",NA,"TCGA-AA-3511","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3662-11A",NA,"TCGA-AA-3662","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-5661-01B__dup1",NA,"TCGA-A6-5661","01B__dup1","01B","01","B",NA,FALSE,TRUE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-A6-6650-01B",NA,"TCGA-A6-6650","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3663-11A",NA,"TCGA-AA-3663","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_counts_columns","TCGA-AA-3496-11A",NA,"TCGA-AA-3496","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-G5-6572-02A",NA,"TCGA-G5-6572","02A","02A","02","A",NA,FALSE,FALSE,TRUE,"Recurrent Solid Tumor","TR",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-AF-2691-11A",NA,"TCGA-AF-2691","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-AG-3725-11A",NA,"TCGA-AG-3725","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-AG-3731-11A",NA,"TCGA-AG-3731","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-AF-2692-11A",NA,"TCGA-AF-2692","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-CI-6623-01B",NA,"TCGA-CI-6623","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-AG-3742-11A",NA,"TCGA-AG-3742","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-CI-6619-01B",NA,"TCGA-CI-6619","01B","01B","01","B",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-AH-6643-11A",NA,"TCGA-AH-6643","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-CI-6624-01C",NA,"TCGA-CI-6624","01C","01C","01","C",NA,FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-AF-3400-11A",NA,"TCGA-AF-3400","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-AG-3732-11A",NA,"TCGA-AG-3732","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-AF-5654-11A",NA,"TCGA-AF-5654","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","READ","raw_counts_columns","TCGA-AF-2689-11A",NA,"TCGA-AF-2689","11A","11A","11","A",NA,FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,NA,NA
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2682-11A-01R-A32Z-07","TCGA-A6-2682-11A","TCGA-A6-2682","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-NH-A8F7-06A-31R-A41B-07","TCGA-NH-A8F7-06A","TCGA-NH-A8F7","06A","06A","06","A","31R",FALSE,FALSE,TRUE,"Metastatic","TM",NA,NA,NA,"Metastatic","Metastatic"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-6781-01B-06R-A277-07","TCGA-A6-6781-01B","TCGA-A6-6781","01B","01B","01","B","06R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-F4-6704-11A-01R-1839-07","TCGA-F4-6704-11A","TCGA-F4-6704","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-5662-11A-01R-1653-07","TCGA-A6-5662-11A","TCGA-A6-5662","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2684-11A-01R-A32Z-07","TCGA-A6-2684-11A","TCGA-A6-2684","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2679-11A-01R-A32Z-07","TCGA-A6-2679-11A","TCGA-A6-2679","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2684-01C-08R-A277-07","TCGA-A6-2684-01C","TCGA-A6-2684","01C","01C","01","C","08R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-5659-01B-04R-A277-07","TCGA-A6-5659-01B","TCGA-A6-5659","01B","01B","01","B","04R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-5665-11A-01R-1653-07","TCGA-A6-5665-11A","TCGA-A6-5665","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-3809-01B-04R-A277-07","TCGA-A6-3809-01B","TCGA-A6-3809","01B","01B","01","B","04R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3516-11A-01R-A32Z-07","TCGA-AA-3516-11A","TCGA-AA-3516","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-5661-01B-05R-2302-07","TCGA-A6-5661-01B","TCGA-A6-5661","01B","01B","01","B","05R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3527-11A-01R-A32Z-07","TCGA-AA-3527-11A","TCGA-AA-3527","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3518-11A-01R-1672-07","TCGA-AA-3518-11A","TCGA-AA-3518","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2671-11A-01R-A32Z-07","TCGA-A6-2671-11A","TCGA-A6-2671","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AZ-6600-11A-01R-1774-07","TCGA-AZ-6600-11A","TCGA-AZ-6600","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AZ-6601-11A-01R-1774-07","TCGA-AZ-6601-11A","TCGA-AZ-6601","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-5665-01B-03R-2302-07","TCGA-A6-5665-01B","TCGA-A6-5665","01B","01B","01","B","03R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2686-11A-01R-A32Z-07","TCGA-A6-2686-11A","TCGA-A6-2686","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AZ-6603-11A-02R-1839-07","TCGA-AZ-6603-11A","TCGA-AZ-6603","11A","11A","11","A","02R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2672-01B-03R-2302-07","TCGA-A6-2672-01B","TCGA-A6-2672","01B","01B","01","B","03R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-G4-6317-02A-11R-2066-07","TCGA-G4-6317-02A","TCGA-G4-6317","02A","02A","02","A","11R",FALSE,FALSE,TRUE,"Recurrent Solid Tumor","TR",NA,NA,NA,"Recurrent Tumor","Recurrent Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2674-01B-04R-A277-07","TCGA-A6-2674-01B","TCGA-A6-2674","01B","01B","01","B","04R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3660-11A-01R-1723-07","TCGA-AA-3660-11A","TCGA-AA-3660","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2678-11A-01R-A32Z-07","TCGA-A6-2678-11A","TCGA-A6-2678","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3697-11A-01R-1723-07","TCGA-AA-3697-11A","TCGA-AA-3697","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-CK-4947-01B-11R-1653-07","TCGA-CK-4947-01B","TCGA-CK-4947","01B","01B","01","B","11R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-5659-11A-01R-1653-07","TCGA-A6-5659-11A","TCGA-A6-5659","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-5665-01B-03R-2302-07","TCGA-A6-5665-01B__dup1","TCGA-A6-5665","01B","01B","01","B","03R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-3810-01B-04R-A277-07","TCGA-A6-3810-01B","TCGA-A6-3810","01B","01B","01","B","04R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-5656-01B-02R-A277-07","TCGA-A6-5656-01B","TCGA-A6-5656","01B","01B","01","B","02R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2683-11A-01R-A32Z-07","TCGA-A6-2683-11A","TCGA-A6-2683","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2685-11A-01R-A32Z-07","TCGA-A6-2685-11A","TCGA-A6-2685","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3525-11A-01R-A32Z-07","TCGA-AA-3525-11A","TCGA-AA-3525","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2675-11A-01R-1723-07","TCGA-A6-2675-11A","TCGA-A6-2675","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AZ-6599-11A-01R-1774-07","TCGA-AZ-6599-11A","TCGA-AZ-6599","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-6780-01B-04R-A277-07","TCGA-A6-6780-01B","TCGA-A6-6780","01B","01B","01","B","04R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3522-11A-01R-A32Z-07","TCGA-AA-3522-11A","TCGA-AA-3522","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-CK-4948-01B-11R-1653-07","TCGA-CK-4948-01B","TCGA-CK-4948","01B","01B","01","B","11R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AZ-4682-01B-01R-A32Z-07","TCGA-AZ-4682-01B","TCGA-AZ-4682","01B","01B","01","B","01R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3514-11A-01R-A32Z-07","TCGA-AA-3514-11A","TCGA-AA-3514","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2677-01B-02R-A277-07","TCGA-A6-2677-01B","TCGA-A6-2677","01B","01B","01","B","02R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2672-01B-03R-2302-07","TCGA-A6-2672-01B__dup1","TCGA-A6-2672","01B","01B","01","B","03R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-2680-11A-01R-A32Z-07","TCGA-A6-2680-11A","TCGA-A6-2680","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3534-11A-01R-A32Z-07","TCGA-AA-3534-11A","TCGA-AA-3534","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3517-11A-01R-A32Z-07","TCGA-AA-3517-11A","TCGA-AA-3517","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3655-11A-01R-1723-07","TCGA-AA-3655-11A","TCGA-AA-3655","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AZ-6605-11A-01R-1839-07","TCGA-AZ-6605-11A","TCGA-AZ-6605","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3712-11A-01R-1723-07","TCGA-AA-3712-11A","TCGA-AA-3712","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AZ-6598-11A-01R-1774-07","TCGA-AZ-6598-11A","TCGA-AZ-6598","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3531-11A-01R-A32Z-07","TCGA-AA-3531-11A","TCGA-AA-3531","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3520-11A-01R-A32Z-07","TCGA-AA-3520-11A","TCGA-AA-3520","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3713-11A-01R-1723-07","TCGA-AA-3713-11A","TCGA-AA-3713","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3489-11A-01R-1839-07","TCGA-AA-3489-11A","TCGA-AA-3489","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-5667-11A-01R-1723-07","TCGA-A6-5667-11A","TCGA-A6-5667","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3511-11A-01R-1839-07","TCGA-AA-3511-11A","TCGA-AA-3511","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3662-11A-01R-1723-07","TCGA-AA-3662-11A","TCGA-AA-3662","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-5661-01B-05R-2302-07","TCGA-A6-5661-01B__dup1","TCGA-A6-5661","01B","01B","01","B","05R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-A6-6650-01B-02R-A277-07","TCGA-A6-6650-01B","TCGA-A6-6650","01B","01B","01","B","02R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3663-11A-01R-1723-07","TCGA-AA-3663-11A","TCGA-AA-3663","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","COAD","raw_metadata_full_barcode","TCGA-AA-3496-11A-01R-1839-07","TCGA-AA-3496-11A","TCGA-AA-3496","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-G5-6572-02A-12R-1830-07","TCGA-G5-6572-02A","TCGA-G5-6572","02A","02A","02","A","12R",FALSE,FALSE,TRUE,"Recurrent Solid Tumor","TR",NA,NA,NA,"Recurrent Tumor","Recurrent Tumor"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-AF-2691-11A-01R-A32Z-07","TCGA-AF-2691-11A","TCGA-AF-2691","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-AG-3725-11A-01R-1736-07","TCGA-AG-3725-11A","TCGA-AG-3725","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-AG-3731-11A-01R-1736-07","TCGA-AG-3731-11A","TCGA-AG-3731","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-AF-2692-11A-01R-A32Z-07","TCGA-AF-2692-11A","TCGA-AF-2692","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-CI-6623-01B-11R-1830-07","TCGA-CI-6623-01B","TCGA-CI-6623","01B","01B","01","B","11R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-AG-3742-11A-01R-1660-07","TCGA-AG-3742-11A","TCGA-AG-3742","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-CI-6619-01B-11R-1830-07","TCGA-CI-6619-01B","TCGA-CI-6619","01B","01B","01","B","11R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-AH-6643-11A-01R-1830-07","TCGA-AH-6643-11A","TCGA-AH-6643","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-CI-6624-01C-11R-1830-07","TCGA-CI-6624-01C","TCGA-CI-6624","01C","01C","01","C","11R",FALSE,FALSE,TRUE,"Primary Solid Tumor","TP",NA,NA,NA,"Primary Tumor","Primary Tumor"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-AF-3400-11A-01R-A32Z-07","TCGA-AF-3400-11A","TCGA-AF-3400","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-AG-3732-11A-01R-1660-07","TCGA-AG-3732-11A","TCGA-AG-3732","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-AF-5654-11A-11R-1660-07","TCGA-AF-5654-11A","TCGA-AF-5654","11A","11A","11","A","11R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"
+"TCGA","READ","raw_metadata_full_barcode","TCGA-AF-2689-11A-01R-A32Z-07","TCGA-AF-2689-11A","TCGA-AF-2689","11A","11A","11","A","01R",FALSE,FALSE,TRUE,"Solid Tissue Normal","NT",NA,NA,NA,"Solid Tissue Normal","Solid Tissue Normal"

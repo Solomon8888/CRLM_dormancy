@@ -1,0 +1,2 @@
+"Cancer","TCGAplot_Samples","Local_SE_Samples","Shared_Exact_Sample_IDs","TCGAplot_Only_Samples","Local_SE_Only_Samples","TCGAplot_Tumor","TCGAplot_Normal","Local_Tumor_Strict_01A","Local_Normal_Strict_11A","Local_Non_01A_Tumor_Or_Other","Main_Diagnosis"
+"COAD","514","501","501","13","0","473","41","455","41","5","additional_primary_tumor_vial_non_01A; local_SE_keeps_01A_preferred_sample"

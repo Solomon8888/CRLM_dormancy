@@ -1,0 +1,2 @@
+"categorical","continuous","p_value","test_method","effect_size","n_groups","n","p_adjusted","significant","var1_feature","var2_feature","method"
+"COAD_Gender_Clinical","COAD_ATF3_RNAseq","0.8252359758697854","Wilcoxon","0.0215494010877257","2","105","0.8252359758697854",FALSE,"Gender (Clinical, COAD)","ATF3 (RNAseq, COAD)","Wilcoxon"

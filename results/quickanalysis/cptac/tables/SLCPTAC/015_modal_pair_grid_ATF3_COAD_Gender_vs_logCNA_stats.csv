@@ -1,0 +1,2 @@
+"categorical","continuous","p_value","test_method","effect_size","n_groups","n","p_adjusted","significant","var1_feature","var2_feature","method"
+"COAD_Gender_Clinical","COAD_ATF3_logCNA","0.9711302839943636","Wilcoxon","0.003548792253636825","2","104","0.9711302839943636",FALSE,"Gender (Clinical, COAD)","ATF3 (logCNA, COAD)","Wilcoxon"

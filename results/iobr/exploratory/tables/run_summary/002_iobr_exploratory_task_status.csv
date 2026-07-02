@@ -1,0 +1,121 @@
+"Dataset_ID","Module","Task","Status","Message","Rows","Columns","Output_File"
+"GTEx_COLON","roc","GTEx_COLON_ATF3_estimate_scores","success","","4","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/GTEx/GTEx_COLON/GENE_ATF3/Target_Group/tables/roc/estimate/GTEx_COLON_ATF3_estimate_scores_target_group_roc.csv"
+"GTEx_COLON","cluster","GTEx_COLON_ATF3_estimate_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"GTEx_COLON","roc","GTEx_COLON_ATF3_ips_scores","success","","6","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/GTEx/GTEx_COLON/GENE_ATF3/Target_Group/tables/roc/ips/GTEx_COLON_ATF3_ips_scores_target_group_roc.csv"
+"GTEx_COLON","cluster","GTEx_COLON_ATF3_ips_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"GTEx_COLON","roc","GTEx_COLON_ATF3_mcpcounter_scores","success","","10","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/GTEx/GTEx_COLON/GENE_ATF3/Target_Group/tables/roc/mcpcounter/GTEx_COLON_ATF3_mcpcounter_scores_target_group_roc.csv"
+"GTEx_COLON","cluster","GTEx_COLON_ATF3_mcpcounter_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"GTEx_COLON","roc","GTEx_COLON_ATF3_integration_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/GTEx/GTEx_COLON/GENE_ATF3/Target_Group/tables/roc/integration/GTEx_COLON_ATF3_integration_scores_target_group_roc.csv"
+"GTEx_COLON","cluster","GTEx_COLON_ATF3_integration_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"GTEx_COLON","roc","GTEx_COLON_ATF3_pca_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/GTEx/GTEx_COLON/GENE_ATF3/Target_Group/tables/roc/pca/GTEx_COLON_ATF3_pca_scores_target_group_roc.csv"
+"GTEx_COLON","cluster","GTEx_COLON_ATF3_pca_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"GTEx_COLON","roc","GTEx_COLON_ATF3_ssgsea_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/GTEx/GTEx_COLON/GENE_ATF3/Target_Group/tables/roc/ssgsea/GTEx_COLON_ATF3_ssgsea_scores_target_group_roc.csv"
+"GTEx_COLON","cluster","GTEx_COLON_ATF3_ssgsea_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"GTEx_COLON","roc","GTEx_COLON_ATF3_zscore_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/GTEx/GTEx_COLON/GENE_ATF3/Target_Group/tables/roc/zscore/GTEx_COLON_ATF3_zscore_scores_target_group_roc.csv"
+"GTEx_COLON","cluster","GTEx_COLON_ATF3_zscore_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_cibersort_abs_scores","success","","12","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/cibersort_abs/TCGA_COAD_01A_ATF3_cibersort_abs_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_cibersort_abs_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/cibersort_abs/TCGA_COAD_01A_ATF3_cibersort_abs_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_cibersort_abs_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_cibersort_scores","success","","12","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/cibersort/TCGA_COAD_01A_ATF3_cibersort_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_cibersort_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/cibersort/TCGA_COAD_01A_ATF3_cibersort_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_cibersort_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_epic_scores","success","","8","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/epic/TCGA_COAD_01A_ATF3_epic_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_epic_scores","success","","8","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/epic/TCGA_COAD_01A_ATF3_epic_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_epic_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_estimate_scores","success","","4","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/estimate/TCGA_COAD_01A_ATF3_estimate_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_estimate_scores","success","","4","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/estimate/TCGA_COAD_01A_ATF3_estimate_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_estimate_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_ips_scores","success","","6","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/ips/TCGA_COAD_01A_ATF3_ips_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_ips_scores","success","","6","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/ips/TCGA_COAD_01A_ATF3_ips_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_ips_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_lsei_scores","success","","12","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/lsei/TCGA_COAD_01A_ATF3_lsei_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_lsei_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/lsei/TCGA_COAD_01A_ATF3_lsei_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_lsei_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_mcpcounter_scores","success","","10","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/mcpcounter/TCGA_COAD_01A_ATF3_mcpcounter_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_mcpcounter_scores","success","","10","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/mcpcounter/TCGA_COAD_01A_ATF3_mcpcounter_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_mcpcounter_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_quantiseq_scores","success","","11","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/quantiseq/TCGA_COAD_01A_ATF3_quantiseq_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_quantiseq_scores","success","","11","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/quantiseq/TCGA_COAD_01A_ATF3_quantiseq_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_quantiseq_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_svr_scores","success","","12","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/svr/TCGA_COAD_01A_ATF3_svr_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_svr_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/svr/TCGA_COAD_01A_ATF3_svr_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_svr_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_timer_scores","success","","6","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/timer/TCGA_COAD_01A_ATF3_timer_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_timer_scores","success","","6","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/timer/TCGA_COAD_01A_ATF3_timer_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_timer_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_integration_scores","success","","12","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/integration/TCGA_COAD_01A_ATF3_integration_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_integration_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/integration/TCGA_COAD_01A_ATF3_integration_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_integration_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_pca_scores","success","","12","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/pca/TCGA_COAD_01A_ATF3_pca_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_pca_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/pca/TCGA_COAD_01A_ATF3_pca_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_pca_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_ssgsea_scores","success","","12","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/ssgsea/TCGA_COAD_01A_ATF3_ssgsea_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_ssgsea_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/ssgsea/TCGA_COAD_01A_ATF3_ssgsea_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_ssgsea_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","survival","TCGA_COAD_01A_ATF3_zscore_scores","success","","12","5","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/survival/zscore/TCGA_COAD_01A_ATF3_zscore_scores_batch_survival.csv"
+"TCGA_COAD_01A","roc","TCGA_COAD_01A_ATF3_zscore_scores","success","","12","3","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/GENE_ATF3/Target_Group/tables/roc/zscore/TCGA_COAD_01A_ATF3_zscore_scores_target_group_roc.csv"
+"TCGA_COAD_01A","cluster","TCGA_COAD_01A_ATF3_zscore_scores","skipped","Need >=3 features and NbClust.",NA,NA,""
+"TCGA_COAD_01A","outlier","TCGA_COAD_01A","success","","12","1","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/TCGA/TCGA_COAD_01A/QC/all_samples/tables/outlier/outlier/TCGA_COAD_01A_outlier_samples.csv"
+"GTEx_COLON","outlier","GTEx_COLON","failed","Error in if (sum(adj < 0) > 0) { : missing value where TRUE/FALSE needed
+",NA,NA,""
+"GSE114012","outlier","GSE114012","success","","0","1","/Users/solomon/Projects/CRLM_dormancy/results/iobr/exploratory/GSE114012/GSE114012/QC/all_samples/tables/outlier/outlier/GSE114012_outlier_samples.csv"
+"GSE114012","sig_gsea","GSE114012_ALL_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_ALL_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_ALL_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_SW48_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_SW48_C2","failed","Error in dplyr::distinct(., .data$gs_cat, .data$gs_subcat) : 
+  Must use existing variables.
+✖ `gs_cat` not found in `.data`.
+✖ `gs_subcat` not found in `.data`.
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_SW48_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_H","failed","Error in dplyr::distinct(., .data$gs_cat, .data$gs_subcat) : 
+  Must use existing variables.
+✖ `gs_cat` not found in `.data`.
+✖ `gs_subcat` not found in `.data`.
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HCT15_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HCT15_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HCT15_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HT55_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HT55_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HT55_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_RKO_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_RKO_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_RKO_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW48_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW48_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW48_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW948_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW948_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW948_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""

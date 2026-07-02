@@ -1,0 +1,7 @@
+"sig_names","p.value","statistic","Comparison","Method_Source","p.adj","p.value.label","p.adj.label","Significance","Adjusted_Significance","Group_Column","Group_Display","Analysis_Design","Group_Sizes"
+"EC_IPS","0.00002494779688743808","19966","Low vs High","stats::wilcox.test","0.0001496867813246285","<0.001","<0.001","***","***","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"SC_IPS","0.08206925961600952668","28317","Low vs High","stats::wilcox.test","0.1808470296897053409","0.082","0.181","ns","ns","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"CP_IPS","0.09042351484485267044","28253","Low vs High","stats::wilcox.test","0.1808470296897053409","0.090","0.181","ns","ns","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"AZ_IPS","0.23667921736201713578","24218","Low vs High","stats::wilcox.test","0.3218592657490859654","0.237","0.322","ns","ns","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"MHC_IPS","0.31178687148209760505","24459","Low vs High","stats::wilcox.test","0.3218592657490859654","0.312","0.322","ns","ns","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"IPS_IPS","0.32185926574908596542","24574","Low vs High","stats::wilcox.test","0.3218592657490859654","0.322","0.322","ns","ns","Target_Group","Target expression group","Target_Group","High=228; Low=227"

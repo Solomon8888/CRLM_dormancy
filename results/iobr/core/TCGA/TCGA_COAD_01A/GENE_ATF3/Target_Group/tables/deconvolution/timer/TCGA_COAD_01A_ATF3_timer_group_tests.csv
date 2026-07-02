@@ -1,0 +1,7 @@
+"sig_names","p.value","statistic","Comparison","Method_Source","p.adj","p.value.label","p.adj.label","Significance","Adjusted_Significance","Group_Column","Group_Display","Analysis_Design","Group_Sizes"
+"Neutrophil_TIMER","0.00000008703852578675377","18372.0","Low vs High","stats::wilcox.test","0.0000005222311547205226","<0.001","<0.001","***","***","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"DC_TIMER","0.00000022697638078222030","18619.0","Low vs High","stats::wilcox.test","0.0000006809291423466609","<0.001","<0.001","***","***","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"T_cell_CD8_TIMER","0.00001079182486805980789","19706.0","Low vs High","stats::wilcox.test","0.0000215836497361196158","<0.001","<0.001","***","***","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"T_cell_CD4_TIMER","0.02541106637645948809756","22743.0","Low vs High","stats::wilcox.test","0.0381165995646892338811","0.025","0.038","*","*","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"Macrophage_TIMER","0.58931331691674015971216","26633.5","Low vs High","stats::wilcox.test","0.7071759803000882138591","0.589","0.707","ns","ns","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"B_cell_TIMER","0.77137695778038040117508","26286.0","Low vs High","stats::wilcox.test","0.7713769577803804011751","0.771","0.771","ns","ns","Target_Group","Target expression group","Target_Group","High=228; Low=227"

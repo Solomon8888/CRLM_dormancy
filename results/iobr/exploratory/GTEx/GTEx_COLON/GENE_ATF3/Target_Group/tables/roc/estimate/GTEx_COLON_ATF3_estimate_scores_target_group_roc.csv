@@ -1,0 +1,5 @@
+"Feature","AUC","Direction"
+"StromalScore_estimate","0.7253184760971062",">"
+"ESTIMATEScore_estimate","0.6116355115045944",">"
+"TumorPurity_estimate","0.6116355115045944","<"
+"ImmuneScore_estimate","0.5627955356555734","<"

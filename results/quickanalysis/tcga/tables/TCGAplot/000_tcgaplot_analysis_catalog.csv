@@ -1,0 +1,70 @@
+"Function","Script_Analysis","Module","Scope","Target_Type","Description_CN","Requirement","Implemented_In_Script","Default_Run","Selected_This_Run"
+"gene_3age","gene_3age","临床分组","指定癌种","基因","按年轻/中间/年老三组比较目标基因表达","无需额外配置",TRUE,TRUE,TRUE
+"gene_age","gene_age","临床分组","指定癌种","基因","按年龄二分组比较目标基因表达","无需额外配置",TRUE,TRUE,TRUE
+"gene_gender","gene_gender","临床分组","指定癌种","基因","按性别比较目标基因表达","无需额外配置",TRUE,TRUE,TRUE
+"gene_stage","gene_stage","临床分组","指定癌种","基因","按病理分期比较目标基因表达","无需额外配置",TRUE,TRUE,TRUE
+"gene_coexp_heatmap","gene_coexp_heatmap","共表达分析","指定癌种","基因","目标基因正/负共表达基因热图及GO富集","无需额外配置",TRUE,TRUE,TRUE
+"get_cancers","data_summary","内置数据概览","泛癌","数据","输出TCGAplot内置33癌种tumor/normal样本数","无需额外配置",TRUE,TRUE,TRUE
+"get_paired_cancers","data_summary","内置数据概览","泛癌","数据","输出TCGAplot内置可配对癌种样本数","无需额外配置",TRUE,TRUE,TRUE
+"gene_checkpoint_heatmap","gene_checkpoint_heatmap","单基因免疫相关","泛癌","基因","目标基因与免疫检查点基因相关性热图","无需额外配置",TRUE,TRUE,TRUE
+"gene_chemokine_heatmap","gene_chemokine_heatmap","单基因免疫相关","泛癌","基因","目标基因与趋化因子相关性热图","无需额外配置",TRUE,TRUE,TRUE
+"gene_immucell_heatmap","gene_immucell_heatmap","单基因免疫相关","泛癌","基因","目标基因与免疫细胞比例相关性热图","无需额外配置",TRUE,TRUE,TRUE
+"gene_immuinhibitor_heatmap","gene_immuinhibitor_heatmap","单基因免疫相关","泛癌","基因","目标基因与免疫抑制因子相关性热图","无需额外配置",TRUE,TRUE,TRUE
+"gene_immunescore_heatmap","gene_immunescore_heatmap","单基因免疫相关","泛癌","基因","目标基因与Stromal/Immune/ESTIMATE score相关性热图","无需额外配置",TRUE,TRUE,TRUE
+"gene_immunescore_triangle","gene_immunescore_triangle","单基因免疫相关","泛癌","基因","目标基因与免疫评分相关性的三角热图","无需额外配置",TRUE,TRUE,TRUE
+"gene_immustimulator_heatmap","gene_immustimulator_heatmap","单基因免疫相关","泛癌","基因","目标基因与免疫刺激因子相关性热图","无需额外配置",TRUE,TRUE,TRUE
+"gene_receptor_heatmap","gene_receptor_heatmap","单基因免疫相关","泛癌","基因","目标基因与趋化因子受体相关性热图","无需额外配置",TRUE,TRUE,TRUE
+"gene_MSI_radar","gene_MSI_radar","单基因相关","泛癌","基因","目标基因表达与MSI相关性的泛癌雷达图","无需额外配置",TRUE,TRUE,TRUE
+"gene_TMB_radar","gene_TMB_radar","单基因相关","泛癌","基因","目标基因表达与TMB相关性的泛癌雷达图","无需额外配置",TRUE,TRUE,TRUE
+"paired_boxplot","paired_boxplot","单基因表达","指定癌种","基因","COAD配对tumor-normal表达差异箱线图","无需额外配置",TRUE,TRUE,TRUE
+"pan_boxplot","pan_boxplot","单基因表达","泛癌","基因","泛癌tumor-normal表达差异箱线图","无需额外配置",TRUE,TRUE,TRUE
+"pan_paired_boxplot","pan_paired_boxplot","单基因表达","泛癌","基因","泛癌配对tumor-normal表达差异箱线图","无需额外配置",TRUE,TRUE,TRUE
+"pan_tumor_boxplot","pan_tumor_boxplot","单基因表达","泛癌","基因","泛癌肿瘤样本表达分布箱线图","无需额外配置",TRUE,TRUE,TRUE
+"tcga_boxplot","tcga_boxplot","单基因表达","指定癌种","基因","COAD tumor-normal表达差异箱线图","无需额外配置",TRUE,TRUE,TRUE
+"pan_forest","pan_forest","单基因预后","泛癌","基因","泛癌Cox回归森林图，同时输出未校正和年龄校正版本","无需额外配置",TRUE,TRUE,TRUE
+"gene_gene_scatter","gene_gene_scatter","基因相关","指定癌种","基因对","两个指定基因的表达相关散点图","需要在GENE_PAIR_DESIGNS配置基因对",TRUE,TRUE,TRUE
+"gene_network_go","gene_network_go","基因网络","不限癌种","基因/基因列表","输入基因列表的GO cnetplot网络图","默认至少2个NETWORK_GENES；ATF3单基因默认跳过",TRUE,TRUE,TRUE
+"gene_network_kegg","gene_network_kegg","基因网络","不限癌种","基因/基因列表","输入基因列表的KEGG cnetplot网络图","默认至少2个NETWORK_GENES；ATF3单基因默认跳过",TRUE,TRUE,TRUE
+"gs_3age","gs_3age","基因集临床分组","指定癌种","基因集","按三年龄组比较基因集活性","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_age","gs_age","基因集临床分组","指定癌种","基因集","按年龄二分组比较基因集活性","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_gender","gs_gender","基因集临床分组","指定癌种","基因集","按性别比较基因集活性","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_stage","gs_stage","基因集临床分组","指定癌种","基因集","按病理分期比较基因集活性","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_checkpoint_heatmap","gs_checkpoint_heatmap","基因集免疫相关","泛癌","基因集","基因集与免疫检查点相关性热图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_chemokine_heatmap","gs_chemokine_heatmap","基因集免疫相关","泛癌","基因集","基因集与趋化因子相关性热图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_immucell_heatmap","gs_immucell_heatmap","基因集免疫相关","泛癌","基因集","基因集与免疫细胞比例相关性热图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_immuinhibitor_heatmap","gs_immuinhibitor_heatmap","基因集免疫相关","泛癌","基因集","基因集与免疫抑制因子相关性热图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_immunescore_heatmap","gs_immunescore_heatmap","基因集免疫相关","泛癌","基因集","基因集与免疫评分相关性热图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_immustimulator_heatmap","gs_immustimulator_heatmap","基因集免疫相关","泛癌","基因集","基因集与免疫刺激因子相关性热图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_receptor_heatmap","gs_receptor_heatmap","基因集免疫相关","泛癌","基因集","基因集与趋化因子受体相关性热图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_kmplot","gs_kmplot","基因集生存分析","指定癌种","基因集","按基因集活性高低分组绘制KM生存曲线","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_MSI_radar","gs_MSI_radar","基因集相关","泛癌","基因集","基因集活性与MSI相关性雷达图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_TMB_radar","gs_TMB_radar","基因集相关","泛癌","基因集","基因集活性与TMB相关性雷达图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_boxplot","gs_boxplot","基因集表达","指定癌种","基因集","COAD基因集tumor-normal表达差异箱线图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_paired_boxplot","gs_paired_boxplot","基因集表达","指定癌种","基因集","COAD基因集配对tumor-normal表达差异箱线图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_pan_boxplot","gs_pan_boxplot","基因集表达","泛癌","基因集","基因集泛癌tumor-normal表达差异箱线图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_pan_paired_boxplot","gs_pan_paired_boxplot","基因集表达","泛癌","基因集","基因集泛癌配对tumor-normal表达差异箱线图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_pan_tumor_boxplot","gs_pan_tumor_boxplot","基因集表达","泛癌","基因集","基因集泛癌肿瘤样本表达分布箱线图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_roc","gs_roc","基因集诊断分析","指定癌种","基因集","基因集活性诊断ROC曲线","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"gs_pan_forest","gs_pan_forest","基因集预后","泛癌","基因集","基因集泛癌Cox回归森林图","需要RUN_GENESET_ANALYSES=TRUE且配置TARGET_GENESETS",TRUE,FALSE,FALSE
+"get_all_meta","data_summary","数据提取","泛癌","数据","提取全部临床信息","仅在TCGAPLOT_SAVE_BUILTIN_DATA=1时保存",TRUE,TRUE,TRUE
+"get_all_paired_tpm","data_summary","数据提取","泛癌","数据","提取全部配对TPM矩阵","对象较大；仅在TCGAPLOT_SAVE_BUILTIN_DATA=1时建议保存",TRUE,TRUE,TRUE
+"get_all_promoter_methy","data_summary","数据提取","泛癌","数据","提取全部启动子甲基化矩阵","对象很大；仅在TCGAPLOT_SAVE_BUILTIN_DATA=1时建议保存",TRUE,TRUE,TRUE
+"get_all_tpm","data_summary","数据提取","泛癌","数据","提取全部TPM矩阵","对象很大；仅在TCGAPLOT_SAVE_BUILTIN_DATA=1时建议保存",TRUE,TRUE,TRUE
+"get_geneset","data_summary","数据提取","泛癌","数据","提取TCGAplot内置基因集列表","默认只写概览；如需保存对象，设置TCGAPLOT_SAVE_BUILTIN_DATA=1",TRUE,TRUE,TRUE
+"get_immu_ratio","data_summary","数据提取","泛癌","数据","提取泛癌免疫细胞比例矩阵","默认只写概览；如需保存矩阵，设置TCGAPLOT_SAVE_BUILTIN_DATA=1",TRUE,TRUE,TRUE
+"get_immuscore","data_summary","数据提取","泛癌","数据","提取泛癌免疫评分矩阵","默认只写概览；如需保存矩阵，设置TCGAPLOT_SAVE_BUILTIN_DATA=1",TRUE,TRUE,TRUE
+"get_meta","data_summary","数据提取","指定癌种","数据","提取指定癌种临床信息","默认只写概览；如需保存矩阵，设置TCGAPLOT_SAVE_BUILTIN_DATA=1",TRUE,TRUE,TRUE
+"get_methy","data_summary","数据提取","泛癌","数据","提取或提示TCGAplot内置甲基化数据","默认只写概览；如需保存对象，设置TCGAPLOT_SAVE_BUILTIN_DATA=1",TRUE,TRUE,TRUE
+"get_msi","data_summary","数据提取","泛癌","数据","提取泛癌MSI矩阵","默认只写概览；如需保存矩阵，设置TCGAPLOT_SAVE_BUILTIN_DATA=1",TRUE,TRUE,TRUE
+"get_paired_tpm","data_summary","数据提取","指定癌种","数据","提取指定癌种配对TPM矩阵","默认只写概览；如需保存矩阵，设置TCGAPLOT_SAVE_BUILTIN_DATA=1",TRUE,TRUE,TRUE
+"get_promoter_methy","data_summary","数据提取","指定癌种","数据","提取指定癌种启动子甲基化矩阵","默认只写概览；如需保存对象，设置TCGAPLOT_SAVE_BUILTIN_DATA=1",TRUE,TRUE,TRUE
+"get_tmb","data_summary","数据提取","泛癌","数据","提取泛癌TMB矩阵","默认只写概览；如需保存矩阵，设置TCGAPLOT_SAVE_BUILTIN_DATA=1",TRUE,TRUE,TRUE
+"get_tpm","data_summary","数据提取","指定癌种","数据","提取指定癌种TPM矩阵","默认只写概览；如需保存矩阵，设置TCGAPLOT_SAVE_BUILTIN_DATA=1",TRUE,TRUE,TRUE
+"sample_audit","sample_audit","样本审计","COAD本地SE对照","样本","比较TCGAplot内置COAD样本与本项目本地SE样本是否一致","无需额外配置",TRUE,TRUE,TRUE
+"tcga_kmplot","tcga_kmplot","生存分析","指定癌种","基因","按目标基因高低表达分组绘制KM生存曲线","无需额外配置",TRUE,TRUE,TRUE
+"gene_methylation_scatter","gene_methylation_scatter","甲基化分析","指定癌种","基因","目标基因表达与启动子甲基化探针相关散点图","无需额外配置",TRUE,TRUE,TRUE
+"methy_kmplot","methy_kmplot","甲基化生存分析","指定癌种","基因","按目标基因启动子甲基化高低分组绘制KM生存曲线","无需额外配置",TRUE,TRUE,TRUE
+"tcga_roc","tcga_roc","诊断分析","指定癌种","基因","COAD tumor-normal诊断ROC曲线","无需额外配置",TRUE,TRUE,TRUE
+"gene_deg_heatmap","gene_deg_heatmap","高低表达分组机制分析","指定癌种","基因","按目标基因高低表达分组计算DEG并绘制Top DEG热图","无需额外配置",TRUE,TRUE,TRUE
+"gene_gsea_go","gene_gsea_go","高低表达分组机制分析","指定癌种","基因","按目标基因高低表达分组做GSEA-GO","无需额外配置",TRUE,TRUE,TRUE
+"gene_gsea_kegg","gene_gsea_kegg","高低表达分组机制分析","指定癌种","基因","按目标基因高低表达分组做GSEA-KEGG","无需额外配置",TRUE,TRUE,TRUE

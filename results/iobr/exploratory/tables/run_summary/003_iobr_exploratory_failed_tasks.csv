@@ -1,0 +1,63 @@
+"Dataset_ID","Module","Task","Status","Message","Rows","Columns","Output_File"
+"GTEx_COLON","outlier","GTEx_COLON","failed","Error in if (sum(adj < 0) > 0) { : missing value where TRUE/FALSE needed
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_ALL_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_ALL_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_ALL_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_SW48_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_SW48_C2","failed","Error in dplyr::distinct(., .data$gs_cat, .data$gs_subcat) : 
+  Must use existing variables.
+✖ `gs_cat` not found in `.data`.
+✖ `gs_subcat` not found in `.data`.
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_SW48_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_HCT15_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_H","failed","Error in dplyr::distinct(., .data$gs_cat, .data$gs_subcat) : 
+  Must use existing variables.
+✖ `gs_cat` not found in `.data`.
+✖ `gs_subcat` not found in `.data`.
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_DLD1_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HCT15_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HCT15_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HCT15_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HT55_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HT55_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_HT55_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_RKO_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_RKO_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_RKO_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW48_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW48_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW48_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW948_H","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW948_C2","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""
+"GSE114012","sig_gsea","GSE114012_SW948_C5","failed","Error in readRDS(rds_path) : error reading from connection
+",NA,NA,""

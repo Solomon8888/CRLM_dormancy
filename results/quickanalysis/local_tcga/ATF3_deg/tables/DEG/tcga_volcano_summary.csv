@@ -1,0 +1,2 @@
+"Analysis_Name","Genes_Plotted","Up","Down","Not_Significant","X_Min","X_Max","Y_Max","PDF_Width","PDF_Height","PDF_File","PNG_File"
+"COAD_01A_ATF3_median_high_vs_low","18316","490","68","17758","-3","3","93","8.130000000000001","7","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/local_tcga/ATF3_deg/plots/DEG/pdf/COAD_01A_ATF3_median_high_vs_low_volcano_plot.pdf","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/local_tcga/ATF3_deg/plots/DEG/png/COAD_01A_ATF3_median_high_vs_low_volcano_plot.png"

@@ -1,0 +1,5 @@
+"sig_names","p.value","statistic","Comparison","Method_Source","p.adj","p.value.label","p.adj.label","Significance","Adjusted_Significance","Group_Column","Group_Display","Analysis_Design","Group_Sizes"
+"ImmuneScore_estimate","0.1118858091104699","23648","Low vs High","stats::wilcox.test","0.2753607515991355","0.112","0.275","ns","ns","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"ESTIMATEScore_estimate","0.2065205636993516","24106","Low vs High","stats::wilcox.test","0.2753607515991355","0.207","0.275","ns","ns","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"TumorPurity_estimate","0.2065205636993517","27650","Low vs High","stats::wilcox.test","0.2753607515991355","0.207","0.275","ns","ns","Target_Group","Target expression group","Target_Group","High=228; Low=227"
+"StromalScore_estimate","0.3975253275288084","24691","Low vs High","stats::wilcox.test","0.3975253275288084","0.398","0.398","ns","ns","Target_Group","Target expression group","Target_Group","High=228; Low=227"

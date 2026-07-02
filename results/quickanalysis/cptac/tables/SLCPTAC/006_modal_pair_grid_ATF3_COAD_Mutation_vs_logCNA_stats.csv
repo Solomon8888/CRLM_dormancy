@@ -1,0 +1,2 @@
+"categorical","continuous","p_value","test_method","effect_size","n_groups","n","p_adjusted","significant","var1_feature","var2_feature","method"
+"COAD_ATF3_Mutation","COAD_ATF3_logCNA","0.04177761107105191","Wilcoxon","0.1996196169823381","2","104","0.04177761107105191",TRUE,"ATF3 (Mutation, COAD)","ATF3 (logCNA, COAD)","Wilcoxon"

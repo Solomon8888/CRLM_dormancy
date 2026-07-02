@@ -1,0 +1,1256 @@
+"Analysis","Scenario_ID","Function","Target","Context","Status","Start_Time","End_Time","Runtime_Seconds","Runtime","Output_Files","Generated_Files","Cache_File","Warning","Message","Error"
+"modal_pair_grid","1","cptac_correlation","ATF3","COAD_RNAseq_vs_Protein","skipped","2026-06-16 16:13:30","2026-06-16 16:13:30","0.0353360176086425781","0.00 min (0.0 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable Protein values for ATF3 in COAD.",""
+"modal_pair_grid","1","cptac_correlation","ATF3","COAD_RNAseq_vs_logCNA","success","2026-06-16 16:13:30","2026-06-16 16:13:32","2.1507830619812011719","0.04 min (2.2 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/002_modal_pair_grid_ATF3_COAD_RNAseq_vs_logCNA.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/002_modal_pair_grid_ATF3_COAD_RNAseq_vs_logCNA.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/002_modal_pair_grid_ATF3_COAD_RNAseq_vs_logCNA_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/002_modal_pair_grid_ATF3_COAD_RNAseq_vs_logCNA_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/002_modal_pair_grid_ATF3_COAD_RNAseq_vs_logCNA_package_correlation_COAD_ATF3_RNAseq_vs_ATF3_logCNA.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | ✓ logCNA data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Var2] Loading logCNA data for ATF3...
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 1 - 1 continuous vs 1 continuous
+ |   Var1: 1 continuous feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: CorPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: CorPlot (4.5 × 4.0 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/modal_pair_grid/ATF3/COAD_RNAseq_vs_logCNA/slcptac_output/correlation_COAD_ATF3_RNAseq_vs_ATF3_logCNA.png
+ | ========================================
+
+",""
+"modal_pair_grid","1","cptac_correlation","ATF3","COAD_Protein_vs_logCNA","skipped","2026-06-16 16:13:30","2026-06-16 16:13:30","0.0177028179168701172","0.00 min (0.0 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable Protein values for ATF3 in COAD.",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Mutation_vs_RNAseq","success","2026-06-16 16:13:30","2026-06-16 16:13:32","1.9295899868011474609","0.03 min (1.9 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/004_modal_pair_grid_ATF3_COAD_Mutation_vs_RNAseq.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/004_modal_pair_grid_ATF3_COAD_Mutation_vs_RNAseq.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/004_modal_pair_grid_ATF3_COAD_Mutation_vs_RNAseq_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/004_modal_pair_grid_ATF3_COAD_Mutation_vs_RNAseq_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/004_modal_pair_grid_ATF3_COAD_Mutation_vs_RNAseq_package_correlation_COAD_ATF3_Mutation_vs_ATF3_RNAseq.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Mutation data validated for 1 cancer type(s): COAD
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Mutation data for ATF3...
+ |   Loaded 1 mutation feature(s)
+ | 
+[Var2] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 4 - 1 continuous vs 1 categorical
+ |   Var1: 1 categorical feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: BoxPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: BoxPlot (3.0 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/modal_pair_grid/ATF3/COAD_Mutation_vs_RNAseq/slcptac_output/correlation_COAD_ATF3_Mutation_vs_ATF3_RNAseq.png
+ | ========================================
+
+",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Mutation_vs_Protein","skipped","2026-06-16 16:13:30","2026-06-16 16:13:30","0.0402069091796875000","0.00 min (0.0 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable Protein values for ATF3 in COAD.",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Mutation_vs_logCNA","success","2026-06-16 16:13:30","2026-06-16 16:13:32","1.8391029834747314453","0.03 min (1.8 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/006_modal_pair_grid_ATF3_COAD_Mutation_vs_logCNA.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/006_modal_pair_grid_ATF3_COAD_Mutation_vs_logCNA.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/006_modal_pair_grid_ATF3_COAD_Mutation_vs_logCNA_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/006_modal_pair_grid_ATF3_COAD_Mutation_vs_logCNA_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/006_modal_pair_grid_ATF3_COAD_Mutation_vs_logCNA_package_correlation_COAD_ATF3_Mutation_vs_ATF3_logCNA.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Mutation data validated for 1 cancer type(s): COAD
+ | ✓ logCNA data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Mutation data for ATF3...
+ |   Loaded 1 mutation feature(s)
+ | 
+[Var2] Loading logCNA data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 4 - 1 continuous vs 1 categorical
+ |   Var1: 1 categorical feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: BoxPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: BoxPlot (3.0 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/modal_pair_grid/ATF3/COAD_Mutation_vs_logCNA/slcptac_output/correlation_COAD_ATF3_Mutation_vs_ATF3_logCNA.png
+ | ========================================
+
+",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Age_vs_RNAseq","success","2026-06-16 16:13:30","2026-06-16 16:13:32","1.8935980796813964844","0.03 min (1.9 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/007_modal_pair_grid_ATF3_COAD_Age_vs_RNAseq.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/007_modal_pair_grid_ATF3_COAD_Age_vs_RNAseq.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/007_modal_pair_grid_ATF3_COAD_Age_vs_RNAseq_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/007_modal_pair_grid_ATF3_COAD_Age_vs_RNAseq_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/007_modal_pair_grid_ATF3_COAD_Age_vs_RNAseq_package_correlation_COAD_Age_Clinical_vs_ATF3_RNAseq.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Clinical data validated for 1 cancer type(s): COAD
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Clinical data for Age...
+ |   Available clinical variables: age, bmi, gender, tumor_stage
+ |   Loaded 1 clinical feature(s)
+ | 
+[Var2] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 4 - 1 continuous vs 1 categorical
+ |   Var1: 1 categorical feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: BoxPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: BoxPlot (3.0 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/modal_pair_grid/ATF3/COAD_Age_vs_RNAseq/slcptac_output/correlation_COAD_Age_Clinical_vs_ATF3_RNAseq.png
+ | ========================================
+
+",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Age_vs_Protein","skipped","2026-06-16 16:13:30","2026-06-16 16:13:30","0.0551230907440185547","0.00 min (0.1 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable Protein values for ATF3 in COAD.",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Age_vs_logCNA","success","2026-06-16 16:13:30","2026-06-16 16:13:32","1.7146308422088623047","0.03 min (1.7 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/009_modal_pair_grid_ATF3_COAD_Age_vs_logCNA.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/009_modal_pair_grid_ATF3_COAD_Age_vs_logCNA.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/009_modal_pair_grid_ATF3_COAD_Age_vs_logCNA_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/009_modal_pair_grid_ATF3_COAD_Age_vs_logCNA_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/009_modal_pair_grid_ATF3_COAD_Age_vs_logCNA_package_correlation_COAD_Age_Clinical_vs_ATF3_logCNA.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Clinical data validated for 1 cancer type(s): COAD
+ | ✓ logCNA data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Clinical data for Age...
+ |   Available clinical variables: age, bmi, gender, tumor_stage
+ |   Loaded 1 clinical feature(s)
+ | 
+[Var2] Loading logCNA data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 4 - 1 continuous vs 1 categorical
+ |   Var1: 1 categorical feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: BoxPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: BoxPlot (3.0 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/modal_pair_grid/ATF3/COAD_Age_vs_logCNA/slcptac_output/correlation_COAD_Age_Clinical_vs_ATF3_logCNA.png
+ | ========================================
+
+",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Tumor_Stage_vs_RNAseq","success","2026-06-16 16:13:30","2026-06-16 16:13:32","1.9741089344024658203","0.03 min (2.0 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/010_modal_pair_grid_ATF3_COAD_Tumor_Stage_vs_RNAseq.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/010_modal_pair_grid_ATF3_COAD_Tumor_Stage_vs_RNAseq.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/010_modal_pair_grid_ATF3_COAD_Tumor_Stage_vs_RNAseq_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/010_modal_pair_grid_ATF3_COAD_Tumor_Stage_vs_RNAseq_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/010_modal_pair_grid_ATF3_COAD_Tumor_Stage_vs_RNAseq_package_correlation_COAD_Tumor_Stage_Clinical_vs_ATF3_RNAseq.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Clinical data validated for 1 cancer type(s): COAD
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Clinical data for Tumor_Stage...
+ |   Available clinical variables: age, bmi, gender, tumor_stage
+ |   Loaded 1 clinical feature(s)
+ | 
+[Var2] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 4 - 1 continuous vs 1 categorical
+ |   Var1: 1 categorical feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: BoxPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: BoxPlot (3.7 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/modal_pair_grid/ATF3/COAD_Tumor_Stage_vs_RNAseq/slcptac_output/correlation_COAD_Tumor_Stage_Clinical_vs_ATF3_RNAseq.png
+ | ========================================
+
+",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Tumor_Stage_vs_Protein","skipped","2026-06-16 16:13:30","2026-06-16 16:13:30","0.0170829296112060547","0.00 min (0.0 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable Protein values for ATF3 in COAD.",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Tumor_Stage_vs_logCNA","success","2026-06-16 16:13:30","2026-06-16 16:13:32","1.9951670169830322266","0.03 min (2.0 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/012_modal_pair_grid_ATF3_COAD_Tumor_Stage_vs_logCNA.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/012_modal_pair_grid_ATF3_COAD_Tumor_Stage_vs_logCNA.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/012_modal_pair_grid_ATF3_COAD_Tumor_Stage_vs_logCNA_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/012_modal_pair_grid_ATF3_COAD_Tumor_Stage_vs_logCNA_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/012_modal_pair_grid_ATF3_COAD_Tumor_Stage_vs_logCNA_package_correlation_COAD_Tumor_Stage_Clinical_vs_ATF3_logCNA.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Clinical data validated for 1 cancer type(s): COAD
+ | ✓ logCNA data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Clinical data for Tumor_Stage...
+ |   Available clinical variables: age, bmi, gender, tumor_stage
+ |   Loaded 1 clinical feature(s)
+ | 
+[Var2] Loading logCNA data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 4 - 1 continuous vs 1 categorical
+ |   Var1: 1 categorical feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: BoxPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: BoxPlot (3.7 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/modal_pair_grid/ATF3/COAD_Tumor_Stage_vs_logCNA/slcptac_output/correlation_COAD_Tumor_Stage_Clinical_vs_ATF3_logCNA.png
+ | ========================================
+
+",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Gender_vs_RNAseq","success","2026-06-16 16:13:30","2026-06-16 16:13:32","1.7955338954925537109","0.03 min (1.8 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/013_modal_pair_grid_ATF3_COAD_Gender_vs_RNAseq.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/013_modal_pair_grid_ATF3_COAD_Gender_vs_RNAseq.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/013_modal_pair_grid_ATF3_COAD_Gender_vs_RNAseq_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/013_modal_pair_grid_ATF3_COAD_Gender_vs_RNAseq_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/013_modal_pair_grid_ATF3_COAD_Gender_vs_RNAseq_package_correlation_COAD_Gender_Clinical_vs_ATF3_RNAseq.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Clinical data validated for 1 cancer type(s): COAD
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Clinical data for Gender...
+ |   Available clinical variables: age, bmi, gender, tumor_stage
+ |   Loaded 1 clinical feature(s)
+ | 
+[Var2] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 4 - 1 continuous vs 1 categorical
+ |   Var1: 1 categorical feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: BoxPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: BoxPlot (3.0 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/modal_pair_grid/ATF3/COAD_Gender_vs_RNAseq/slcptac_output/correlation_COAD_Gender_Clinical_vs_ATF3_RNAseq.png
+ | ========================================
+
+",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Gender_vs_Protein","skipped","2026-06-16 16:13:30","2026-06-16 16:13:30","0.0119991302490234375","0.00 min (0.0 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable Protein values for ATF3 in COAD.",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_Gender_vs_logCNA","success","2026-06-16 16:13:30","2026-06-16 16:13:32","1.8755040168762207031","0.03 min (1.9 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/015_modal_pair_grid_ATF3_COAD_Gender_vs_logCNA.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/015_modal_pair_grid_ATF3_COAD_Gender_vs_logCNA.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/015_modal_pair_grid_ATF3_COAD_Gender_vs_logCNA_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/015_modal_pair_grid_ATF3_COAD_Gender_vs_logCNA_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/015_modal_pair_grid_ATF3_COAD_Gender_vs_logCNA_package_correlation_COAD_Gender_Clinical_vs_ATF3_logCNA.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Clinical data validated for 1 cancer type(s): COAD
+ | ✓ logCNA data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Clinical data for Gender...
+ |   Available clinical variables: age, bmi, gender, tumor_stage
+ |   Loaded 1 clinical feature(s)
+ | 
+[Var2] Loading logCNA data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 4 - 1 continuous vs 1 categorical
+ |   Var1: 1 categorical feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: BoxPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: BoxPlot (3.0 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/modal_pair_grid/ATF3/COAD_Gender_vs_logCNA/slcptac_output/correlation_COAD_Gender_Clinical_vs_ATF3_logCNA.png
+ | ========================================
+
+",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_BMI_vs_RNAseq","skipped","2026-06-16 16:13:30","2026-06-16 16:13:30","0.0193340778350830078","0.00 min (0.0 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable Clinical values for BMI in COAD.",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_BMI_vs_Protein","skipped","2026-06-16 16:13:30","2026-06-16 16:13:30","0.0007998943328857422","0.00 min (0.0 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable Clinical values for BMI in COAD.",""
+"modal_pair_grid","4","cptac_correlation","ATF3","COAD_BMI_vs_logCNA","skipped","2026-06-16 16:13:30","2026-06-16 16:13:30","0.0007979869842529297","0.00 min (0.0 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable Clinical values for BMI in COAD.",""
+"scenario01","1","cptac_correlation","ATF3","COAD","success","2026-06-16 16:13:30","2026-06-16 16:13:32","2.0092170238494873047","0.03 min (2.0 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/019_scenario01_ATF3_COAD.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/019_scenario01_ATF3_COAD.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/019_scenario01_ATF3_COAD_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/019_scenario01_ATF3_COAD_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/019_scenario01_ATF3_COAD_package_correlation_COAD_ATF3_RNAseq_vs_ATF3_logCNA.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | ✓ logCNA data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Var2] Loading logCNA data for ATF3...
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 1 - 1 continuous vs 1 continuous
+ |   Var1: 1 continuous feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: CorPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: CorPlot (4.5 × 4.0 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario01/ATF3/COAD/slcptac_output/correlation_COAD_ATF3_RNAseq_vs_ATF3_logCNA.png
+ | ========================================
+
+",""
+"scenario01","1","cptac_correlation","ATF3","pan_cancer_RNAseq_vs_KRAS_RNAseq","success","2026-06-16 16:13:32","2026-06-16 16:13:33","1.7814600467681884766","0.03 min (1.8 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/020_scenario01_ATF3_pan_cancer_RNAseq_vs_KRAS_RNAseq.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/020_scenario01_ATF3_pan_cancer_RNAseq_vs_KRAS_RNAseq.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/020_scenario01_ATF3_pan_cancer_RNAseq_vs_KRAS_RNAseq_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/020_scenario01_ATF3_pan_cancer_RNAseq_vs_KRAS_RNAseq_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/020_scenario01_ATF3_pan_cancer_RNAseq_vs_KRAS_RNAseq_package_correlation_BRCA-CCRCC-COAD-GBM-HNSCC-LUAD-LUSC-OV-PDAC-UCEC_ATF3_RNAseq_vs_KRAS_RNAseq.png","","NaNs produced","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 10 cancer type(s): BRCA, CCRCC, COAD, GBM, HNSCC, LUAD, LUSC, OV, PDAC, UCEC
+ | 
+[Var1] Loading RNAseq data for ATF3...
+ |   Loaded 10 feature(s) from 10 cancer(s)
+ | 
+[Var2] Loading RNAseq data for KRAS...
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 1042 samples × 21 features
+ | 
+[Scenario] Detected: Scenario 1 - 1 continuous vs 1 continuous
+ |   Var1: 10 feature(s) from 1 gene(s) across multiple cancers
+ |   Var2: 10 feature(s) from 1 gene(s) across multiple cancers
+ |   Plot type: LollipopPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 100 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: LollipopPlot (6.0 × 5.0 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario01/ATF3/pan_cancer_RNAseq_vs_KRAS_RNAseq/slcptac_output/correlation_BRCA-CCRCC-COAD-GBM-HNSCC-LUAD-LUSC-OV-PDAC-UCEC_ATF3_RNAseq_vs_KRAS_RNAseq.png
+ | ========================================
+
+",""
+"scenario02","2","cptac_correlation","ATF3","COAD_RNAseq_vs_panel_logCNA","success","2026-06-16 16:13:32","2026-06-16 16:13:33","1.5034291744232177734","0.03 min (1.5 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/021_scenario02_ATF3_COAD_RNAseq_vs_panel_logCNA.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/021_scenario02_ATF3_COAD_RNAseq_vs_panel_logCNA.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/021_scenario02_ATF3_COAD_RNAseq_vs_panel_logCNA_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/021_scenario02_ATF3_COAD_RNAseq_vs_panel_logCNA_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/021_scenario02_ATF3_COAD_RNAseq_vs_panel_logCNA_package_correlation_COAD_ATF3_RNAseq_vs_ATF3-JUN-FOS-DDIT3-CEBPB_logCNA.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | ✓ logCNA data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Var2] Loading logCNA data for ATF3, JUN, FOS, DDIT3, CEBPB...
+ |   Loaded 5 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 7 features
+ | 
+[Scenario] Detected: Scenario 2 - 1 continuous vs multiple continuous
+ |   Var1: 1 continuous feature(s)
+ |   Var2: 5 continuous feature(s)
+ |   Plot type: LollipopPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 5 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: LollipopPlot (7.0 × 3.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario02/ATF3/COAD_RNAseq_vs_panel_logCNA/slcptac_output/correlation_COAD_ATF3_RNAseq_vs_ATF3-JUN-FOS-DDIT3-CEBPB_logCNA.png
+ | ========================================
+
+",""
+"scenario03","3","cptac_correlation","ATF3","COAD_panel_RNAseq_vs_logCNA","success","2026-06-16 16:13:32","2026-06-16 16:13:33","1.7054860591888427734","0.03 min (1.7 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/022_scenario03_ATF3_COAD_panel_RNAseq_vs_logCNA.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/022_scenario03_ATF3_COAD_panel_RNAseq_vs_logCNA.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/022_scenario03_ATF3_COAD_panel_RNAseq_vs_logCNA_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/022_scenario03_ATF3_COAD_panel_RNAseq_vs_logCNA_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/022_scenario03_ATF3_COAD_panel_RNAseq_vs_logCNA_package_correlation_COAD_ATF3-JUN-FOS-DDIT3-CEBPB_RNAseq_vs_ATF3-JUN-FOS-DDIT3-CEBPB_logCNA.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | ✓ logCNA data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3, JUN, FOS, DDIT3, CEBPB...
+ |   Loaded 5 feature(s) from 1 cancer(s)
+ | 
+[Var2] Loading logCNA data for ATF3, JUN, FOS, DDIT3, CEBPB...
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 11 features
+ | 
+[Scenario] Detected: Scenario 3 - multiple continuous vs multiple continuous
+ |   Var1: 5 continuous feature(s)
+ |   Var2: 5 continuous feature(s)
+ |   Plot type: DotPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 25 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: DotPlot (6.2 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario03/ATF3/COAD_panel_RNAseq_vs_logCNA/slcptac_output/correlation_COAD_ATF3-JUN-FOS-DDIT3-CEBPB_RNAseq_vs_ATF3-JUN-FOS-DDIT3-CEBPB_logCNA.png
+ | ========================================
+
+",""
+"scenario04","4","cptac_correlation","ATF3","COAD_KRAS_Mutation_vs_RNAseq","success","2026-06-16 16:13:32","2026-06-16 16:13:33","0.9296450614929199219","0.02 min (0.9 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/023_scenario04_ATF3_COAD_KRAS_Mutation_vs_RNAseq.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/023_scenario04_ATF3_COAD_KRAS_Mutation_vs_RNAseq.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/023_scenario04_ATF3_COAD_KRAS_Mutation_vs_RNAseq_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/023_scenario04_ATF3_COAD_KRAS_Mutation_vs_RNAseq_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/023_scenario04_ATF3_COAD_KRAS_Mutation_vs_RNAseq_package_correlation_COAD_KRAS_Mutation_vs_ATF3_RNAseq.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Mutation data validated for 1 cancer type(s): COAD
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Mutation data for KRAS...
+ |   Loaded 1 mutation feature(s)
+ | 
+[Var2] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 4 - 1 continuous vs 1 categorical
+ |   Var1: 1 categorical feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: BoxPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: BoxPlot (3.0 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario04/ATF3/COAD_KRAS_Mutation_vs_RNAseq/slcptac_output/correlation_COAD_KRAS_Mutation_vs_ATF3_RNAseq.png
+ | ========================================
+
+",""
+"scenario04","4","cptac_correlation","ATF3","COAD_Tumor_Stage_vs_RNAseq","success","2026-06-16 16:13:32","2026-06-16 16:13:33","0.9483599662780761719","0.02 min (0.9 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/024_scenario04_ATF3_COAD_Tumor_Stage_vs_RNAseq.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/024_scenario04_ATF3_COAD_Tumor_Stage_vs_RNAseq.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/024_scenario04_ATF3_COAD_Tumor_Stage_vs_RNAseq_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/024_scenario04_ATF3_COAD_Tumor_Stage_vs_RNAseq_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/024_scenario04_ATF3_COAD_Tumor_Stage_vs_RNAseq_package_correlation_COAD_Tumor_Stage_Clinical_vs_ATF3_RNAseq.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Clinical data validated for 1 cancer type(s): COAD
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Clinical data for Tumor_Stage...
+ |   Available clinical variables: age, bmi, gender, tumor_stage
+ |   Loaded 1 clinical feature(s)
+ | 
+[Var2] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 4 - 1 continuous vs 1 categorical
+ |   Var1: 1 categorical feature(s)
+ |   Var2: 1 continuous feature(s)
+ |   Plot type: BoxPlot
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: BoxPlot (3.7 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario04/ATF3/COAD_Tumor_Stage_vs_RNAseq/slcptac_output/correlation_COAD_Tumor_Stage_Clinical_vs_ATF3_RNAseq.png
+ | ========================================
+
+",""
+"scenario05","5","cptac_correlation","ATF3","COAD_RNAseq_vs_mutation_panel","success","2026-06-16 16:13:32","2026-06-16 16:13:35","3.0198659896850585938","0.05 min (3.0 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/025_scenario05_ATF3_COAD_RNAseq_vs_mutation_panel.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/025_scenario05_ATF3_COAD_RNAseq_vs_mutation_panel.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/025_scenario05_ATF3_COAD_RNAseq_vs_mutation_panel_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/025_scenario05_ATF3_COAD_RNAseq_vs_mutation_panel_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/025_scenario05_ATF3_COAD_RNAseq_vs_mutation_panel_package_correlation_COAD_ATF3_RNAseq_vs_APC-TP53-KRAS-PIK3CA_Mutation.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | ✓ Mutation data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Var2] Loading Mutation data for APC, TP53, KRAS, PIK3CA...
+ |   Loaded 4 mutation feature(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 6 features
+ | 
+[Scenario] Detected: Scenario 5 - 1 continuous vs multiple categorical
+ |   Var1: 1 continuous feature(s)
+ |   Var2: 4 categorical feature(s)
+ |   Plot type: Multiple_BoxPlots
+ | 
+[Statistics] Running analysis...
+ |   Completed: 4 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: Multiple_BoxPlots (12.0 × 4.5 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario05/ATF3/COAD_RNAseq_vs_mutation_panel/slcptac_output/correlation_COAD_ATF3_RNAseq_vs_APC-TP53-KRAS-PIK3CA_Mutation.png
+ | ========================================
+
+",""
+"scenario06","6","cptac_correlation","ATF3","COAD_RNAseq_panel_vs_KRAS_Mutation","success","2026-06-16 16:13:32","2026-06-16 16:13:36","4.3153381347656250000","0.07 min (4.3 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/026_scenario06_ATF3_COAD_RNAseq_panel_vs_KRAS_Mutation.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/026_scenario06_ATF3_COAD_RNAseq_panel_vs_KRAS_Mutation.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/026_scenario06_ATF3_COAD_RNAseq_panel_vs_KRAS_Mutation_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/026_scenario06_ATF3_COAD_RNAseq_panel_vs_KRAS_Mutation_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/026_scenario06_ATF3_COAD_RNAseq_panel_vs_KRAS_Mutation_package_correlation_COAD_ATF3-JUN-FOS-DDIT3-CEBPB_RNAseq_vs_KRAS_Mutation.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | ✓ Mutation data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3, JUN, FOS, DDIT3, CEBPB...
+ |   Loaded 5 feature(s) from 1 cancer(s)
+ | 
+[Var2] Loading Mutation data for KRAS...
+ |   Loaded 1 mutation feature(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 7 features
+ | 
+[Scenario] Detected: Scenario 6 - multiple continuous vs 1 categorical
+ |   Var1: 5 continuous feature(s)
+ |   Var2: 1 categorical feature(s)
+ |   Plot type: Multiple_BoxPlots
+ | 
+[Statistics] Running analysis...
+ |   Completed: 5 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: Multiple_BoxPlots (9.0 × 9.0 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario06/ATF3/COAD_RNAseq_panel_vs_KRAS_Mutation/slcptac_output/correlation_COAD_ATF3-JUN-FOS-DDIT3-CEBPB_RNAseq_vs_KRAS_Mutation.png
+ | ========================================
+
+",""
+"scenario07","7","cptac_correlation","ATF3","COAD_comutation","success","2026-06-16 16:13:32","2026-06-16 16:13:36","4.1297190189361572266","0.07 min (4.1 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/027_scenario07_ATF3_COAD_comutation.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/027_scenario07_ATF3_COAD_comutation.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/027_scenario07_ATF3_COAD_comutation_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/027_scenario07_ATF3_COAD_comutation_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/027_scenario07_ATF3_COAD_comutation_package_correlation_COAD_KRAS-TP53-APC_Mutation_vs_APC-TP53-PIK3CA_Mutation.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Mutation data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Mutation data for KRAS, TP53, APC...
+ |   Loaded 3 mutation feature(s)
+ | 
+[Var2] Loading Mutation data for APC, TP53, PIK3CA...
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 5 features
+ | 
+[Scenario] Detected: Scenario 7 - multiple categorical vs multiple categorical
+ |   Var1: 3 categorical feature(s)
+ |   Var2: 3 categorical feature(s)
+ |   Plot type: Heatmap
+ | 
+[Statistics] Running analysis...
+ |   Completed: 9 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: Heatmap (6.3 × 5.6 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario07/ATF3/COAD_comutation/slcptac_output/correlation_COAD_KRAS-TP53-APC_Mutation_vs_APC-TP53-PIK3CA_Mutation.png
+ | ========================================
+
+",""
+"scenario07","7","cptac_correlation","ATF3","COAD_clinical_vs_mutation","success","2026-06-16 16:13:32","2026-06-16 16:13:34","1.8170521259307861328","0.03 min (1.8 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/028_scenario07_ATF3_COAD_clinical_vs_mutation.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/028_scenario07_ATF3_COAD_clinical_vs_mutation.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/028_scenario07_ATF3_COAD_clinical_vs_mutation_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/028_scenario07_ATF3_COAD_clinical_vs_mutation_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/028_scenario07_ATF3_COAD_clinical_vs_mutation_package_correlation_COAD_Tumor_Stage_Clinical_vs_KRAS_Mutation.png","","","
+========================================
+ | CPTAC Correlation Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Clinical data validated for 1 cancer type(s): COAD
+ | ✓ Mutation data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Clinical data for Tumor_Stage...
+ |   Available clinical variables: age, bmi, gender, tumor_stage
+ |   Loaded 1 clinical feature(s)
+ | 
+[Var2] Loading Mutation data for KRAS...
+ |   Loaded 1 mutation feature(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 7 - multiple categorical vs multiple categorical
+ |   Var1: 1 categorical feature(s)
+ |   Var2: 1 categorical feature(s)
+ |   Plot type: Heatmap
+ | 
+[Statistics] Running analysis...
+ |   Completed: 1 pairwise comparison(s)
+ | 
+[Visualization] Generating plot...
+ |   Plot: Heatmap (4.0 × 5.0 inches)
+ | 
+✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario07/ATF3/COAD_clinical_vs_mutation/slcptac_output/correlation_COAD_Tumor_Stage_Clinical_vs_KRAS_Mutation.png
+ | ========================================
+
+",""
+"scenario08","8","cptac_enrichment","KRAS","COAD_Mutation_vs_Protein_genome","success","2026-06-16 16:13:32","2026-06-16 16:13:38","5.8180360794067382812","0.10 min (5.8 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/029_scenario08_KRAS_COAD_Mutation_vs_Protein_genome.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/029_scenario08_KRAS_COAD_Mutation_vs_Protein_genome.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/029_scenario08_KRAS_COAD_Mutation_vs_Protein_genome_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/029_scenario08_KRAS_COAD_Mutation_vs_Protein_genome_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/029_scenario08_KRAS_COAD_Mutation_vs_Protein_genome_package_enrichment_GenomeScan_COAD_KRAS_Mutation_Protein.png","/Users/solomon/Projects/CRLM_dormancy/data/cptac/reference_cache/task_manifest/scenario08/KRAS/COAD_Mutation_vs_Protein_genome.rds","","
+========================================
+ | CPTAC Enrichment Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Mutation data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Mutation data for KRAS...
+ |   Loaded 1 mutation feature(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 2 features
+ | 
+[Scenario] Detected: Scenario 8 - 1 categorical vs genome-wide
+ | 
+[Analysis] Running enrichment pipeline...
+ | 
+[Step 1] Loading genome-wide data...
+ |   Loading genome-wide Protein data from pre-processed file...
+ |   ✓ Loaded 97 samples × 4894 genes (filtered <90% NA)
+ | 
+[Step 2] Performing DEA...
+ |   Performing DEA: Mutation vs WildType (97 samples, 4894 genes)
+ |   ✓ DEA completed: 397 significant genes (p<0.05)
+ | 
+[Step 3] Creating NetworkPlot...
+ | 
+✓ Enrichment analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario08/KRAS/COAD_Mutation_vs_Protein_genome/slcptac_output/enrichment_GenomeScan_COAD_KRAS_Mutation_Protein.png
+ | ========================================
+
+",""
+"scenario10","10","cptac_enrichment","APC_TP53_KRAS_PIK3CA","COAD_mutation_panel_vs_Protein_genome","success","2026-06-16 16:13:33","2026-06-16 16:13:44","10.8792300224304199219","0.18 min (10.9 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/030_scenario10_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_vs_Protein_genome.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/030_scenario10_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_vs_Protein_genome.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/030_scenario10_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_vs_Protein_genome_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/030_scenario10_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_vs_Protein_genome_raw_data_list_summary.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/030_scenario10_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_vs_Protein_genome_raw_data_001_APC_Mutation_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/030_scenario10_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_vs_Protein_genome_raw_data_002_TP53_Mutation_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/030_scenario10_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_vs_Protein_genome_raw_data_003_KRAS_Mutation_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/030_scenario10_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_vs_Protein_genome_raw_data_004_PIK3CA_Mutation_COAD.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/030_scenario10_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_vs_Protein_genome_package_enrichment_GenomeScan_COAD_APC-TP53-KRAS-PIK3CA_Mutation_Protein.png","/Users/solomon/Projects/CRLM_dormancy/data/cptac/reference_cache/task_manifest/scenario10/APC_TP53_KRAS_PIK3CA/COAD_mutation_panel_vs_Protein_genome.rds","","
+========================================
+ | CPTAC Enrichment Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Mutation data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Mutation data for APC, TP53, KRAS, PIK3CA...
+ |   Loaded 4 mutation feature(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 5 features
+ | 
+[Scenario] Detected: Scenario 10 - multiple categorical vs genome-wide
+ | 
+[Analysis] Running enrichment pipeline...
+ | 
+[Step 1] Loading genome-wide data...
+ |   Loading genome-wide Protein data from pre-processed file...
+ |   ✓ Loaded 97 samples × 4894 genes (filtered <90% NA)
+ | 
+[Step 2] Processing multiple variables...
+ |   Processing APC (Mutation, COAD)...
+ |   Performing DEA: Mutation vs WildType (97 samples, 4894 genes)
+ |   ✓ DEA completed: 681 significant genes (p<0.05)
+ |   Processing TP53 (Mutation, COAD)...
+ |   ✓ DEA completed: 1210 significant genes (p<0.05)
+ |   Processing KRAS (Mutation, COAD)...
+ |   ✓ DEA completed: 397 significant genes (p<0.05)
+ |   Processing PIK3CA (Mutation, COAD)...
+ |   ✓ DEA completed: 674 significant genes (p<0.05)
+ | 
+[Step 3] Creating DotPlot...
+ | 
+Attaching package: ‘dplyr’
+
+ | The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+ | The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+ | 
+Attaching package: ‘rlang’
+
+ | The following object is masked _by_ ‘.GlobalEnv’:
+
+    %||%
+
+ | 
+✓ Enrichment analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario10/APC_TP53_KRAS_PIK3CA/COAD_mutation_panel_vs_Protein_genome/slcptac_output/enrichment_GenomeScan_COAD_APC-TP53-KRAS-PIK3CA_Mutation_Protein.png
+ | ========================================
+
+",""
+"scenario12","12","cptac_enrichment","ATF3","COAD_RNAseq_vs_Protein_genome","success","2026-06-16 16:13:33","2026-06-16 16:13:39","5.8513340950012207031","0.10 min (5.9 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/031_scenario12_ATF3_COAD_RNAseq_vs_Protein_genome.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/031_scenario12_ATF3_COAD_RNAseq_vs_Protein_genome.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/031_scenario12_ATF3_COAD_RNAseq_vs_Protein_genome_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/031_scenario12_ATF3_COAD_RNAseq_vs_Protein_genome_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/031_scenario12_ATF3_COAD_RNAseq_vs_Protein_genome_package_enrichment_GenomeScan_COAD_ATF3_RNAseq_Protein.png","/Users/solomon/Projects/CRLM_dormancy/data/cptac/reference_cache/task_manifest/scenario12/ATF3/COAD_RNAseq_vs_Protein_genome.rds","","
+========================================
+ | CPTAC Enrichment Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 2 features
+ | 
+[Scenario] Detected: Scenario 12 - 1 continuous vs genome-wide
+ | 
+[Analysis] Running enrichment pipeline...
+ | 
+[Step 1] Loading genome-wide data...
+ |   Loading genome-wide Protein data from pre-processed file...
+ |   ✓ Loaded 97 samples × 4894 genes (filtered <90% NA)
+ | 
+[Step 2] Calculating correlations...
+ |   Calculating correlations (97 samples, 4894 genes)
+ |   ✓ Correlation completed: 203 significant genes (p<0.05)
+ | 
+[Step 3] Creating NetworkPlot...
+ | 
+✓ Enrichment analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario12/ATF3/COAD_RNAseq_vs_Protein_genome/slcptac_output/enrichment_GenomeScan_COAD_ATF3_RNAseq_Protein.png
+ | ========================================
+
+",""
+"scenario14","14","cptac_enrichment","ATF3_JUN_FOS_DDIT3_CEBPB","COAD_RNAseq_panel_vs_Protein_genome","success","2026-06-16 16:13:33","2026-06-16 16:13:45","12.1568520069122314453","0.20 min (12.2 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/032_scenario14_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_vs_Protein_genome.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/032_scenario14_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_vs_Protein_genome.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/032_scenario14_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_vs_Protein_genome_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/032_scenario14_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_vs_Protein_genome_raw_data_list_summary.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/032_scenario14_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_vs_Protein_genome_raw_data_001_ATF3_RNAseq_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/032_scenario14_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_vs_Protein_genome_raw_data_002_JUN_RNAseq_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/032_scenario14_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_vs_Protein_genome_raw_data_003_FOS_RNAseq_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/032_scenario14_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_vs_Protein_genome_raw_data_004_DDIT3_RNAseq_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/032_scenario14_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_vs_Protein_genome_raw_data_005_CEBPB_RNAseq_COAD.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/032_scenario14_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_vs_Protein_genome_package_enrichment_GenomeScan_COAD_ATF3-JUN-FOS-DDIT3-CEBPB_RNAseq_Protein.png","/Users/solomon/Projects/CRLM_dormancy/data/cptac/reference_cache/task_manifest/scenario14/ATF3_JUN_FOS_DDIT3_CEBPB/COAD_RNAseq_panel_vs_Protein_genome.rds","","
+========================================
+ | CPTAC Enrichment Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3, JUN, FOS, DDIT3, CEBPB...
+ |   Loaded 5 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 6 features
+ | 
+[Scenario] Detected: Scenario 14 - multiple continuous vs genome-wide
+ | 
+[Analysis] Running enrichment pipeline...
+ | 
+[Step 1] Loading genome-wide data...
+ |   Loading genome-wide Protein data from pre-processed file...
+ |   ✓ Loaded 97 samples × 4894 genes (filtered <90% NA)
+ | 
+[Step 2] Processing multiple variables...
+ |   Processing ATF3 (RNAseq, COAD)...
+ |   Calculating correlations (97 samples, 4894 genes)
+ |   ✓ Correlation completed: 203 significant genes (p<0.05)
+ |   Processing JUN (RNAseq, COAD)...
+ |   ✓ Correlation completed: 991 significant genes (p<0.05)
+ |   Processing FOS (RNAseq, COAD)...
+ |   ✓ Correlation completed: 267 significant genes (p<0.05)
+ |   Processing DDIT3 (RNAseq, COAD)...
+ |   ✓ Correlation completed: 772 significant genes (p<0.05)
+ |   Processing CEBPB (RNAseq, COAD)...
+ |   ✓ Correlation completed: 1416 significant genes (p<0.05)
+ | 
+[Step 3] Creating DotPlot...
+ | 
+Attaching package: ‘dplyr’
+
+ | The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+ | The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+ | 
+Attaching package: ‘rlang’
+
+ | The following object is masked _by_ ‘.GlobalEnv’:
+
+    %||%
+
+ | 
+✓ Enrichment analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario14/ATF3_JUN_FOS_DDIT3_CEBPB/COAD_RNAseq_panel_vs_Protein_genome/slcptac_output/enrichment_GenomeScan_COAD_ATF3-JUN-FOS-DDIT3-CEBPB_RNAseq_Protein.png
+ | ========================================
+
+",""
+"scenario09","9","cptac_enrichment","KRAS","COAD_Mutation_GSEA_MsigDB","success","2026-06-16 16:13:33","2026-06-16 16:13:46","12.9777059555053710938","0.22 min (13.0 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/033_scenario09_KRAS_COAD_Mutation_GSEA_MsigDB.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/033_scenario09_KRAS_COAD_Mutation_GSEA_MsigDB.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/033_scenario09_KRAS_COAD_Mutation_GSEA_MsigDB_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/033_scenario09_KRAS_COAD_Mutation_GSEA_MsigDB_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/033_scenario09_KRAS_COAD_Mutation_GSEA_MsigDB_package_enrichment_GSEA_COAD_KRAS_Mutation_Protein.png","/Users/solomon/Projects/CRLM_dormancy/data/cptac/reference_cache/task_manifest/scenario09/KRAS/COAD_Mutation_GSEA_MsigDB.rds","","
+========================================
+ | CPTAC Enrichment Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Mutation data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Mutation data for KRAS...
+ |   Loaded 1 mutation feature(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 2 features
+ | 
+[Scenario] Detected: Scenario 9 - 1 categorical vs enrichment
+ | 
+[Analysis] Running enrichment pipeline...
+ | 
+[Step 1] Loading genome-wide data...
+ |   Loading genome-wide Protein data from pre-processed file...
+ |   ✓ Loaded 97 samples × 4894 genes (filtered <90% NA)
+ | 
+[Step 2] Performing DEA...
+ |   Performing DEA: Mutation vs WildType (97 samples, 4894 genes)
+ |   ✓ DEA completed: 397 significant genes (p<0.05)
+ | 
+[Step 3] Performing GSEA...
+ |   Running GSEA (MsigDB)...
+ | 
+ | Some ID occurs one-to-many match, like ""79602, 400916, 1652""...
+
+ |   Loaded 50 pathways
+ |   ✓ GSEA completed: 47 pathways
+ | 
+[Step 4] Creating GSEA plots...
+ | 
+Attaching package: ‘dplyr’
+
+ | The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+ | The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+ | 
+Attaching package: ‘rlang’
+
+ | The following object is masked _by_ ‘.GlobalEnv’:
+
+    %||%
+
+ | 
+✓ Enrichment analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario09/KRAS/COAD_Mutation_GSEA_MsigDB/slcptac_output/enrichment_GSEA_COAD_KRAS_Mutation_Protein.png
+ | ========================================
+
+",""
+"scenario11","11","cptac_enrichment","APC_TP53_KRAS_PIK3CA","COAD_mutation_panel_GSEA_MsigDB","success","2026-06-16 16:13:33","2026-06-16 16:13:56","22.4376468658447265625","0.37 min (22.4 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/034_scenario11_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_GSEA_MsigDB.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/034_scenario11_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_GSEA_MsigDB.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/034_scenario11_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_GSEA_MsigDB_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/034_scenario11_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_GSEA_MsigDB_raw_data_list_summary.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/034_scenario11_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_GSEA_MsigDB_raw_data_001_APC_Mutation_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/034_scenario11_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_GSEA_MsigDB_raw_data_002_TP53_Mutation_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/034_scenario11_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_GSEA_MsigDB_raw_data_003_KRAS_Mutation_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/034_scenario11_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_GSEA_MsigDB_raw_data_004_PIK3CA_Mutation_COAD.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/034_scenario11_APC_TP53_KRAS_PIK3CA_COAD_mutation_panel_GSEA_MsigDB_package_enrichment_GSEA_COAD_APC-TP53-KRAS-PIK3CA_Mutation_Protein.png","/Users/solomon/Projects/CRLM_dormancy/data/cptac/reference_cache/task_manifest/scenario11/APC_TP53_KRAS_PIK3CA/COAD_mutation_panel_GSEA_MsigDB.rds","","
+========================================
+ | CPTAC Enrichment Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Mutation data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Mutation data for APC, TP53, KRAS, PIK3CA...
+ |   Loaded 4 mutation feature(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 5 features
+ | 
+[Scenario] Detected: Scenario 11 - multiple categorical vs enrichment
+ | 
+[Analysis] Running enrichment pipeline...
+ | 
+[Step 1] Loading genome-wide data...
+ |   Loading genome-wide Protein data from pre-processed file...
+ |   ✓ Loaded 97 samples × 4894 genes (filtered <90% NA)
+ | 
+[Step 2] Processing multiple variables...
+ |   Processing APC (Mutation, COAD)...
+ |   Performing DEA: Mutation vs WildType (97 samples, 4894 genes)
+ |   ✓ DEA completed: 681 significant genes (p<0.05)
+ |   Processing TP53 (Mutation, COAD)...
+ |   ✓ DEA completed: 1210 significant genes (p<0.05)
+ |   Processing KRAS (Mutation, COAD)...
+ |   ✓ DEA completed: 397 significant genes (p<0.05)
+ |   Processing PIK3CA (Mutation, COAD)...
+ |   ✓ DEA completed: 674 significant genes (p<0.05)
+ | 
+[Step 3] Performing GSEA for multiple variables...
+ |   Running GSEA (MsigDB)...
+ | 
+ | Some ID occurs one-to-many match, like ""79602, 400916, 1652""...
+
+ |   Loaded 50 pathways
+ |   ✓ GSEA completed: 47 pathways
+ | 
+[Step 4] Creating GSEA matrix plot...
+ | 
+Attaching package: ‘dplyr’
+
+ | The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+ | The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+ | 
+Attaching package: ‘rlang’
+
+ | The following object is masked _by_ ‘.GlobalEnv’:
+
+    %||%
+
+ | 
+✓ Enrichment analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario11/APC_TP53_KRAS_PIK3CA/COAD_mutation_panel_GSEA_MsigDB/slcptac_output/enrichment_GSEA_COAD_APC-TP53-KRAS-PIK3CA_Mutation_Protein.png
+ | ========================================
+
+",""
+"scenario13","13","cptac_enrichment","ATF3","COAD_RNAseq_GSEA_MsigDB","success","2026-06-16 16:13:34","2026-06-16 16:13:47","13.4221191406250000000","0.22 min (13.4 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/035_scenario13_ATF3_COAD_RNAseq_GSEA_MsigDB.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/035_scenario13_ATF3_COAD_RNAseq_GSEA_MsigDB.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/035_scenario13_ATF3_COAD_RNAseq_GSEA_MsigDB_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/035_scenario13_ATF3_COAD_RNAseq_GSEA_MsigDB_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/035_scenario13_ATF3_COAD_RNAseq_GSEA_MsigDB_package_enrichment_GSEA_COAD_ATF3_RNAseq_Protein.png","/Users/solomon/Projects/CRLM_dormancy/data/cptac/reference_cache/task_manifest/scenario13/ATF3/COAD_RNAseq_GSEA_MsigDB.rds","","
+========================================
+ | CPTAC Enrichment Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 2 features
+ | 
+[Scenario] Detected: Scenario 13 - 1 continuous vs enrichment
+ | 
+[Analysis] Running enrichment pipeline...
+ | 
+[Step 1] Loading genome-wide data...
+ |   Loading genome-wide Protein data from pre-processed file...
+ |   ✓ Loaded 97 samples × 4894 genes (filtered <90% NA)
+ | 
+[Step 2] Calculating correlations...
+ |   Calculating correlations (97 samples, 4894 genes)
+ |   ✓ Correlation completed: 203 significant genes (p<0.05)
+ | 
+[Step 3] Performing GSEA...
+ |   Running GSEA (MsigDB)...
+ | 
+ | Some ID occurs one-to-many match, like ""79602, 400916, 1652""...
+
+ |   Loaded 50 pathways
+ |   ✓ GSEA completed: 47 pathways
+ | 
+[Step 4] Creating GSEA plots...
+ | 
+Attaching package: ‘dplyr’
+
+ | The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+ | The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+ | 
+Attaching package: ‘rlang’
+
+ | The following object is masked _by_ ‘.GlobalEnv’:
+
+    %||%
+
+ | 
+✓ Enrichment analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario13/ATF3/COAD_RNAseq_GSEA_MsigDB/slcptac_output/enrichment_GSEA_COAD_ATF3_RNAseq_Protein.png
+ | ========================================
+
+",""
+"scenario15","15","cptac_enrichment","ATF3_JUN_FOS_DDIT3_CEBPB","COAD_RNAseq_panel_GSEA_MsigDB","success","2026-06-16 16:13:35","2026-06-16 16:14:02","26.6447339057922363281","0.44 min (26.6 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/036_scenario15_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_GSEA_MsigDB.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/036_scenario15_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_GSEA_MsigDB.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/036_scenario15_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_GSEA_MsigDB_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/036_scenario15_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_GSEA_MsigDB_raw_data_list_summary.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/036_scenario15_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_GSEA_MsigDB_raw_data_001_ATF3_RNAseq_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/036_scenario15_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_GSEA_MsigDB_raw_data_002_JUN_RNAseq_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/036_scenario15_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_GSEA_MsigDB_raw_data_003_FOS_RNAseq_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/036_scenario15_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_GSEA_MsigDB_raw_data_004_DDIT3_RNAseq_COAD.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/036_scenario15_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_GSEA_MsigDB_raw_data_005_CEBPB_RNAseq_COAD.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/036_scenario15_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_GSEA_MsigDB_package_enrichment_GSEA_COAD_ATF3-JUN-FOS-DDIT3-CEBPB_RNAseq_Protein.png","/Users/solomon/Projects/CRLM_dormancy/data/cptac/reference_cache/task_manifest/scenario15/ATF3_JUN_FOS_DDIT3_CEBPB/COAD_RNAseq_panel_GSEA_MsigDB.rds","","
+========================================
+ | CPTAC Enrichment Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3, JUN, FOS, DDIT3, CEBPB...
+ |   Loaded 5 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 6 features
+ | 
+[Scenario] Detected: Scenario 15 - multiple continuous vs enrichment
+ | 
+[Analysis] Running enrichment pipeline...
+ | 
+[Step 1] Loading genome-wide data...
+ |   Loading genome-wide Protein data from pre-processed file...
+ |   ✓ Loaded 97 samples × 4894 genes (filtered <90% NA)
+ | 
+[Step 2] Processing multiple variables...
+ |   Processing ATF3 (RNAseq, COAD)...
+ |   Calculating correlations (97 samples, 4894 genes)
+ |   ✓ Correlation completed: 203 significant genes (p<0.05)
+ |   Processing JUN (RNAseq, COAD)...
+ |   ✓ Correlation completed: 991 significant genes (p<0.05)
+ |   Processing FOS (RNAseq, COAD)...
+ |   ✓ Correlation completed: 267 significant genes (p<0.05)
+ |   Processing DDIT3 (RNAseq, COAD)...
+ |   ✓ Correlation completed: 772 significant genes (p<0.05)
+ |   Processing CEBPB (RNAseq, COAD)...
+ |   ✓ Correlation completed: 1416 significant genes (p<0.05)
+ | 
+[Step 3] Performing GSEA for multiple variables...
+ |   Running GSEA (MsigDB)...
+ | 
+ | Some ID occurs one-to-many match, like ""79602, 400916, 1652""...
+
+ |   Loaded 50 pathways
+ |   ✓ GSEA completed: 47 pathways
+ | 
+[Step 4] Creating GSEA matrix plot...
+ | 
+Attaching package: ‘dplyr’
+
+ | The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+ | The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+ | 
+Attaching package: ‘rlang’
+
+ | The following object is masked _by_ ‘.GlobalEnv’:
+
+    %||%
+
+ | 
+✓ Enrichment analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario15/ATF3_JUN_FOS_DDIT3_CEBPB/COAD_RNAseq_panel_GSEA_MsigDB/slcptac_output/enrichment_GSEA_COAD_ATF3-JUN-FOS-DDIT3-CEBPB_RNAseq_Protein.png
+ | ========================================
+
+",""
+"scenario16","16","cptac_survival","ATF3","COAD_RNAseq_OS","success","2026-06-16 16:13:36","2026-06-16 16:13:39","2.6392838954925537109","0.04 min (2.6 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/037_scenario16_ATF3_COAD_RNAseq_OS.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/037_scenario16_ATF3_COAD_RNAseq_OS.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/037_scenario16_ATF3_COAD_RNAseq_OS_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/037_scenario16_ATF3_COAD_RNAseq_OS_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/037_scenario16_ATF3_COAD_RNAseq_OS_package_survival_KM_Cox_OS_COAD_ATF3_RNAseq.png","","","
+========================================
+ | CPTAC Survival Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 2 features
+ | ✓ OS survival data is available for all 1 cancer type(s)
+ | 
+[Var1] Loading Survival data for OS...
+ |   Loaded OS survival data for 1 cancer(s)
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 16 - 1 variable vs survival
+ |   Variables: 1 continuous feature(s) across 1 cancer(s)
+ | 
+[Analysis] Running survival analysis...
+ | 
+[Step 1] Preparing survival data...
+ |   Calculating optimal cutoff...
+ |   Cutoff: 9.511 (Low: n=42, High: n=63)
+ | 
+[Step 2] Performing Kaplan-Meier analysis...
+ | 
+[Step 3] Performing Cox regression...
+ | 
+[Step 4] Creating combined KM + Cox plot...
+ | 
+✓ Survival analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario16/ATF3/COAD_RNAseq_OS/slcptac_output/survival_KM_Cox_OS_COAD_ATF3_RNAseq.png
+ | ========================================
+
+",""
+"scenario16","16","cptac_survival","KRAS","COAD_KRAS_Protein_OS","success","2026-06-16 16:13:36","2026-06-16 16:13:39","2.4238338470458984375","0.04 min (2.4 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/038_scenario16_KRAS_COAD_KRAS_Protein_OS.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/038_scenario16_KRAS_COAD_KRAS_Protein_OS.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/038_scenario16_KRAS_COAD_KRAS_Protein_OS_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/038_scenario16_KRAS_COAD_KRAS_Protein_OS_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/038_scenario16_KRAS_COAD_KRAS_Protein_OS_package_survival_KM_Cox_OS_COAD_KRAS_Protein.png","","","
+========================================
+ | CPTAC Survival Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ Protein data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading Protein data for KRAS...
+ |   Loaded 1 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 2 features
+ | ✓ OS survival data is available for all 1 cancer type(s)
+ | 
+[Var1] Loading Survival data for OS...
+ |   Loaded OS survival data for 1 cancer(s)
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 16 - 1 variable vs survival
+ |   Variables: 1 continuous feature(s) across 1 cancer(s)
+ | 
+[Analysis] Running survival analysis...
+ | 
+[Step 1] Preparing survival data...
+ |   Calculating optimal cutoff...
+ |   Cutoff: 24.545 (Low: n=81, High: n=16)
+ | 
+[Step 2] Performing Kaplan-Meier analysis...
+ | 
+[Step 3] Performing Cox regression...
+ | 
+[Step 4] Creating combined KM + Cox plot...
+ | 
+✓ Survival analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario16/KRAS/COAD_KRAS_Protein_OS/slcptac_output/survival_KM_Cox_OS_COAD_KRAS_Protein.png
+ | ========================================
+
+",""
+"scenario17","17","cptac_survival","ATF3_JUN_FOS_DDIT3_CEBPB","COAD_RNAseq_panel_OS","success","2026-06-16 16:13:38","2026-06-16 16:13:40","1.6259770393371582031","0.03 min (1.6 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/039_scenario17_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_OS.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/039_scenario17_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_OS.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/039_scenario17_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_OS_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/039_scenario17_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_OS_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/039_scenario17_ATF3_JUN_FOS_DDIT3_CEBPB_COAD_RNAseq_panel_OS_package_survival_Forest_OS_COAD_ATF3-JUN-FOS-DDIT3-CEBPB_RNAseq.png","","Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead.
+ℹ The deprecated feature was likely used in the SLCPTAC package.
+  Please report the issue at <https://github.com/SolvingLab/SLCPTAC/issues>.","
+========================================
+ | CPTAC Survival Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 1 cancer type(s): COAD
+ | 
+[Var1] Loading RNAseq data for ATF3, JUN, FOS, DDIT3, CEBPB...
+ |   Loaded 5 feature(s) from 1 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 109 samples × 6 features
+ | ✓ OS survival data is available for all 1 cancer type(s)
+ | 
+[Var1] Loading Survival data for OS...
+ |   Loaded OS survival data for 1 cancer(s)
+ | ✓ Final dataset: 109 samples × 3 features
+ | 
+[Scenario] Detected: Scenario 17 - multiple variables vs survival
+ |   Variables: 5 continuous feature(s) across 1 cancer(s)
+ | 
+[Analysis] Running survival analysis...
+ | 
+[Step 1] Performing Cox regression for multiple variables...
+ |   Processing ATF3 (RNAseq, COAD)...
+ |   Processing JUN (RNAseq, COAD)...
+ |   Processing FOS (RNAseq, COAD)...
+ |   Processing DDIT3 (RNAseq, COAD)...
+ |   Processing CEBPB (RNAseq, COAD)...
+ | 
+[Step 2] Creating forest plot...
+ | 
+✓ Survival analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario17/ATF3_JUN_FOS_DDIT3_CEBPB/COAD_RNAseq_panel_OS/slcptac_output/survival_Forest_OS_COAD_ATF3-JUN-FOS-DDIT3-CEBPB_RNAseq.png
+ | ========================================
+
+",""
+"scenario17","17","cptac_survival","ATF3","pan_cancer_RNAseq_OS","success","2026-06-16 16:13:39","2026-06-16 16:13:40","1.5744450092315673828","0.03 min (1.6 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/040_scenario17_ATF3_pan_cancer_RNAseq_OS.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/040_scenario17_ATF3_pan_cancer_RNAseq_OS.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/040_scenario17_ATF3_pan_cancer_RNAseq_OS_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/040_scenario17_ATF3_pan_cancer_RNAseq_OS_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/040_scenario17_ATF3_pan_cancer_RNAseq_OS_package_survival_Forest_OS_BRCA-CCRCC-COAD-GBM-HNSCC-LUAD-LUSC-OV-PDAC-UCEC_ATF3_RNAseq.png","","Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead.
+ℹ The deprecated feature was likely used in the SLCPTAC package.
+  Please report the issue at <https://github.com/SolvingLab/SLCPTAC/issues>.","
+========================================
+ | CPTAC Survival Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 10 cancer type(s): BRCA, CCRCC, COAD, GBM, HNSCC, LUAD, LUSC, OV, PDAC, UCEC
+ | 
+[Var1] Loading RNAseq data for ATF3...
+ |   Loaded 10 feature(s) from 10 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 1042 samples × 11 features
+ | ✓ OS survival data is available for all 10 cancer type(s)
+ | 
+[Var1] Loading Survival data for OS...
+ |   Loaded OS survival data for 10 cancer(s)
+ | ✓ Final dataset: 1042 samples × 21 features
+ | 
+[Scenario] Detected: Scenario 17 - multiple variables vs survival
+ |   Variables: 10 continuous feature(s) across 10 cancer(s)
+ | 
+[Analysis] Running survival analysis...
+ | 
+[Step 1] Performing Cox regression for multiple variables...
+ |   Processing ATF3 (RNAseq, BRCA)...
+ |   Processing ATF3 (RNAseq, CCRCC)...
+ |   Processing ATF3 (RNAseq, COAD)...
+ |   Processing ATF3 (RNAseq, GBM)...
+ |   Processing ATF3 (RNAseq, HNSCC)...
+ |   Processing ATF3 (RNAseq, LUAD)...
+ |   Processing ATF3 (RNAseq, LUSC)...
+ |   Processing ATF3 (RNAseq, OV)...
+ |   Processing ATF3 (RNAseq, PDAC)...
+ |   Processing ATF3 (RNAseq, UCEC)...
+ | 
+[Step 2] Creating forest plot...
+ | 
+✓ Survival analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario17/ATF3/pan_cancer_RNAseq_OS/slcptac_output/survival_Forest_OS_BRCA-CCRCC-COAD-GBM-HNSCC-LUAD-LUSC-OV-PDAC-UCEC_ATF3_RNAseq.png
+ | ========================================
+
+",""
+"scenario16","16","cptac_survival","ATF3","COAD_RNAseq_PFS","skipped","2026-06-16 16:13:39","2026-06-16 16:13:39","0.0058670043945312500","0.00 min (0.0 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable PFS survival data for COAD.",""
+"scenario16","16","cptac_survival","KRAS","COAD_KRAS_Protein_PFS","skipped","2026-06-16 16:13:39","2026-06-16 16:13:39","0.0011839866638183594","0.00 min (0.0 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable PFS survival data for COAD.",""
+"scenario17","17","cptac_survival","ATF3_JUN_FOS_DDIT3_CEBPB","COAD_RNAseq_panel_PFS","skipped","2026-06-16 16:13:39","2026-06-16 16:13:39","0.0084509849548339844","0.00 min (0.0 sec)","","","","","Skipped because local SLCPTAC bulk data has no usable PFS survival data for COAD.",""
+"scenario17","17","cptac_survival","ATF3","pan_cancer_RNAseq_PFS","success","2026-06-16 16:13:39","2026-06-16 16:13:40","1.4441740512847900391","0.02 min (1.4 sec)","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/pdf/044_scenario17_ATF3_pan_cancer_RNAseq_PFS.pdf;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/044_scenario17_ATF3_pan_cancer_RNAseq_PFS.png;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/044_scenario17_ATF3_pan_cancer_RNAseq_PFS_stats.csv;/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/tables/SLCPTAC/044_scenario17_ATF3_pan_cancer_RNAseq_PFS_raw_data.csv","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/cptac/plots/SLCPTAC/png/044_scenario17_ATF3_pan_cancer_RNAseq_PFS_package_survival_Forest_PFS_BRCA-CCRCC-COAD-GBM-HNSCC-LUAD-LUSC-OV-PDAC-UCEC_ATF3_RNAseq.png","","no non-missing arguments to min; returning Inf | Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead.
+ℹ The deprecated feature was likely used in the SLCPTAC package.
+  Please report the issue at <https://github.com/SolvingLab/SLCPTAC/issues>. | Removed 3 rows containing missing values or values outside the scale range (`geom_point()`).","
+========================================
+ | CPTAC Survival Analysis
+ | ========================================
+ | CPTAC Data Loading
+ | ✓ RNAseq data validated for 10 cancer type(s): BRCA, CCRCC, COAD, GBM, HNSCC, LUAD, LUSC, OV, PDAC, UCEC
+ | 
+[Var1] Loading RNAseq data for ATF3...
+ |   Loaded 10 feature(s) from 10 cancer(s)
+ | 
+[Merge] Combining datasets...
+ | ✓ Final dataset: 1042 samples × 11 features
+ | ✓ PFS survival data is available for all 10 cancer type(s)
+ | 
+[Var1] Loading Survival data for PFS...
+ |   Loaded PFS survival data for 10 cancer(s)
+ | ✓ Final dataset: 1042 samples × 21 features
+ | 
+[Scenario] Detected: Scenario 17 - multiple variables vs survival
+ |   Variables: 10 continuous feature(s) across 10 cancer(s)
+ | 
+[Analysis] Running survival analysis...
+ | 
+[Step 1] Performing Cox regression for multiple variables...
+ |   Processing ATF3 (RNAseq, BRCA)...
+ |   Processing ATF3 (RNAseq, CCRCC)...
+ |   Processing ATF3 (RNAseq, COAD)...
+ |   Processing ATF3 (RNAseq, GBM)...
+ |   Processing ATF3 (RNAseq, HNSCC)...
+ |   Processing ATF3 (RNAseq, LUAD)...
+ |   Processing ATF3 (RNAseq, LUSC)...
+ |   Processing ATF3 (RNAseq, OV)...
+ |   Processing ATF3 (RNAseq, PDAC)...
+ |   Processing ATF3 (RNAseq, UCEC)...
+ | 
+[Step 2] Creating forest plot...
+ | 
+✓ Survival analysis completed
+ | ✓ Plot saved: /Users/solomon/Projects/CRLM_dormancy/temporary/slcptac/tasks/scenario17/ATF3/pan_cancer_RNAseq_PFS/slcptac_output/survival_Forest_PFS_BRCA-CCRCC-COAD-GBM-HNSCC-LUAD-LUSC-OV-PDAC-UCEC_ATF3_RNAseq.png
+ | ========================================
+
+",""

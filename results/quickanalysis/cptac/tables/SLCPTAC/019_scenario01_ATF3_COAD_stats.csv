@@ -1,0 +1,2 @@
+"var1_feature","var2_feature","var1","var2","r","p","p_adjusted","method","p_adjust_method","p_value","cancer_type"
+"ATF3 (RNAseq, COAD)","ATF3 (logCNA, COAD)","ATF3 (RNAseq, COAD)","ATF3 (logCNA, COAD)","-0.1387929295853427","0.1599857841013587","0.1599857841013587","pearson","BH","0.1599857841013587","COAD"

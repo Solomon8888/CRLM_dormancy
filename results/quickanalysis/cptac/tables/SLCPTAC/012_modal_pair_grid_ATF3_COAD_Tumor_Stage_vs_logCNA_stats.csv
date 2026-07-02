@@ -1,0 +1,2 @@
+"categorical","continuous","p_value","test_method","effect_size","n_groups","n","p_adjusted","significant","var1_feature","var2_feature","method"
+"COAD_Tumor_Stage_Clinical","COAD_ATF3_logCNA","0.727242810286187","Kruskal-Wallis","-0.01692035959282148","4","104","0.727242810286187",FALSE,"Tumor_Stage (Clinical, COAD)","ATF3 (logCNA, COAD)","Kruskal-Wallis"

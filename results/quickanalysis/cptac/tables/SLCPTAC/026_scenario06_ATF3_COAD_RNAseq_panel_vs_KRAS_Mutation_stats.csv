@@ -1,0 +1,6 @@
+"categorical","continuous","p_value","test_method","effect_size","n_groups","n","p_adjusted","significant","var1_feature","var2_feature","method"
+"COAD_KRAS_Mutation","COAD_ATF3_RNAseq","0.8431364610002277","Wilcoxon","0.01931142140030529","2","105","0.8431364610002277",FALSE,"KRAS (Mutation, COAD)","ATF3 (RNAseq, COAD)","Wilcoxon"
+"COAD_KRAS_Mutation","COAD_JUN_RNAseq","0.2444890455476681","Wilcoxon","0.11357910907280724","2","105","0.6112226138691703",FALSE,"KRAS (Mutation, COAD)","JUN (RNAseq, COAD)","Wilcoxon"
+"COAD_KRAS_Mutation","COAD_FOS_RNAseq","0.5174295258713124","Wilcoxon","0.06317125983489701","2","105","0.7656776384199915",FALSE,"KRAS (Mutation, COAD)","FOS (RNAseq, COAD)","Wilcoxon"
+"COAD_KRAS_Mutation","COAD_DDIT3_RNAseq","0.6125421107359932","Wilcoxon","0.04942427439377672","2","105","0.7656776384199915",FALSE,"KRAS (Mutation, COAD)","DDIT3 (RNAseq, COAD)","Wilcoxon"
+"COAD_KRAS_Mutation","COAD_CEBPB_RNAseq","0.1427228032753987","Wilcoxon","0.14304026285009638","2","105","0.6112226138691703",FALSE,"KRAS (Mutation, COAD)","CEBPB (RNAseq, COAD)","Wilcoxon"

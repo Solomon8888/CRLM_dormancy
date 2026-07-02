@@ -1,0 +1,2 @@
+"categorical","continuous","p_value","test_method","effect_size","n_groups","n","p_adjusted","significant","var1_feature","var2_feature","method"
+"COAD_Age_Clinical","COAD_ATF3_logCNA","0.3956441267492334","Wilcoxon","0.08410573587567924","2","102","0.3956441267492334",FALSE,"Age (Clinical, COAD)","ATF3 (logCNA, COAD)","Wilcoxon"

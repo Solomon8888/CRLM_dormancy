@@ -1,0 +1,2 @@
+"categorical","continuous","p_value","test_method","effect_size","n_groups","n","p_adjusted","significant","var1_feature","var2_feature","method"
+"COAD_ATF3_Mutation","COAD_ATF3_RNAseq","0.3544518624197277","Wilcoxon","0.0903672421700701","2","105","0.3544518624197277",FALSE,"ATF3 (Mutation, COAD)","ATF3 (RNAseq, COAD)","Wilcoxon"

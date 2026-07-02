@@ -1,0 +1,2 @@
+"Analysis_Name","All_Genes_File","SE_RDS_File"
+"COAD_01A_ATF3_spearman_correlation","/Users/solomon/Projects/CRLM_dormancy/results/quickanalysis/local_tcga/ATF3_correlation/tables/Correlation/COAD_01A_ATF3_spearman_correlation_all_genes.csv","/Users/solomon/Projects/CRLM_dormancy/data/TCGA/COAD/data_prepare/COAD_se_raw.rds"

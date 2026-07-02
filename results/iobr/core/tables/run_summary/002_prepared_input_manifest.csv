@@ -1,0 +1,4 @@
+"Dataset_ID","ProjectID","Target_Gene","Sample_Count","Gene_Count","SE_File","Cache_File","Tumor","TIMER_Indication"
+"TCGA_COAD_01A","COAD","ATF3","455","20023","/Users/solomon/Projects/CRLM_dormancy/data/TCGA/COAD/data_prepare/COAD_se_raw.rds","/Users/solomon/Projects/CRLM_dormancy/data/iobr/prepared_inputs/TCGA_COAD_01A_ATF3_iobr_input.qs2",TRUE,"coad"
+"GTEx_COLON","GTEx_COLON","ATF3","818","20023","/Users/solomon/Projects/CRLM_dormancy/data/GTEx/COLON/data_prepare/COLON_se_raw.rds","/Users/solomon/Projects/CRLM_dormancy/data/iobr/prepared_inputs/GTEx_COLON_ATF3_iobr_input.qs2",FALSE,NA
+"GSE114012","GSE114012",NA,"64","19218","/Users/solomon/Projects/CRLM_dormancy/data/ngs/GSE114012/data_prepare/GSE114012_se_raw.rds","/Users/solomon/Projects/CRLM_dormancy/data/iobr/prepared_inputs/GSE114012_design_iobr_input.qs2",TRUE,NA

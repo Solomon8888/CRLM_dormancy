@@ -1,0 +1,6 @@
+"Name","Class","Dimension"
+"ATF3 (RNAseq, COAD)","data.frame","4894 x 6"
+"JUN (RNAseq, COAD)","data.frame","4894 x 6"
+"FOS (RNAseq, COAD)","data.frame","4894 x 6"
+"DDIT3 (RNAseq, COAD)","data.frame","4894 x 6"
+"CEBPB (RNAseq, COAD)","data.frame","4894 x 6"
