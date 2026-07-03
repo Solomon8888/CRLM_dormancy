@@ -1,2 +1,0 @@
-"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
-"DEG","MVL_CRC29","CHIP_LITERATURE_EVIDENCE_CHEA3_ENRICHR_TRRUST","ChEA3;ENRICHR;TRRUST","3","173","10","results/ngs/GSE310664/TF_summary/deg/MVL_CRC29/intersections/CHIP_LITERATURE_EVIDENCE_CHEA3_ENRICHR_TRRUST/candidates/top10_tf_candidates.csv"

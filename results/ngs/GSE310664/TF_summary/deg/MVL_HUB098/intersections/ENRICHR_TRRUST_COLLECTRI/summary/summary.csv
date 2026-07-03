@@ -1,2 +1,0 @@
-"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
-"DEG","MVL_HUB098","ENRICHR_TRRUST_COLLECTRI","ENRICHR;TRRUST;CollecTRI","3","225","10","results/ngs/GSE310664/TF_summary/deg/MVL_HUB098/intersections/ENRICHR_TRRUST_COLLECTRI/candidates/top10_tf_candidates.csv"

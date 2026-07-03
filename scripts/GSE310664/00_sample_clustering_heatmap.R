@@ -1,6 +1,6 @@
 # GSE310664样本聚类热图
 #
-# 从当前数据集的SummarizedExperiment对象中按指定样本分组分别提取样本，
+# 从当前数据集的SummarizedExperiment对象中提取全部样本，
 # 使用TPM表达量计算样本间相关性，并绘制层次聚类热图。
 # 样本显示名称来自临床信息表中的Title列。
 
@@ -21,7 +21,7 @@ FUNCTION_FILE <- "scripts/functions/limma_de_functions.R"
 PLOTTING_FUNCTION_FILE <- "scripts/functions/plotting_common_functions.R"
 PARALLEL_FUNCTION_FILE <- "scripts/functions/parallel_runtime_functions.R"
 
-# 输出根目录。最终图片保存到plots/sample_clustering_heatmap/<gene_biotype>/<sample_group>/。
+# 输出根目录。最终图片保存到plots/sample_clustering_heatmap/<gene_biotype>/all_samples/。
 RESULT_ROOT <- file.path("results", DATA_TYPE, DATASET_ID)
 PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "sample_clustering_heatmap")
 
@@ -35,14 +35,18 @@ GENE_BIOTYPE_FILTER <- "coding"
 # SE对象中TPM矩阵的assay名称。聚类热图使用TPM，不使用原始count。
 TPM_ASSAY_NAME <- "tpm"
 
-# 样本筛选列和值。脚本会依次为SAMPLE_GROUPS中的每一组样本绘制热图。
-# 当前临床模板中已存在cell_line列；后续若你在clinical_edit.csv中补充p27状态、
-# 微转移/大转移等分组列，只需把SAMPLE_GROUP_COLUMN和SAMPLE_GROUPS改为对应列和值。
-SAMPLE_GROUP_COLUMN <- "cell_line"
-SAMPLE_GROUPS <- c(
-  CRC29 = "CRC29",
-  HUB098 = "HUB098",
-  TOR10 = "TOR10"
+# 样本聚类必须使用全样本一起计算相关性和层次聚类。
+# 不按cell_line或实验设计拆开聚类，否则看不到跨组样本的整体聚类趋势。
+SAMPLE_CLUSTERING_NAME <- "all_samples"
+
+# GSE310664的p27报告状态写在Title里，这里自动解析后作为热图注释条。
+P27_STATUS_COLUMN <- "p27_status"
+P27_STATUS_LEVELS <- c("Low", "Medium", "High", "Unknown")
+P27_STATUS_COLORS <- c(
+  Low = "#2166AC",
+  Medium = "#FDB863",
+  High = "#D73027",
+  Unknown = "#BDBDBD"
 )
 
 # 图中展示的样本名来源。若Title为空，会自动回退到Sample_ID。
@@ -143,7 +147,7 @@ clinical_data <- read.csv(
 stopifnot(inherits(se, "SummarizedExperiment"))
 stopifnot("Sample_ID" %in% colnames(clinical_data))
 stopifnot(SAMPLE_LABEL_COLUMN %in% colnames(clinical_data))
-stopifnot(SAMPLE_GROUP_COLUMN %in% colnames(clinical_data))
+stopifnot("cell_line" %in% colnames(clinical_data))
 stopifnot(!any(duplicated(clinical_data$Sample_ID)))
 
 missing_samples <- setdiff(colnames(se), clinical_data$Sample_ID)
@@ -156,6 +160,21 @@ sample_info_all <- clinical_data[
 ]
 rownames(sample_info_all) <- sample_info_all$Sample_ID
 stopifnot(all(sample_info_all$Sample_ID == colnames(se)))
+
+derive_p27_status <- function(sample_title) {
+  title_lower <- tolower(trimws(as.character(sample_title)))
+  status <- rep("Unknown", length(title_lower))
+
+  status[grepl("\\blow\\b|low expression", title_lower)] <- "Low"
+  status[grepl("\\bmed\\b|\\bmedium\\b|medium expression", title_lower)] <- "Medium"
+  status[grepl("\\bhigh\\b|high expression", title_lower)] <- "High"
+
+  status
+}
+
+sample_info_all[[P27_STATUS_COLUMN]] <- derive_p27_status(
+  sample_info_all[[SAMPLE_LABEL_COLUMN]]
+)
 
 
 # 3. 准备TPM表达矩阵 -----------------------------------------------------------
@@ -217,16 +236,12 @@ if (CLEAN_PLOT_OUTPUT_DIR) {
 tpm_filtered <- gene_filter$exprSet
 
 
-# 4. 单组样本聚类热图绘制函数 --------------------------------------------------
+# 4. 全样本聚类热图绘制函数 ----------------------------------------------------
 
-draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value) {
-  # 对一个样本集合完成筛选、相关性计算、层次聚类、排版和保存。
-  # 聚类只基于TPM表达谱得到的样本相关性，不按细胞系分组强行排序。
-  sample_status <- trimws(as.character(sample_info_all[[SAMPLE_GROUP_COLUMN]]))
-  sample_status[is.na(sample_status)] <- ""
-  sample_index <- sample_status == sample_group_value
-
-  sample_info <- sample_info_all[sample_index, , drop = FALSE]
+draw_sample_clustering_heatmap <- function(sample_group_name = SAMPLE_CLUSTERING_NAME) {
+  # 对全体样本完成相关性计算、层次聚类、排版和保存。
+  # 聚类只基于TPM表达谱得到的样本相关性，不按细胞系或实验设计拆分。
+  sample_info <- sample_info_all
   stopifnot(nrow(sample_info) >= 2)
 
   sample_labels <- get_display_labels(
@@ -256,10 +271,18 @@ draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value
 
   cell_line_palette <- get_named_brewer_palette(sample_info$cell_line)
   cell_line_levels <- names(cell_line_palette)
+  p27_status_levels <- P27_STATUS_LEVELS[
+    P27_STATUS_LEVELS %in% unique(as.character(sample_info[[P27_STATUS_COLUMN]]))
+  ]
+  p27_status_palette <- P27_STATUS_COLORS[p27_status_levels]
 
   top_annotation <- ComplexHeatmap::HeatmapAnnotation(
     Cell_line = sample_info$cell_line,
-    col = list(Cell_line = cell_line_palette),
+    p27_status = sample_info[[P27_STATUS_COLUMN]],
+    col = list(
+      Cell_line = cell_line_palette,
+      p27_status = p27_status_palette
+    ),
     show_legend = FALSE,
     show_annotation_name = FALSE,
     annotation_name_gp = grid::gpar(
@@ -269,16 +292,22 @@ draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value
       col = TEXT_COLOR
     ),
     simple_anno_size = grid::unit(SAMPLE_ANNOTATION_SIZE_MM, "mm"),
+    gap = grid::unit(0.7, "mm"),
     gp = grid::gpar(col = "black", lwd = CELL_BORDER_WIDTH),
     border = TRUE
   )
 
   left_annotation <- ComplexHeatmap::rowAnnotation(
     Cell_line = sample_info$cell_line,
-    col = list(Cell_line = cell_line_palette),
+    p27_status = sample_info[[P27_STATUS_COLUMN]],
+    col = list(
+      Cell_line = cell_line_palette,
+      p27_status = p27_status_palette
+    ),
     show_annotation_name = FALSE,
     show_legend = FALSE,
     simple_anno_size = grid::unit(SAMPLE_ANNOTATION_SIZE_MM, "mm"),
+    gap = grid::unit(0.7, "mm"),
     gp = grid::gpar(col = "black", lwd = CELL_BORDER_WIDTH),
     border = TRUE
   )
@@ -295,11 +324,12 @@ draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value
   row_label_space <- max_row_label_chars * SAMPLE_FONT_SIZE * 0.010
   col_label_space <- max_column_label_chars * COLUMN_SAMPLE_FONT_SIZE * 0.010 +
     max_column_label_lines * COLUMN_SAMPLE_FONT_SIZE * 0.020
+  annotation_track_inch <- 2 * SAMPLE_ANNOTATION_SIZE_MM / 25.4
 
   heatmap_panel_width <- heatmap_body_inch + row_label_space +
-    ROW_DEND_WIDTH_MM / 25.4 + SAMPLE_ANNOTATION_SIZE_MM / 25.4 + 0.95
+    ROW_DEND_WIDTH_MM / 25.4 + annotation_track_inch + 1.05
   heatmap_panel_height <- heatmap_body_inch + col_label_space +
-    COLUMN_DEND_HEIGHT_MM / 25.4 + SAMPLE_ANNOTATION_SIZE_MM / 25.4 + 0.95
+    COLUMN_DEND_HEIGHT_MM / 25.4 + annotation_track_inch + 1.05
 
   pdf_width <- OUTER_MARGIN_INCH * 2 +
     LEGEND_LEFT_WIDTH_INCH + LEGEND_HEATMAP_GAP_INCH + heatmap_panel_width
@@ -395,6 +425,34 @@ draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value
     title_gap = grid::unit(LEGEND_ITEM_GAP_MM, "mm")
   )
 
+  p27_status_legend <- ComplexHeatmap::Legend(
+    title = "p27_status",
+    at = p27_status_levels,
+    type = "grid",
+    legend_gp = grid::gpar(
+      fill = p27_status_palette[p27_status_levels],
+      col = "black",
+      lwd = CELL_BORDER_WIDTH
+    ),
+    labels_gp = grid::gpar(
+      fontsize = LEGEND_FONT_SIZE,
+      fontface = TEXT_FONT_FACE,
+      fontfamily = TEXT_FONT_FAMILY,
+      col = TEXT_COLOR
+    ),
+    title_gp = grid::gpar(
+      fontsize = LEGEND_FONT_SIZE,
+      fontface = TEXT_FONT_FACE,
+      fontfamily = TEXT_FONT_FAMILY,
+      col = TEXT_COLOR
+    ),
+    grid_height = grid::unit(5, "mm"),
+    grid_width = grid::unit(5, "mm"),
+    gap = grid::unit(LEGEND_ITEM_GAP_MM, "mm"),
+    row_gap = grid::unit(LEGEND_ITEM_GAP_MM, "mm"),
+    title_gap = grid::unit(LEGEND_ITEM_GAP_MM, "mm")
+  )
+
   correlation_legend <- ComplexHeatmap::Legend(
     title = "Correlation",
     col_fun = heatmap_colors,
@@ -418,6 +476,7 @@ draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value
 
   legend_pack <- ComplexHeatmap::packLegend(
     cell_line_legend,
+    p27_status_legend,
     correlation_legend,
     direction = "vertical",
     gap = grid::unit(LEGEND_GROUP_GAP_MM, "mm")
@@ -472,8 +531,10 @@ draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value
 
   data.frame(
     Sample_Group = sample_group_name,
-    Group_Value = sample_group_value,
+    Group_Value = "all_samples",
     Samples = nrow(sample_info),
+    Cell_Lines = paste(cell_line_levels, collapse = "; "),
+    P27_Status = paste(p27_status_levels, collapse = "; "),
     Genes_After_Biotype_Filter = gene_filter$selected_gene_count,
     Genes_After_Removing_Zero_Variance = nrow(expr_for_correlation),
     PDF_Width = round(pdf_width, 2),
@@ -485,31 +546,13 @@ draw_sample_clustering_heatmap <- function(sample_group_name, sample_group_value
 }
 
 
-# 5. 批量绘制各样本分组聚类热图 ----------------------------------------------
+# 5. 绘制全样本聚类热图 --------------------------------------------------------
 
 cat("\nRunning sample TPM clustering heatmap generation...\n")
-parallel_strategy <- setup_parallel_strategy(
-  total_tasks = length(SAMPLE_GROUPS),
-  inner_label = "Heatmap inner workers",
-  nested_label = "Nested workers"
+
+summary_table <- draw_sample_clustering_heatmap(
+  sample_group_name = SAMPLE_CLUSTERING_NAME
 )
-
-sample_group_names <- names(SAMPLE_GROUPS)
-summary_list <- run_indexed_tasks_with_progress(
-  total_tasks = length(sample_group_names),
-  workers = parallel_strategy$task_workers,
-  task_function = function(i) {
-    sample_group_name <- sample_group_names[i]
-
-    draw_sample_clustering_heatmap(
-      sample_group_name = sample_group_name,
-      sample_group_value = SAMPLE_GROUPS[[sample_group_name]]
-    )
-  }
-)
-stop_on_parallel_errors(summary_list, task_ids = sample_group_names, label = "sample heatmap tasks")
-
-summary_table <- do.call(rbind, summary_list)
 rownames(summary_table) <- NULL
 
 
@@ -524,6 +567,7 @@ print(
     ,
     c(
       "Sample_Group", "Samples",
+      "Cell_Lines", "P27_Status",
       "Genes_After_Biotype_Filter", "Genes_After_Removing_Zero_Variance",
       "PDF_Width", "PDF_Height"
     )

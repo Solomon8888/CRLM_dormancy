@@ -1,2 +1,0 @@
-"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
-"DEG","HMVL_TOR10","ALL_6_METHODS","DoRothEA;ChEA3;VIPER;ENRICHR;TRRUST;CollecTRI","6","148","10","results/ngs/GSE310664/TF_summary/deg/HMVL_TOR10/intersections/ALL_6_METHODS/candidates/top10_tf_candidates.csv"

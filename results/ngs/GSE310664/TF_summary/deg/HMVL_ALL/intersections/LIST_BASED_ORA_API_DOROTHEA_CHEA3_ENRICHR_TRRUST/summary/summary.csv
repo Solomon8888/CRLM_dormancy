@@ -1,2 +1,0 @@
-"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
-"DEG","HMVL_ALL","LIST_BASED_ORA_API_DOROTHEA_CHEA3_ENRICHR_TRRUST","DoRothEA;ChEA3;ENRICHR;TRRUST","4","144","10","results/ngs/GSE310664/TF_summary/deg/HMVL_ALL/intersections/LIST_BASED_ORA_API_DOROTHEA_CHEA3_ENRICHR_TRRUST/candidates/top10_tf_candidates.csv"

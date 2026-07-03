@@ -1,2 +1,0 @@
-"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
-"DEG","HVL_CRC29","SIGNED_NETWORK_DOROTHEA_VIPER_COLLECTRI","DoRothEA;VIPER;CollecTRI","3","231","10","results/ngs/GSE310664/TF_summary/deg/HVL_CRC29/intersections/SIGNED_NETWORK_DOROTHEA_VIPER_COLLECTRI/candidates/top10_tf_candidates.csv"
