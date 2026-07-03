@@ -213,15 +213,11 @@ gene_filter <- filter_genes_by_biotype(
 # 输出目录用基因类型区分；图片文件名只保留结果类型。
 plot_filter_name <- sanitize_file_name(gene_filter$filter)
 PLOT_DIR <- file.path(PLOT_ROOT, plot_filter_name)
-dir.create(PLOT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 if (CLEAN_PLOT_OUTPUT_DIR) {
-  unlink(list.files(
-    PLOT_DIR,
-    pattern = "[.](pdf|png)$",
-    recursive = TRUE,
-    full.names = TRUE
-  ))
+  if (dir.exists(PLOT_DIR)) {
+    unlink(PLOT_DIR, recursive = TRUE, force = TRUE)
+  }
 
   legacy_plot_files <- list.files(
     PLOT_ROOT,
@@ -232,6 +228,8 @@ if (CLEAN_PLOT_OUTPUT_DIR) {
     unlink(legacy_plot_files)
   }
 }
+
+dir.create(PLOT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 tpm_filtered <- gene_filter$exprSet
 

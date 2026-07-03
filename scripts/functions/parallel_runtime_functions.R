@@ -797,10 +797,29 @@ stop_on_parallel_errors <- function(results, task_ids = names(results), label = 
   }
 
   failed_tasks <- task_ids[task_errors]
+  error_messages <- vapply(results[task_errors], function(x) {
+    if (is.null(x)) {
+      return("NULL result")
+    }
+
+    msg <- trimws(as.character(x))
+    if (length(msg) == 0L || !nzchar(msg[1])) {
+      return("unknown error")
+    }
+
+    msg[1]
+  }, character(1))
+  names(error_messages) <- failed_tasks
+
   stop(
     "Some ",
     label,
     " failed: ",
-    paste(failed_tasks, collapse = ", ")
+    paste(failed_tasks, collapse = ", "),
+    "\n",
+    paste(
+      sprintf("- task %s: %s", names(error_messages), error_messages),
+      collapse = "\n"
+    )
   )
 }

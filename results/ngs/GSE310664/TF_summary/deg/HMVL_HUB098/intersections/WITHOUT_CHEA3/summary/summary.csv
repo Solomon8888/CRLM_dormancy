@@ -1,0 +1,2 @@
+"Input_Type","TF_Analysis_Name","Intersection_Name","Required_Methods","Number_Of_Methods","Intersected_TF_Count","Reported_Top_N","Result_File"
+"DEG","HMVL_HUB098","WITHOUT_CHEA3","DoRothEA;VIPER;ENRICHR;TRRUST;CollecTRI","5","144","10","results/ngs/GSE310664/TF_summary/deg/HMVL_HUB098/intersections/WITHOUT_CHEA3/candidates/top10_tf_candidates.csv"

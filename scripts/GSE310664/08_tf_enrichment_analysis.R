@@ -80,7 +80,9 @@ METHODS_TO_RUN <- c("dorothea", "chea3", "viper", "enrichr", "trrust", "collectr
 # 需要纳入的输入类型。
 # DEG      = 01号脚本输出的显著差异表达基因列表；
 # INTERSECT = 02号脚本输出的交集基因列表。
-INPUT_TYPES_TO_RUN <- c("DEG", "INTERSECT")
+# GSE310664默认只跑DEG层面的TF富集；不要把全部差异方案强行取交集后再跑TF。
+# 只有后续手动定义了有生物学意义的INTERSECTION_SCHEMES时，再把INTERSECT加回来。
+INPUT_TYPES_TO_RUN <- c("DEG")
 
 # 需要运行哪些差异分析设计。设为"all"时自动读取全部DEG/significant_genes.csv。
 ANALYSES_TO_RUN <- "all"

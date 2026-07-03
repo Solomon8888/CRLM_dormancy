@@ -35,16 +35,16 @@ GENE_ANNOTATION_COLUMNS <- c(
 OUTPUT_DROP_COLUMNS <- c("Feature_ID", "Biotype", "Length")
 
 # 多套交集方案。
-# 默认"auto_all"会在运行时读取全部01号脚本生成的analysis结果，
-# 自动构建ALL_ANALYSES交集方案。等你完成clinical_edit.csv分组设计后，
-# 可以改成手动list，例如：
+# GSE310664当前包含HVL/MVL/HMVL及细胞系分层等多种比较，全部差异方案直接
+# 取交集没有明确生物学意义，并且常会得到空交集。默认不运行交集；后续若需要，
+# 只添加有明确问题指向的方案，例如：
 # INTERSECTION_SCHEMES <- list(
 #   p27_high_common = c("CRC29_p27_high", "HUB098_p27_high")
 # )
-INTERSECTION_SCHEMES <- "auto_all"
+INTERSECTION_SCHEMES <- list()
 
 # 运行哪些交集方案。默认"all"表示运行INTERSECTION_SCHEMES中的全部方案。
-SCHEMES_TO_RUN <- "all"
+SCHEMES_TO_RUN <- character(0)
 # SCHEMES_TO_RUN <- c("p27_high_common")
 
 # 重跑时清空对应交集方案目录，避免旧文件与新结果混在一起。
@@ -296,6 +296,24 @@ if (identical(INTERSECTION_SCHEMES, "auto_all")) {
 
 if (identical(SCHEMES_TO_RUN, "all")) {
   SCHEMES_TO_RUN <- names(INTERSECTION_SCHEMES)
+}
+
+if (length(INTERSECTION_SCHEMES) == 0L || length(SCHEMES_TO_RUN) == 0L) {
+  if (dir.exists(INTERSECT_ROOT)) {
+    unlink(
+      list.files(INTERSECT_ROOT, full.names = TRUE, all.files = FALSE),
+      recursive = TRUE,
+      force = TRUE
+    )
+  }
+
+  cat("\nNo DEG intersection schemes are configured for GSE310664.\n")
+  cat("Reason: the current design contains HVL/MVL/HMVL and cell-line contrasts; a full all-contrast intersection is not biologically meaningful.\n")
+  cat("Available DEG analyses:\n")
+  cat(paste0("- ", file_info$Analysis_Name, collapse = "\n"), "\n", sep = "")
+  cat("\nSignificant DEG intersection step skipped.\n")
+  print_runtime_summary(SCRIPT_START_TIME, label = "Total runtime")
+  quit(save = "no", status = 0)
 }
 
 stopifnot(length(INTERSECTION_SCHEMES) > 0)

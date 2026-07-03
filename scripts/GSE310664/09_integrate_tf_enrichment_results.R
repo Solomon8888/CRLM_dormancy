@@ -25,7 +25,9 @@ OBSOLETE_TF_VENN_PLOT_ROOT <- file.path(RESULT_ROOT, "plots", "TF_intersection")
 # 需要整合哪些输入类型。
 # DEG       = results/ngs/GSE310664/TF/DEG/<analysis_name>/
 # INTERSECT = results/ngs/GSE310664/TF/intersect/<intersection_scheme>/
-INPUT_TYPES_TO_RUN <- c("DEG", "INTERSECT")
+# GSE310664默认只整合DEG层面TF结果；未定义明确交集方案前，不生成
+# “所有差异方案取交集”的TF结果。
+INPUT_TYPES_TO_RUN <- c("DEG")
 
 # 需要整合哪些具体方案。设为"all"时自动读取全部。
 DEG_ANALYSES_TO_RUN <- "all"
@@ -224,7 +226,7 @@ get_library_name_from_file <- function(file_name, method_name, prefix) {
 add_missing_columns <- function(dat, columns) {
   for (column in columns) {
     if (!column %in% colnames(dat)) {
-      dat[[column]] <- NA
+      dat[[column]] <- rep(NA, nrow(dat))
     }
   }
 

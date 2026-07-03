@@ -224,7 +224,7 @@ get_library_name_from_file <- function(file_name, method_name, prefix) {
 add_missing_columns <- function(dat, columns) {
   for (column in columns) {
     if (!column %in% colnames(dat)) {
-      dat[[column]] <- NA
+      dat[[column]] <- rep(NA, nrow(dat))
     }
   }
 
